@@ -1,0 +1,357 @@
+import os
+import glob
+import copy
+
+import math
+import sys
+import time
+import torch
+
+import numpy as np
+import cv2
+
+import torchvision.models.detection.mask_rcnn
+
+from scripts.torchvision_mask_rcnn.vision.coco_utils import get_coco_api_from_dataset
+from scripts.torchvision_mask_rcnn.vision.coco_eval import CocoEvaluator
+from scripts.torchvision_mask_rcnn.vision import utils
+
+from torch.utils import data
+from torch.utils.data import DataLoader, random_split, Subset
+from torch.utils.tensorboard import SummaryWriter
+
+###############################
+###############################
+
+from pathlib import Path
+ROOT_DIR_PATH = Path(__file__).parents[1].absolute().resolve(strict=True)
+
+import cfg as config
+from tqdm import tqdm
+
+from utils import helper_utils
+
+from dataset.UMDDataset import BasicDataSet
+from dataset.utils import umd_utils
+
+###############################
+# DATASET UTILS
+###############################
+
+def load_umd_real_datasets():
+
+    ######################
+    # train + val
+    ######################
+    print("\nloading train and val ..")
+
+    dataset = BasicDataSet(
+        ### REAL
+        dataset_dir=config.DATA_DIRECTORY_TARGET_TRAIN,
+        mean=config.IMG_MEAN_TARGET,
+        std=config.IMG_STD_TARGET,
+        resize=config.RESIZE_TARGET,
+        crop_size=config.INPUT_SIZE_TARGET,
+        ###
+        is_train=True,
+        ### EXTENDING DATASET
+        extend_dataset=False,
+        ### IMGAUG
+        apply_imgaug=True)
+
+    ### SELECTING A SUBSET OF IMAGES
+    np.random.seed(config.RANDOM_SEED)
+    total_idx = np.arange(0, len(dataset), 1)
+    train_idx = np.random.choice(total_idx, size=int(config.NUM_TRAIN+config.NUM_VAL), replace=False)
+    dataset = Subset(dataset, train_idx)
+
+    train_dataset, val_dataset = random_split(dataset, [config.NUM_TRAIN, config.NUM_VAL])
+
+    train_loader = DataLoader(train_dataset,
+                              batch_size=config.BATCH_SIZE,
+                              shuffle=True,
+                              num_workers=config.NUM_WORKERS,
+                              pin_memory=True,
+                              collate_fn=utils.collate_fn)
+
+    print(f"train has {len(train_loader)} images ..")
+    assert (len(train_loader) >= int(config.NUM_TRAIN))
+
+    val_loader = DataLoader(val_dataset,
+                            batch_size=config.BATCH_SIZE,
+                            shuffle=True,
+                            num_workers=config.NUM_WORKERS,
+                            pin_memory=True,
+                            collate_fn=utils.collate_fn)
+
+    print(f"val has {len(val_dataset)} images ..")
+    assert (len(val_loader) >= int(config.NUM_VAL))
+
+    ######################
+    # test
+    ######################
+    print("\nloading test ..")
+    print('eval in .. {}'.format(config.TEST_SAVE_FOLDER))
+
+    test_dataset = BasicDataSet(
+        ### REAL
+        dataset_dir=config.DATA_DIRECTORY_TARGET_VAL,
+        mean=config.IMG_MEAN_TARGET,
+        std=config.IMG_STD_TARGET,
+        resize=config.RESIZE_TARGET,
+        crop_size=config.INPUT_SIZE_TARGET,
+        ###
+        is_train=True,
+        ### EXTENDING DATASET
+        extend_dataset=False,
+        ### IMGAUG
+        apply_imgaug=False)
+
+    ### SELECTING A SUBSET OF IMAGES
+    np.random.seed(config.RANDOM_SEED)
+    total_idx = np.arange(0, len(test_dataset), 1)
+    test_idx = np.random.choice(total_idx, size=int(config.NUM_TEST), replace=False)
+    test_dataset = Subset(test_dataset, test_idx)
+
+    test_loader = torch.utils.data.DataLoader(test_dataset,
+                                              batch_size=1,
+                                              shuffle=True,
+                                              num_workers=config.NUM_WORKERS,
+                                              collate_fn=utils.collate_fn)
+
+    print(f"test has {len(test_loader)} images ..")
+    assert (len(test_loader) >= int(config.NUM_TEST))
+
+    return train_loader, val_loader, test_loader
+
+###############################
+# TRAINING UTILS
+###############################
+
+def save_checkpoint(model, optimizer, epochs, checkpoint_path):
+    checkpoint = {}
+    checkpoint["model"] = model.state_dict()
+    checkpoint["optimizer"] = optimizer.state_dict()
+    checkpoint["epochs"] = epochs
+
+    torch.save(checkpoint, checkpoint_path)
+    print(f'saved model to {checkpoint_path} ..\n')
+
+###############################
+###############################
+
+def train_one_epoch(model, optimizer, data_loader, device, epoch, writer):
+    model.train()
+
+    lr_scheduler = None
+    if epoch == 0:
+        warmup_factor = 1. / 1000
+        warmup_iters = min(1000, len(data_loader) - 1)
+
+        lr_scheduler = utils.warmup_lr_scheduler(optimizer, warmup_iters, warmup_factor)
+
+    assert (len(data_loader) == config.NUM_TRAIN)
+    with tqdm(total=config.NUM_TRAIN, desc=f'Epoch:{epoch}', unit='iterations') as pbar:
+        for i, batch in enumerate(data_loader):
+            images, targets = batch
+
+            images = list(image.to(device) for image in images)
+            targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+
+            loss_dict = model(images, targets)
+
+            losses = sum(loss for loss in loss_dict.values())
+
+            # reduce losses over all GPUs for logging purposes
+            loss_dict_reduced = utils.reduce_dict(loss_dict)
+            losses_reduced = sum(loss for loss in loss_dict_reduced.values())
+
+            loss_value = losses_reduced.item()
+
+            if not math.isfinite(loss_value):
+                print("Loss is {}, stopping training".format(loss_value))
+                print(loss_dict_reduced)
+                sys.exit(1)
+
+            optimizer.zero_grad()
+            losses.backward()
+            optimizer.step()
+
+            if lr_scheduler is not None:
+                lr_scheduler.step()
+
+            ## TENSORBOARD
+            # writer.add_scalar('Learning_rate/train',  optimizer.param_groups[0]['lr'],          int(epoch * config.NUM_TRAIN + i))
+            # writer.add_scalar('Loss',                 loss_value,                               int(epoch * config.NUM_TRAIN + i))
+            # writer.add_scalar('RPN/objectness_loss',  loss_dict_reduced['rpn_objectness_loss'], int(epoch * config.NUM_TRAIN + i))
+            # writer.add_scalar('RPN/box_loss',         loss_dict_reduced['rpn_box_loss'],        int(epoch * config.NUM_TRAIN + i))
+            # writer.add_scalar('RoI/classifier_loss',  loss_dict_reduced['roi_classifier_loss'], int(epoch * config.NUM_TRAIN + i))
+            # writer.add_scalar('RoI/box_loss',         loss_dict_reduced['roi_box_loss'],        int(epoch * config.NUM_TRAIN + i))
+            # writer.add_scalar('RoI/mask_loss',        loss_dict_reduced['roi_mask_loss'],       int(epoch * config.NUM_TRAIN + i))
+
+            writer.add_scalar('Learning_rate/train',  optimizer.param_groups[0]['lr'],       int(epoch * config.NUM_TRAIN + i))
+            writer.add_scalar('Loss',                 loss_value,                            int(epoch * config.NUM_TRAIN + i))
+            writer.add_scalar('RPN/objectness_loss',  loss_dict_reduced['loss_objectness'],  int(epoch * config.NUM_TRAIN + i))
+            writer.add_scalar('RPN/box_loss',         loss_dict_reduced['loss_rpn_box_reg'], int(epoch * config.NUM_TRAIN + i))
+            writer.add_scalar('RoI/classifier_loss',  loss_dict_reduced['loss_classifier'],  int(epoch * config.NUM_TRAIN + i))
+            writer.add_scalar('RoI/box_loss',         loss_dict_reduced['loss_box_reg'],     int(epoch * config.NUM_TRAIN + i))
+            writer.add_scalar('RoI/mask_loss',        loss_dict_reduced['loss_mask'],        int(epoch * config.NUM_TRAIN + i))
+
+            pbar.update(config.BATCH_SIZE)
+    return model, optimizer
+
+#######################
+#######################
+
+def val_one_epoch(model, optimizer, data_loader, device, epoch, writer):
+    model.train()
+
+    assert (len(data_loader) == config.NUM_VAL)
+    with tqdm(total=config.NUM_VAL, desc=f'Epoch:{epoch}', unit='iterations') as pbar:
+        for i, batch in enumerate(data_loader):
+            images, targets = batch
+
+            # targets['boxes'] = targets['boxes'].squeeze(0)
+            # targets['labels'] = targets['labels'].squeeze(0)
+            # targets['masks'] = targets['masks'].squeeze(0)
+            #
+            # targets['obj_boxes'] = targets['obj_boxes'].squeeze(0)
+            # targets['obj_labels'] = targets['obj_labels'].squeeze(0)
+            # targets['aff_boxes'] = targets['aff_boxes'].squeeze(0)
+            # targets['aff_labels'] = targets['aff_labels'].squeeze(0)
+            #
+            # images = images.to(device)
+            # targets = {k: v.to(device) for k, v in targets.items()}
+
+            images = list(image.to(device) for image in images)
+            targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+
+            loss_dict = model(images, targets)
+
+            losses = sum(loss for loss in loss_dict.values())
+
+            # reduce losses over all GPUs for logging purposes
+            loss_dict_reduced = utils.reduce_dict(loss_dict)
+            losses_reduced = sum(loss for loss in loss_dict_reduced.values())
+
+            loss_value = losses_reduced.item()
+
+            if not math.isfinite(loss_value):
+                print("Loss is {}, stopping training".format(loss_value))
+                print(loss_dict_reduced)
+                sys.exit(1)
+
+            # optimizer.zero_grad()
+            # losses.backward()
+            # optimizer.step()
+
+            ## TENSORBOARD
+            # writer.add_scalar('Learning_rate/val',       optimizer.param_groups[0]['lr'],          int(epoch * config.NUM_VAL + i))
+            # writer.add_scalar('ValLoss',                 loss_value,                               int(epoch * config.NUM_VAL + i))
+            # writer.add_scalar('ValRPN/objectness_loss',  loss_dict_reduced['rpn_objectness_loss'], int(epoch * config.NUM_VAL + i))
+            # writer.add_scalar('ValRPN/box_loss',         loss_dict_reduced['rpn_box_loss'],        int(epoch * config.NUM_VAL + i))
+            # writer.add_scalar('ValRoI/classifier_loss',  loss_dict_reduced['roi_classifier_loss'], int(epoch * config.NUM_VAL + i))
+            # writer.add_scalar('ValRoI/box_loss',         loss_dict_reduced['roi_box_loss'],        int(epoch * config.NUM_VAL + i))
+            # writer.add_scalar('ValRoI/mask_loss',        loss_dict_reduced['roi_mask_loss'],       int(epoch * config.NUM_VAL + i))
+
+            writer.add_scalar('Learning_rate/val',      optimizer.param_groups[0]['lr'],           int(epoch * config.NUM_TRAIN + i))
+            writer.add_scalar('ValLoss',                loss_value,                                int(epoch * config.NUM_TRAIN + i))
+            writer.add_scalar('ValRPN/objectness_loss', loss_dict_reduced['loss_objectness'],      int(epoch * config.NUM_TRAIN + i))
+            writer.add_scalar('ValRPN/box_loss',        loss_dict_reduced['loss_rpn_box_reg'],     int(epoch * config.NUM_TRAIN + i))
+            writer.add_scalar('ValRoI/classifier_loss', loss_dict_reduced['loss_classifier'],      int(epoch * config.NUM_TRAIN + i))
+            writer.add_scalar('ValRoI/box_loss',        loss_dict_reduced['loss_box_reg'],         int(epoch * config.NUM_TRAIN + i))
+            writer.add_scalar('ValRoI/mask_loss',       loss_dict_reduced['loss_mask'],            int(epoch * config.NUM_TRAIN + i))
+
+            pbar.update(config.BATCH_SIZE)
+    return model, optimizer
+
+#######################
+#######################
+
+def eval_model(model, test_loader):
+    print('\nevaluating model ..')
+    model.eval()  # todo: issues with batch size = 1
+
+    ######################
+    # INIT
+    ######################
+
+    if not os.path.exists(config.TEST_SAVE_FOLDER):
+        os.makedirs(config.TEST_SAVE_FOLDER)
+
+    gt_pred_images = glob.glob(config.TEST_SAVE_FOLDER + '*')
+    for images in gt_pred_images:
+        os.remove(images)
+
+    ######################
+    ######################
+
+    assert (len(test_loader) == config.NUM_TEST)
+    for image_idx, (images, targets) in enumerate(test_loader):
+        image, target = copy.deepcopy(images), copy.deepcopy(targets)
+        images = list(image.to(config.DEVICE) for image in images)
+
+        with torch.no_grad():
+            outputs = model(images)
+            outputs = [{k: v.to(config.CPU_DEVICE) for k, v in t.items()} for t in outputs]
+
+        #######################
+        ### todo: formatting input
+        #######################
+        image = image[0]
+        image = image.to(config.CPU_DEVICE)
+        img = np.squeeze(np.array(image)).transpose(1, 2, 0)
+        height, width = img.shape[:2]
+
+        target = target[0]
+        target = {k: v.to(config.CPU_DEVICE) for k, v in target.items()}
+        target = helper_utils.format_target_data(img, target)
+
+        #######################
+        ### todo: formatting output
+        #######################
+        outputs = outputs.pop()
+
+        scores = np.array(outputs['scores'], dtype=np.float32).flatten()
+
+        binary_masks = np.squeeze(np.array(outputs['masks'] > config.CONFIDENCE_THRESHOLD, dtype=np.uint8))
+        labels = np.array(outputs['labels'], dtype=np.int32)
+
+        #######################
+        ### masks
+        #######################
+        mask = helper_utils.get_segmentation_masks(image=img,
+                                                   labels=labels,
+                                                   binary_masks=binary_masks,
+                                                   scores=scores)
+
+        gt_name = config.TEST_SAVE_FOLDER + str(image_idx) + config.TEST_GT_EXT
+        cv2.imwrite(gt_name, target['gt_mask'])
+
+        pred_name = config.TEST_SAVE_FOLDER + str(image_idx) + config.TEST_PRED_EXT
+        cv2.imwrite(pred_name, mask)
+    return model
+
+#######################
+#######################
+
+def eval_Fwb(model, optimizer, Fwb, best_Fwb, epoch, writer, matlab_scrips_dir=config.MATLAB_SCRIPTS_DIR):
+    print()
+
+    os.chdir(matlab_scrips_dir)
+    # print(matlab_scrips_dir)
+    import matlab.engine
+    eng = matlab.engine.start_matlab()
+    Fwb = eng.evaluate_UMD(config.TEST_SAVE_FOLDER, nargout=1)
+    writer.add_scalar('eval/Fwb', Fwb, int(epoch * config.NUM_TRAIN))
+    os.chdir(config.ROOT_DIR_PATH)
+
+    if Fwb > best_Fwb:
+        best_Fwb = Fwb
+        writer.add_scalar('eval/Best Fwb', best_Fwb, int(epoch * config.NUM_TRAIN))
+        print("Saving best model .. best Fwb={:.5} ..".format(best_Fwb))
+
+        CHECKPOINT_PATH = config.BEST_MODEL_SAVE_PATH
+        save_checkpoint(model, optimizer, epoch, CHECKPOINT_PATH)
+
+    return Fwb, best_Fwb
