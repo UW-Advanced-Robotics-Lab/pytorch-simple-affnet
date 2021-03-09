@@ -96,7 +96,7 @@ class RoIHeads(nn.Module):
         result, losses = {}, {}
         if self.training:
             classifier_loss, box_reg_loss = fastrcnn_loss(class_logit, box_regression, label, regression_target)
-            losses = dict(roi_classifier_loss=classifier_loss, roi_box_loss=box_reg_loss)
+            losses = dict(loss_classifier=classifier_loss, loss_box_reg=box_reg_loss)
         else:
             result = self.fastrcnn_inference(class_logit, box_regression, proposal, image_shape)
 
@@ -117,7 +117,7 @@ class RoIHeads(nn.Module):
                 '''
 
                 if mask_proposal.shape[0] == 0:
-                    losses.update(dict(roi_mask_loss=torch.tensor(0)))
+                    losses.update(dict(loss_mask=torch.tensor(0)))
                     return result, losses
             else:
                 mask_proposal = result['boxes']
@@ -132,7 +132,7 @@ class RoIHeads(nn.Module):
             if self.training:
                 gt_mask = target['masks']
                 mask_loss = maskrcnn_loss(mask_logit, mask_proposal, pos_matched_idx, mask_label, gt_mask)
-                losses.update(dict(roi_mask_loss=mask_loss))
+                losses.update(dict(loss_mask=mask_loss))
             else:
                 label = result['labels']
                 idx = torch.arange(label.shape[0], device=label.device)
