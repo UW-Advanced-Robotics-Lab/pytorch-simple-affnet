@@ -254,13 +254,13 @@ def val_one_epoch(model, optimizer, data_loader, device, epoch, writer):
             # writer.add_scalar('ValRoI/box_loss',         loss_dict_reduced['roi_box_loss'],        int(epoch * config.NUM_VAL + i))
             # writer.add_scalar('ValRoI/mask_loss',        loss_dict_reduced['roi_mask_loss'],       int(epoch * config.NUM_VAL + i))
 
-            writer.add_scalar('Learning_rate/val',      optimizer.param_groups[0]['lr'],           int(epoch * config.NUM_TRAIN + i))
-            writer.add_scalar('ValLoss',                loss_value,                                int(epoch * config.NUM_TRAIN + i))
-            writer.add_scalar('ValRPN/objectness_loss', loss_dict_reduced['loss_objectness'],      int(epoch * config.NUM_TRAIN + i))
-            writer.add_scalar('ValRPN/box_loss',        loss_dict_reduced['loss_rpn_box_reg'],     int(epoch * config.NUM_TRAIN + i))
-            writer.add_scalar('ValRoI/classifier_loss', loss_dict_reduced['loss_classifier'],      int(epoch * config.NUM_TRAIN + i))
-            writer.add_scalar('ValRoI/box_loss',        loss_dict_reduced['loss_box_reg'],         int(epoch * config.NUM_TRAIN + i))
-            writer.add_scalar('ValRoI/mask_loss',       loss_dict_reduced['loss_mask'],            int(epoch * config.NUM_TRAIN + i))
+            writer.add_scalar('Learning_rate/val',      optimizer.param_groups[0]['lr'],           int(epoch * config.NUM_VAL + i))
+            writer.add_scalar('ValLoss',                loss_value,                                int(epoch * config.NUM_VAL + i))
+            writer.add_scalar('ValRPN/objectness_loss', loss_dict_reduced['loss_objectness'],      int(epoch * config.NUM_VAL + i))
+            writer.add_scalar('ValRPN/box_loss',        loss_dict_reduced['loss_rpn_box_reg'],     int(epoch * config.NUM_VAL + i))
+            writer.add_scalar('ValRoI/classifier_loss', loss_dict_reduced['loss_classifier'],      int(epoch * config.NUM_VAL + i))
+            writer.add_scalar('ValRoI/box_loss',        loss_dict_reduced['loss_box_reg'],         int(epoch * config.NUM_VAL + i))
+            writer.add_scalar('ValRoI/mask_loss',       loss_dict_reduced['loss_mask'],            int(epoch * config.NUM_VAL + i))
 
             pbar.update(config.BATCH_SIZE)
     return model, optimizer

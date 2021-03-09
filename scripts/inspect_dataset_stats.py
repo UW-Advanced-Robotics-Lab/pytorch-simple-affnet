@@ -94,7 +94,7 @@ def main():
         ### masks
         #######################
         mask = helper_utils.get_segmentation_masks(image=image,
-                                                   labels=target['aff_labels'],
+                                                   labels=target['labels'],
                                                    binary_masks=target['masks'],
                                                    is_gt=True)
         color_mask = umd_utils.colorize_mask(mask)
@@ -106,8 +106,8 @@ def main():
         #######################
         ### Anchors
         #######################
-        anchor_img = helper_utils.visualize_anchors(image=image)
-        cv2.imshow('Anchors', cv2.cvtColor(anchor_img, cv2.COLOR_BGR2RGB))
+        # anchor_img = helper_utils.visualize_anchors(image=image)
+        # cv2.imshow('Anchors', cv2.cvtColor(anchor_img, cv2.COLOR_BGR2RGB))
 
         #######################
         #######################

@@ -122,9 +122,9 @@ def main():
     num_epochs = config.NUM_EPOCHS
     Fwb, best_Fwb = -np.inf, -np.inf
 
-    print('freezing backbone weights ..\n')
-    for layer in model.backbone.parameters():
-        layer.requires_grad = False
+    # print('freezing backbone weights ..\n')
+    # for layer in model.backbone.parameters():
+    #     layer.requires_grad = False
 
     # construct an optimizer
     params = [p for p in model.parameters() if p.requires_grad]
@@ -148,36 +148,36 @@ def main():
         CHECKPOINT_PATH = config.MODEL_SAVE_PATH + 'affnet_epoch_' + np.str(epoch) + '.pth'
         train_helpers.save_checkpoint(model, optimizer, epoch, CHECKPOINT_PATH)
 
-    #######################
-    #######################
-    print()
-
-    print('unfreezing backbone weights ..\n')
-    for layer in model.backbone.parameters():
-        layer.requires_grad = True
-
-    # construct an optimizer
-    params = [p for p in model.parameters() if p.requires_grad]
-    optimizer = torch.optim.SGD(params, lr=config.LEARNING_RATE/100, weight_decay=config.WEIGHT_DECAY, momentum=0.9)
-
-    # and a learning rate scheduler
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
-
-    for epoch in range(1*num_epochs, 2*num_epochs):
-        # train & val for one epoch
-        # train_one_epoch(model, optimizer, train_loader, config.DEVICE, epoch, print_freq=10)
-        model, optimizer = train_helpers.train_one_epoch(model, optimizer, train_loader, config.DEVICE, epoch, writer)
-        model, optimizer = train_helpers.val_one_epoch(model, optimizer, val_loader, config.DEVICE, epoch, writer)
-        # eval model
-        model = train_helpers.eval_model(model, test_loader)
-        Fwb, best_Fwb = train_helpers.eval_Fwb(model=model, optimizer=optimizer,
-                                               Fwb=Fwb, best_Fwb=best_Fwb,
-                                               epoch=epoch, writer=writer)
-        lr_scheduler.step()
-
-        # checkpoint_path = config.CHECKPOINT_PATH
-        CHECKPOINT_PATH = config.MODEL_SAVE_PATH + 'affnet_epoch_' + np.str(epoch) + '.pth'
-        train_helpers.save_checkpoint(model, optimizer, epoch, CHECKPOINT_PATH)
+    # #######################
+    # #######################
+    # print()
+    #
+    # print('unfreezing backbone weights ..\n')
+    # for layer in model.backbone.parameters():
+    #     layer.requires_grad = True
+    #
+    # # construct an optimizer
+    # params = [p for p in model.parameters() if p.requires_grad]
+    # optimizer = torch.optim.SGD(params, lr=config.LEARNING_RATE/100, weight_decay=config.WEIGHT_DECAY, momentum=0.9)
+    #
+    # # and a learning rate scheduler
+    # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
+    #
+    # for epoch in range(1*num_epochs, 2*num_epochs):
+    #     # train & val for one epoch
+    #     # train_one_epoch(model, optimizer, train_loader, config.DEVICE, epoch, print_freq=10)
+    #     model, optimizer = train_helpers.train_one_epoch(model, optimizer, train_loader, config.DEVICE, epoch, writer)
+    #     model, optimizer = train_helpers.val_one_epoch(model, optimizer, val_loader, config.DEVICE, epoch, writer)
+    #     # eval model
+    #     model = train_helpers.eval_model(model, test_loader)
+    #     Fwb, best_Fwb = train_helpers.eval_Fwb(model=model, optimizer=optimizer,
+    #                                            Fwb=Fwb, best_Fwb=best_Fwb,
+    #                                            epoch=epoch, writer=writer)
+    #     lr_scheduler.step()
+    #
+    #     # checkpoint_path = config.CHECKPOINT_PATH
+    #     CHECKPOINT_PATH = config.MODEL_SAVE_PATH + 'affnet_epoch_' + np.str(epoch) + '.pth'
+    #     train_helpers.save_checkpoint(model, optimizer, epoch, CHECKPOINT_PATH)
 
 if __name__ == "__main__":
     main()

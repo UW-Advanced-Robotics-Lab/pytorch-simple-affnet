@@ -42,26 +42,25 @@ def main():
     ### freezing resnet layers
     ###########################
 
-    print(f'\nfreezing backbone')
-    for name, param in model.backbone.named_parameters():
-        param.requires_grad = False
-
-    for name, param in model.named_parameters():
-        if param.requires_grad == True:
-            print("\tupdate:", name)
-        else:
-            print("\tfrozen:", name)
-
-    print(f'\nunfreezing backbone')
-    for name, param in model.backbone.named_parameters():
-        param.requires_grad = True
-
-    for name, param in model.named_parameters():
-        if param.requires_grad == True:
-            print("\tupdate:", name)
-        else:
-            print("\tfrozen:", name)
-
+    # print(f'\nfreezing backbone')
+    # for name, param in model.backbone.named_parameters():
+    #     param.requires_grad = False
+    #
+    # for name, param in model.named_parameters():
+    #     if param.requires_grad == True:
+    #         print("\tupdate:", name)
+    #     else:
+    #         print("\tfrozen:", name)
+    #
+    # print(f'\nunfreezing backbone')
+    # for name, param in model.backbone.named_parameters():
+    #     param.requires_grad = True
+    #
+    # for name, param in model.named_parameters():
+    #     if param.requires_grad == True:
+    #         print("\tupdate:", name)
+    #     else:
+    #         print("\tfrozen:", name)
 
     # construct an optimizer
     # params = [p for p in model.parameters() if p.requires_grad]

@@ -42,6 +42,8 @@ def create_sub_masks(mask_image):
                 # Set the pixel value to 1 (default is 0), accounting for padding
                 sub_masks[pixel_str].putpixel((x+1, y+1), 1)
 
+    ### NEED TO SORT DICT !!!
+    sub_masks = dict(sorted(sub_masks.items()))
     return sub_masks
 
 def create_sub_mask_annotation(aff_id, sub_mask, mask, rgb_img):
@@ -117,6 +119,7 @@ def extract_coco_mask_annotations(image_idx, rgb_img, label_img):
     sub_masks = create_sub_masks(label_img)
 
     for aff_id, sub_mask in sub_masks.items():
+        # print(f'aff_id:{aff_id}')
         if int(aff_id) > 0:
             region = create_sub_mask_annotation(aff_id=int(aff_id), sub_mask=sub_mask, mask=label_img, rgb_img=rgb_img)
             regions[np.str(aff_id)] = region

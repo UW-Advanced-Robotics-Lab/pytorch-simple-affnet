@@ -16,7 +16,7 @@ FRAMEWORK Selection:
 # TODO: prelim for naming
 FRAMEWORK           = 'MaskRCNN'
 EXP_DATASET_NAME    = 'UMD_Real_RGB'
-EXP_NUM             = 'v2_AffNet_Training_Scheduler'
+EXP_NUM             = 'v0_AffNet_128x128'
 
 #######################################
 #######################################
@@ -39,8 +39,8 @@ IS_PRETRAINED = True
 RESNET_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth'
 MASKRCNN_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/maskrcnn_resnet50_fpn_coco-bf2d0c1e.pth'
 
-# RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/Pytorch-MaskRCNN/snapshots/UMD_Real_RGB/MaskRCNN_UMD_Real_RGB_128x128_v1_Simple_MaskRCNN_Resize/BEST_MODEL.pth'
-# RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/Pytorch-MaskRCNN/snapshots/UMD_Real_RGB/MaskRCNN_UMD_Real_RGB_128x128_v1_Torchvision_MaskRCNN_Resize/BEST_MODEL.pth'
+# RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-MaskRCNN/snapshots/UMD_Real_RGB/MaskRCNN_UMD_Real_RGB_128x128_v0_Torchvision_MaskRCNN_128x128/BEST_MODEL.pth'
+RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-MaskRCNN/snapshots/UMD_Real_RGB/MaskRCNN_UMD_Real_RGB_128x128_v0_Simple_MaskRCNN_128x128/BEST_MODEL.pth'
 
 #######################################
 #######################################
@@ -72,18 +72,19 @@ WEIGHT_DECAY = 1e-04
 ######################################
 #######################################
 ''' MaskRCNN configs '''
+# see https://www.telesens.co/2018/03/11/object-detection-and-classification-using-r-cnns/
 
-CONFIDENCE_THRESHOLD = 0.5
+CONFIDENCE_THRESHOLD = 0.35 # TORCHVISION: 0.4 or SIMPLE:0.35
 
 # Anchor Generator
-ANCHOR_SIZES = (24, 32, 48, 64)
-ANCHOR_RATIOS = (0.75, 1, 1.25, 1.5)
+ANCHOR_SIZES = (16, 32, 64)
+ANCHOR_RATIOS = (0.5, 1, 1.5)
 
-# ANCHOR_SIZES = (32, 64, 128, 256)
-# ANCHOR_RATIOS = (0.5, 0.75, 1, 1.25)
-
-# ANCHOR_SIZES = ((32,), (64,), (128,), (256,))
-# ANCHOR_RATIOS = ((0.5, 1.0, 2.0),) * len(ANCHOR_SIZES)
+# transform parameters
+MIN_SIZE = 800
+MAX_SIZE = 1333
+IMAGE_MEAN = [0.485, 0.456, 0.406]
+IMAGE_STD = [0.229, 0.224, 0.225]
 
 # RPN parameters
 RPN_FG_IOU_THRESH = 0.7
@@ -99,7 +100,7 @@ RPN_NMS_THRESH = 0.7
 
 # RoIAlign parameters
 ROIALIGN_BOX_OUTPUT_SIZE = (7, 7)
-ROIALIGN_MASK_OUTPUT_SIZE = (28, 28) # todo (ak): try (128, 128) like AffNet
+ROIALIGN_MASK_OUTPUT_SIZE = (14, 14) # todo (ak): try (128, 128) like AffNet
 ROIALIGN_SAMPLING_RATIO = 2
 
 # RoIHeads parameters
@@ -110,14 +111,13 @@ BOX_POSITIVE_FRACTION = 0.25
 BOX_REG_WEIGHTS = (10., 10., 5., 5.)
 BOX_SCORE_THRESH = 0.1
 BOX_NMS_THRESH = 0.6
-BOX_NUM_DETECTIONS = 20 # todo: change from default
+BOX_NUM_DETECTIONS = 100            # todo: change from default
 
 #######################################
 ### PennFudan
 #######################################
 
 # ROOT_DATASET_PATH = '/data/Akeaveny/Datasets/PennFudanPed'
-
 # NUM_CLASSES = 2
 
 #######################################
@@ -155,25 +155,25 @@ NUM_TEST = 100
 TEST_GT_EXT = "_gt.png"
 TEST_PRED_EXT = "_pred.png"
 
-### PR
-PR_NUM_IMAGES = 28556 - 1 # zero index in files
-# FS
-PR_IMG_MEAN   = [138.58907803, 151.88310081, 125.22561575, 130.00560063]
-PR_IMG_STD    = [30.37894422, 38.44065602, 43.2841762, 43.57943909]
-PR_RESIZE     = (int(640*1.35/3), int(480*1.35/3))
-PR_INPUT_SIZE = (int(128), int(128))
-### DR
-# FS
-DR_IMG_MEAN   = [134.38601217, 137.02879418, 129.27239013, 140.01491372]
-DR_IMG_STD    = [48.88474747, 54.86081706, 48.8507932, 32.20115424]
-DR_RESIZE     = (int(640/3), int(480/3))
-DR_INPUT_SIZE = (int(128), int(128))
-### SYN UMD
-# FS
-IMG_MEAN   = [135.4883242,  143.06856056, 125.6341276, 134.57706755]
-IMG_STD    = [39.76640244, 46.91340711, 46.25064666, 38.62958981]
-RESIZE     = (int(640/3), int(480/3))
-INPUT_SIZE = (int(128), int(128))
+# ### PR
+# PR_NUM_IMAGES = 28556 - 1 # zero index in files
+# # FS
+# PR_IMG_MEAN   = [138.58907803, 151.88310081, 125.22561575, 130.00560063]
+# PR_IMG_STD    = [30.37894422, 38.44065602, 43.2841762, 43.57943909]
+# PR_RESIZE     = (int(640*1.35/3), int(480*1.35/3))
+# PR_INPUT_SIZE = (int(128), int(128))
+# ### DR
+# # FS
+# DR_IMG_MEAN   = [134.38601217, 137.02879418, 129.27239013, 140.01491372]
+# DR_IMG_STD    = [48.88474747, 54.86081706, 48.8507932, 32.20115424]
+# DR_RESIZE     = (int(640/3), int(480/3))
+# DR_INPUT_SIZE = (int(128), int(128))
+# ### SYN UMD
+# # FS
+# IMG_MEAN   = [135.4883242,  143.06856056, 125.6341276, 134.57706755]
+# IMG_STD    = [39.76640244, 46.91340711, 46.25064666, 38.62958981]
+# RESIZE     = (int(640/3), int(480/3))
+# INPUT_SIZE = (int(128), int(128))
 
 ### REAL UMD
 # FS
@@ -181,10 +181,10 @@ IMG_MEAN_TARGET   = [98.92739272, 66.78827961, 71.00867078, 135.8963934]
 IMG_STD_TARGET    = [26.53540375, 31.51117582, 31.75977128, 38.23637208]
 RESIZE_TARGET     = (int(640/3), int(480/3))
 INPUT_SIZE_TARGET = (int(128), int(128))
-# RESIZE_TARGET     = (int(640/1), int(480/1))
-# INPUT_SIZE_TARGET = (int(480), int(480))
+# RESIZE_TARGET     = (int(640*1.5), int(480*1.5))
+# INPUT_SIZE_TARGET = (int(640), int(640))
 
-IMG_SIZE = str(INPUT_SIZE[0]) + 'x' + str(INPUT_SIZE[1])
+IMG_SIZE = str(INPUT_SIZE_TARGET[0]) + 'x' + str(INPUT_SIZE_TARGET[1])
 
 #######################################
 #######################################

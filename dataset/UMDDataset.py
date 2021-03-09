@@ -63,9 +63,9 @@ class BasicDataSet(data.Dataset):
                  is_train=False,
                  is_eval=False,
                  ### PRE-PROCESSING
-                 mean=config.IMG_MEAN,
-                 std=config.IMG_STD,
-                 resize=config.RESIZE,
+                 mean=config.IMG_MEAN_TARGET,
+                 std=config.IMG_STD_TARGET,
+                 resize=config.RESIZE_TARGET,
                  crop_size=config.INPUT_SIZE_TARGET,
                  ### IMGAUG
                  apply_imgaug=False):
@@ -316,8 +316,8 @@ class BasicDataSet(data.Dataset):
         iscrowd = torch.zeros((len(aff_IDs),), dtype=torch.int64)
 
         target = {}
-        target["boxes"] = aff_boxes   # obj_boxes
-        target["labels"] = aff_labels # obj_labels
+        target["boxes"] = obj_boxes
+        target["labels"] = obj_labels
         target["masks"] = masks
         target["aff_labels"] = aff_labels
         target["aff_boxes"] = aff_boxes

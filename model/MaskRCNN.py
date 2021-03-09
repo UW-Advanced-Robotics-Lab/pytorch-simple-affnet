@@ -132,9 +132,10 @@ class MaskRCNN(nn.Module):
         ###############################
 
         self.transformer = Transformer(
-            min_size=640, max_size=800,
-            image_mean=[98.92739272/255, 66.78827961/255, 71.00867078/255],
-            image_std=[26.53540375/255, 31.51117582/255, 31.75977128/255])
+            min_size=config.MIN_SIZE,
+            max_size=config.MAX_SIZE,
+            image_mean=config.IMAGE_MEAN,
+            image_std=config.IMAGE_STD)
 
         ###############################
         ### Backbone
@@ -167,11 +168,6 @@ class MaskRCNN(nn.Module):
 
         box_roi_pool = RoIAlign(output_size=config.ROIALIGN_BOX_OUTPUT_SIZE,
                                 sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
-
-        # box_roi_pool = MultiScaleRoIAlign(
-        #     featmap_names=['0', '1', '2', '3'],
-        #     output_size=7,
-        #     sampling_ratio=2)
         
         resolution = box_roi_pool.output_size[0]
         in_channels = out_channels * resolution ** 2
@@ -187,11 +183,6 @@ class MaskRCNN(nn.Module):
         
         self.head.mask_roi_pool = RoIAlign(output_size=config.ROIALIGN_MASK_OUTPUT_SIZE,
                                            sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
-
-        # self.head.mask_roi_pool = MultiScaleRoIAlign(
-        #     featmap_names=['0', '1', '2', '3'],
-        #     output_size=14,
-        #     sampling_ratio=2)
         
         layers = (256, 256, 256, 256)
         dim_reduced = 256
@@ -256,8 +247,17 @@ class MaskRCNNPredictor(nn.Sequential):
             d['relu{}'.format(layer_idx)] = nn.ReLU(inplace=True)
             next_feature = layer_features
 
+        ### output is [14x14] -> [28x28]
+        ### nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding)
         d['mask_conv5'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
         d['relu5'] = nn.ReLU(inplace=True)
+        # ### output is [28x28] -> [56x56]
+        # d['mask_conv6'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
+        # d['relu6'] = nn.ReLU(inplace=True)
+        # ### output is [56x56] -> [112x112]
+        # d['mask_conv7'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
+        # d['relu7'] = nn.ReLU(inplace=True)
+
         d['mask_fcn_logits'] = nn.Conv2d(dim_reduced, num_classes, 1, 1, 0)
         super().__init__(d)
 
@@ -301,20 +301,41 @@ def ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, pretrained_backbone=True,
         print(f"loading pre-trained MaskRCNN weights: {config.MASKRCNN_PRETRAINED_WEIGHTS} .. ")
         print(f'num classes: {num_classes} ..')
 
-        model_state_dict = load_url(config.MASKRCNN_PRETRAINED_WEIGHTS)
-        pretrained_msd = list(model_state_dict.values())
+        pretrained_msd = load_url(config.MASKRCNN_PRETRAINED_WEIGHTS)
+        pretrained_msd_values = list(pretrained_msd.values())
+        pretrained_msd_names = list(pretrained_msd.keys())
+
+        '''
+        265 to 271: backbone.fpn weights
+        273 to 279: backbone.fpn weights
+        '''
+
         del_list = [i for i in range(265, 271)] + [i for i in range(273, 279)]
         for i, del_idx in enumerate(del_list):
-            pretrained_msd.pop(del_idx - i)
+            pretrained_msd_values.pop(del_idx - i)
+
+        '''
+        271: 'rpn.head.cls_logits.weight'
+        272: 'rpn.head.cls_logits.bias'
+        273: 'rpn.head.bbox_pred.weight'
+        274: 'rpn.head.bbox_pred.bias'
+        279: 'head.box_predictor.cls_score.weight'
+        280: 'head.box_predictor.cls_score.bias'
+        281: 'head.box_predictor.bbox_pred.weight'
+        282: 'head.box_predictor.bbox_pred.bias'
+        293 to end: 'head.mask_predictor'
+        '''
 
         msd = model.state_dict()
-        skip_list = [271, 272, 273, 274, 279, 280, 281, 282, 293, 294]
+        msd_names = list(msd.keys())
+        skip_list = [271, 272, 273, 274, 279, 280, 281, 282, 293, 294, 295, 296, 297, 298, 299]
         if num_classes == 91:
             skip_list = [271, 272, 273, 274]
         for i, name in enumerate(msd):
             if i in skip_list:
                 continue
-            msd[name].copy_(pretrained_msd[i])
+            # print(f'\tmsd_names:{msd_names[i]}')
+            msd[name].copy_(pretrained_msd_values[i])
 
         model.load_state_dict(msd)
     
