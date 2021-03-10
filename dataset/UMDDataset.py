@@ -316,13 +316,13 @@ class BasicDataSet(data.Dataset):
         iscrowd = torch.zeros((len(aff_IDs),), dtype=torch.int64)
 
         target = {}
-        target["boxes"] = obj_boxes
         target["labels"] = obj_labels
+        target["boxes"] = obj_boxes
         target["masks"] = masks
         target["aff_labels"] = aff_labels
         target["aff_boxes"] = aff_boxes
-        target["obj_boxes"] = obj_boxes
         target["obj_labels"] = obj_labels
+        target["obj_boxes"] = obj_boxes
         target["image_id"] = image_id
         target["area"] = area
         target["iscrowd"] = iscrowd

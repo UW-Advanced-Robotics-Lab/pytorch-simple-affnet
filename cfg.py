@@ -75,7 +75,7 @@ WEIGHT_DECAY = 1e-04
 ''' MaskRCNN configs '''
 # see https://www.telesens.co/2018/03/11/object-detection-and-classification-using-r-cnns/
 
-CONFIDENCE_THRESHOLD = 0.5 # TORCHVISION: 0.4 or SIMPLE:0.35
+CONFIDENCE_THRESHOLD = 0.35 # TORCHVISION: 0.4 or SIMPLE:0.35
 
 # Anchor Generator
 ANCHOR_SIZES = (16, 32, 64)
