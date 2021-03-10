@@ -140,8 +140,16 @@ class RoIHeads(nn.Module):
                     mask_proposal = proposal[i].detach().cpu().numpy()
                     # print(f'mask_proposal: size:{mask_proposal.shape}, data:{mask_proposal}')
                     mask_proposal = np.tile(mask_proposal, num_aff_label).reshape(-1, 4)
-                    # print(f'mask_proposal:{mask_proposal}')
+                    print(f'mask_proposal:{mask_proposal}')
+                    # TODO: add random noise to mask_proposal for multi-class seg
+                    for _mask_proposal in mask_proposal:
+                        _mask_proposal[0] += np.random.normal(0, 3, 1)
+                        _mask_proposal[1] += np.random.normal(0, 3, 1)
+                        _mask_proposal[2] += np.random.normal(0, 3, 1)
+                        _mask_proposal[3] += np.random.normal(0, 3, 1)
+                    print(f'mask_proposal:{mask_proposal}')
 
+                    # TODO: match pos idx
                     # pos_matched_idx = matched_idx[i].detach().cpu().numpy()
                     # print(f'pos_matched_idx: size:{pos_matched_idx.shape}, data:{pos_matched_idx}')
                     # pos_matched_idx = np.repeat(pos_matched_idx, num_aff_label)
@@ -181,11 +189,18 @@ class RoIHeads(nn.Module):
                 for i in range(num_pos):
                     _aff_label = aff_labels[i]
                     num_aff_label = len(_aff_label)
-                    # print(f'aff_label: len:{num_aff_label} data:{_aff_label}')
+                    # print(f'\naff_label: len:{num_aff_label} data:{_aff_label}')
 
                     _mask_proposal = mask_proposal[i].detach().cpu().numpy()
-                    # print(f'mask_proposal: size:{mask_proposal.shape}, data:{mask_proposal}')
+                    # print(f'mask_proposal: size:{mask_proposal.shape}, data:{_mask_proposal}')
                     _mask_proposal = np.tile(_mask_proposal, num_aff_label).reshape(-1, 4)
+                    # print(f'mask_proposal:{_mask_proposal}')
+                    # # TODO: add random noise to mask_proposal for multi-class seg
+                    # for __mask_proposal in _mask_proposal:
+                    #     __mask_proposal[0] += np.random.normal(0, 3, 1)
+                    #     __mask_proposal[1] += np.random.normal(0, 3, 1)
+                    #     __mask_proposal[2] += np.random.normal(0, 3, 1)
+                    #     __mask_proposal[3] += np.random.normal(0, 3, 1)
                     # print(f'mask_proposal:{_mask_proposal}')
 
                     _aff_labels.extend(_aff_label)
@@ -193,12 +208,11 @@ class RoIHeads(nn.Module):
 
                 aff_labels = torch.as_tensor(_aff_labels).to(config.DEVICE)
                 mask_proposal = torch.as_tensor(_mask_proposals).to(config.DEVICE)
-
-                # print(f'aff_labels:{aff_labels}')
-                # print(f'mask_proposal:{mask_proposal}')
-
                 idx = torch.arange(aff_labels.shape[0], device=aff_labels.device)
-                # print(f'idx:{idx}\n')
+
+                # print(f'\naff_labels:{aff_labels}')
+                # print(f'mask_proposal:{mask_proposal}')
+                # print(f'idx:{idx}')
 
                 if mask_proposal.shape[0] == 0:
                     result.update(dict(masks=torch.empty((0, 28, 28))))
@@ -211,12 +225,25 @@ class RoIHeads(nn.Module):
 
             if self.training:
                 gt_mask = target['masks']
-                mask_loss = maskrcnn_loss(mask_logit, mask_proposal, pos_matched_idx, aff_labels, gt_mask)
+                mask_loss = maskrcnn_loss(mask_logit=mask_logit,
+                                          gt_mask=gt_mask,
+                                          proposal=mask_proposal,
+                                          matched_idx=pos_matched_idx,
+                                          label=aff_labels)
                 losses.update(dict(loss_mask=mask_loss))
             else:
                 mask_logit = mask_logit[idx, aff_labels]
 
                 mask_prob = mask_logit.sigmoid()
-                result.update(dict(masks=mask_prob, labels=aff_labels))
+                # print(f'mask_prob:{mask_prob.size()}')
+
+                result.update(dict(masks=mask_prob, aff_labels=aff_labels))
+
+                # binary_masks = np.squeeze(np.array(mask_prob.detach().cpu()>0.35, dtype=np.float))
+                # print(f'binary_masks:{binary_masks.shape}')
+                # for i in range(len(aff_labels)):
+                #     aff_label = aff_labels[i].detach().cpu()
+                #     binary_mask = binary_masks[i, :, :]
+                #     print(f'pre-processing: aff_label:{aff_label}, data:{np.unique(binary_mask, return_counts=True)}')
 
         return result, losses

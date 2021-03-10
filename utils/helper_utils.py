@@ -128,8 +128,8 @@ def draw_bbox_on_img(image, labels, boxes, scores=None, is_gt=False):
             bbox_img = cv2.rectangle(bbox_img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), 255, 1)
 
             cv2.putText(bbox_img,
-                        # umd_utils.object_id_to_name(label),
-                        umd_utils.aff_id_to_name(label),
+                        umd_utils.object_id_to_name(label),
+                        # umd_utils.aff_id_to_name(label),
                         (bbox[0], bbox[1] - 5),
                         cv2.FONT_ITALIC,
                         0.4,
@@ -143,8 +143,8 @@ def draw_bbox_on_img(image, labels, boxes, scores=None, is_gt=False):
 
                 label = labels[idx]
                 cv2.putText(bbox_img,
-                            # umd_utils.object_id_to_name(label),
-                            umd_utils.aff_id_to_name(label),
+                            umd_utils.object_id_to_name(label),
+                            # umd_utils.aff_id_to_name(label),
                             (bbox[0], bbox[1] - 5),
                             cv2.FONT_ITALIC,
                             0.4,
@@ -171,10 +171,10 @@ def get_segmentation_masks(image, labels, binary_masks, scores=None, is_gt=False
             instance_masks = np.where(binary_mask, instance_mask, instance_masks).astype(np.uint8)
 
     else:
-        for idx, score in enumerate(scores):
-            # if score > config.CONFIDENCE_THRESHOLD:
+        for idx, label in enumerate(labels):
             label = labels[idx]
             binary_mask = np.array(binary_masks[idx, :, :], dtype=np.uint8)
+            # print(f'binary_mask: label:{label}, data:{np.unique(binary_mask, return_counts=True)}')
             # print_class_labels(binary_mask)
 
             instance_mask = instance_mask_one * label

@@ -313,15 +313,19 @@ def eval_model(model, test_loader):
         outputs = outputs.pop()
 
         scores = np.array(outputs['scores'], dtype=np.float32).flatten()
+        labels = np.array(outputs['labels'], dtype=np.int32).flatten()
 
         binary_masks = np.squeeze(np.array(outputs['masks'] > config.CONFIDENCE_THRESHOLD, dtype=np.uint8))
-        labels = np.array(outputs['labels'], dtype=np.int32)
+
+        aff_labels = labels.copy()
+        if 'aff_labels' in outputs.keys():
+            aff_labels = np.array(outputs['aff_labels'], dtype=np.int32)
 
         #######################
         ### masks
         #######################
         mask = helper_utils.get_segmentation_masks(image=img,
-                                                   labels=labels,
+                                                   labels=aff_labels,
                                                    binary_masks=binary_masks,
                                                    scores=scores)
 

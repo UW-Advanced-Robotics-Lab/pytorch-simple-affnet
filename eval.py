@@ -160,15 +160,15 @@ def main():
         outputs = outputs.pop()
 
         scores = np.array(outputs['scores'], dtype=np.float32).flatten()
+
         labels = np.array(outputs['labels'], dtype=np.int32).flatten()
         boxes = np.array(outputs['boxes'], dtype=np.int32).reshape(-1, 4)
 
         binary_masks = np.squeeze(np.array(outputs['masks'] > config.CONFIDENCE_THRESHOLD, dtype=np.uint8))
 
-        # aff_masks = np.squeeze(np.array(outputs['aff_masks'] > config.CONFIDENCE_THRESHOLD, dtype=np.uint8))
-        # aff_labels = np.array(outputs['aff_labels'], dtype=np.int32)
-
-        # print(f'scores:{scores}')
+        aff_labels = labels.copy()
+        if 'aff_labels' in outputs.keys():
+            aff_labels = np.array(outputs['aff_labels'], dtype=np.int32)
 
         #######################
         ### bbox
@@ -183,14 +183,12 @@ def main():
         ### masks
         #######################
         mask = helper_utils.get_segmentation_masks(image=img,
-                                                   labels=labels,
+                                                   labels=aff_labels,
                                                    binary_masks=binary_masks,
                                                    scores=scores)
-
-        # print(f'gt:')
-        # helper_utils.print_class_labels(target['gt_mask'])
-        # print(f'pred:')
-        # helper_utils.print_class_labels(mask)
+        print(f'\nscores:{scores}')
+        helper_utils.print_class_labels(target['gt_mask'])
+        helper_utils.print_class_labels(mask)
 
         pred_color_mask = umd_utils.colorize_mask(mask)
         cv2.imshow('pred', pred_color_mask)

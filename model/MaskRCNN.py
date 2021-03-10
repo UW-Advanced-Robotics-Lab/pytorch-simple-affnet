@@ -172,7 +172,7 @@ class MaskRCNN(nn.Module):
         resolution = box_roi_pool.output_size[0]
         in_channels = out_channels * resolution ** 2
         mid_channels = 1024
-        box_predictor = FastRCNNPredictor(in_channels, mid_channels, config.NUM_AFF_CLASSES)
+        box_predictor = FastRCNNPredictor(in_channels, mid_channels, config.NUM_OBJECT_CLASSES)
         
         self.head = RoIHeads(
              box_roi_pool, box_predictor,
@@ -257,6 +257,9 @@ class MaskRCNNPredictor(nn.Sequential):
         # ### output is [56x56] -> [112x112]
         # d['mask_conv7'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
         # d['relu7'] = nn.ReLU(inplace=True)
+        ### output is [112x112] -> [224x224]
+        # d['mask_conv8'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
+        # d['relu8'] = nn.ReLU(inplace=True)
 
         d['mask_fcn_logits'] = nn.Conv2d(dim_reduced, num_classes, 1, 1, 0)
         super().__init__(d)
@@ -328,7 +331,7 @@ def ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, pretrained_backbone=True,
 
         msd = model.state_dict()
         msd_names = list(msd.keys())
-        skip_list = [271, 272, 273, 274, 279, 280, 281, 282, 293, 294, 295, 296, 297, 298, 299]
+        skip_list = [271, 272, 273, 274, 279, 280, 281, 282, 293, 294, 295, 296, 297, 298, 299, 300, 301]
         if num_classes == 91:
             skip_list = [271, 272, 273, 274]
         for i, name in enumerate(msd):

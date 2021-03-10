@@ -100,6 +100,15 @@ def paste_masks_in_image(mask, box, padding, image_shape):
     mask, box = expand_detection(mask, box, padding)
 
     N = mask.shape[0]
+    # print(f'mask.shape:{mask.shape}')
+
+    # todo: needed for multi-class aff seg
+    # if len(box.size()) != 0:
+    if box.nelement() != 0:
+        # print(f'box: shape:{box.shape}')
+        box = torch.cat(N*[box])
+        # print(f'box: shape:{box.shape}')
+
     size = (N,) + tuple(image_shape)
     im_mask = torch.zeros(size, dtype=mask.dtype, device=mask.device)
     for m, b, im in zip(mask, box, im_mask):

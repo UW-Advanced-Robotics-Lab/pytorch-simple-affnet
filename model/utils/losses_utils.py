@@ -33,7 +33,6 @@ def fastrcnn_loss(class_logit, box_regression, label, regression_target):
 
     return classifier_loss, box_reg_loss
 
-
 ###############################
 ###############################
 
@@ -47,14 +46,17 @@ def maskrcnn_loss(mask_logit, proposal, matched_idx, label, gt_mask):
 
     idx = torch.arange(label.shape[0], device=label.device)
 
+    # print(f"matched_idx:{matched_idx}")
     # print(f"idx:{idx}, label:{label}")
     # print(f"mask_logit:{mask_logit[idx, label].size()}, mask_target:{mask_target.size()}")
-    #
+
     # for i in range(len(idx)):
     #     _label = label[i]
     #     _gt_mask = mask_target[i, :, :].detach().cpu().numpy()
-    #     print(f"label:{_label}, gt_mask:{_gt_mask.shape}")
+    #     # print(f"\tlabel:{_label}, gt_mask:{_gt_mask.shape}")
     #     cv2.imshow('gt', _gt_mask)
+    #     _mask_logit = mask_logit[idx, label][i, :, :].detach().cpu().numpy()
+    #     cv2.imshow('mask_logit', _mask_logit)
     #     cv2.waitKey(0)
 
     mask_loss = F.binary_cross_entropy_with_logits(mask_logit[idx, label], mask_target)

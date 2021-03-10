@@ -16,7 +16,7 @@ FRAMEWORK Selection:
 # TODO: prelim for naming
 FRAMEWORK           = 'MaskRCNN'
 EXP_DATASET_NAME    = 'UMD_Real_RGB'
-EXP_NUM             = 'v0_AffNet_128x128'
+EXP_NUM             = 'v1_AffNet_128x128'
 
 #######################################
 #######################################
@@ -40,7 +40,8 @@ RESNET_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/resnet101-5d3b4
 MASKRCNN_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/maskrcnn_resnet50_fpn_coco-bf2d0c1e.pth'
 
 # RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-MaskRCNN/snapshots/UMD_Real_RGB/MaskRCNN_UMD_Real_RGB_128x128_v0_Torchvision_MaskRCNN_128x128/BEST_MODEL.pth'
-RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-MaskRCNN/snapshots/UMD_Real_RGB/MaskRCNN_UMD_Real_RGB_128x128_v0_Simple_MaskRCNN_128x128/BEST_MODEL.pth'
+# RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-MaskRCNN/snapshots/UMD_Real_RGB/MaskRCNN_UMD_Real_RGB_128x128_v0_Simple_MaskRCNN_128x128/BEST_MODEL.pth'
+RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-MaskRCNN/snapshots/UMD_Real_RGB/MaskRCNN_UMD_Real_RGB_128x128_v0_AffNet_128x128/affnet_epoch_9.pth'
 
 #######################################
 #######################################
@@ -54,8 +55,8 @@ RANDOM_SEED = 1234
 
 NUM_EPOCHS = 10
 
-NUM_TRAIN  = 500#0
-NUM_VAL    = 125#0
+NUM_TRAIN  = 5000
+NUM_VAL    = 1250
 
 NUM_STEPS      = int(NUM_EPOCHS*NUM_TRAIN) # ~30 epochs at 5000 images/epoch
 NUM_VAL_STEPS  = int(NUM_EPOCHS*NUM_VAL)   # ~30 epochs at 1250 images/epoch
@@ -74,7 +75,7 @@ WEIGHT_DECAY = 1e-04
 ''' MaskRCNN configs '''
 # see https://www.telesens.co/2018/03/11/object-detection-and-classification-using-r-cnns/
 
-CONFIDENCE_THRESHOLD = 0.35 # TORCHVISION: 0.4 or SIMPLE:0.35
+CONFIDENCE_THRESHOLD = 0.5 # TORCHVISION: 0.4 or SIMPLE:0.35
 
 # Anchor Generator
 ANCHOR_SIZES = (16, 32, 64)
@@ -111,7 +112,7 @@ BOX_POSITIVE_FRACTION = 0.25
 BOX_REG_WEIGHTS = (10., 10., 5., 5.)
 BOX_SCORE_THRESH = 0.1
 BOX_NMS_THRESH = 0.6
-BOX_NUM_DETECTIONS = 100            # todo: change from default
+BOX_NUM_DETECTIONS = 100             # todo: change from default
 
 #######################################
 ### PennFudan

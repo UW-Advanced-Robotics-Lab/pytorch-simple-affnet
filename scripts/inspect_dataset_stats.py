@@ -85,7 +85,7 @@ def main():
         ### bbox
         #######################
         bbox_img = helper_utils.draw_bbox_on_img(image=image,
-                                                 labels=target['labels'],
+                                                 labels=target['obj_labels'],
                                                  boxes=target['boxes'],
                                                  is_gt=True)
         cv2.imshow('bbox', cv2.cvtColor(bbox_img, cv2.COLOR_BGR2RGB))
@@ -94,7 +94,7 @@ def main():
         ### masks
         #######################
         mask = helper_utils.get_segmentation_masks(image=image,
-                                                   labels=target['labels'],
+                                                   labels=target['aff_labels'],
                                                    binary_masks=target['masks'],
                                                    is_gt=True)
         color_mask = umd_utils.colorize_mask(mask)
