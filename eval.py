@@ -85,11 +85,11 @@ def main():
 
     test_dataset = BasicDataSet(
         ### REAL
-        dataset_dir=config.DATA_DIRECTORY_TARGET_TEST,
-        mean=config.IMG_MEAN_TARGET,
-        std=config.IMG_STD_TARGET,
-        resize=config.RESIZE_TARGET,
-        crop_size=config.INPUT_SIZE_TARGET,
+        dataset_dir=config.DATA_DIRECTORY_TEST,
+        mean=config.IMG_MEAN,
+        std=config.IMG_STD,
+        resize=config.RESIZE,
+        crop_size=config.INPUT_SIZE,
         ###
         is_train=True,
         ### EXTENDING DATASET

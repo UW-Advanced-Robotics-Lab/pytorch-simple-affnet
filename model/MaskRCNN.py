@@ -142,8 +142,8 @@ class MaskRCNN(nn.Module):
         ###############################
 
         self.backbone = backbone
-        out_channels = backbone.out_channels
-        # out_channels = 2048  # TODO
+        # out_channels = backbone.out_channels
+        out_channels = 512  # TODO
 
         ###############################
         ### RPN
@@ -285,10 +285,20 @@ def ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, pretrained_backbone=True,
     if pretrained:
         pretrained_backbone = False
 
-    backbone = ResNetBackbone(backbone_feat_extractor, pretrained_backbone)
+    # backbone = ResNetBackbone(backbone_feat_extractor, pretrained_backbone)
 
-    # from torchvision.models.detection.backbone_utils import resnet_fpn_backbone
-    # backbone = resnet_fpn_backbone('resnet50', pretrained=True, trainable_layers=3)
+    import torchvision.models as models
+    backbone = models.vgg16(pretrained=True)
+    ### print(backbone)
+    backbone = nn.Sequential(*list(backbone.features.children())[:-1])
+    ### print(backbone)
+
+    # import torchvision.models as models
+    # backbone = models.resnet18(pretrained=True)
+    # ### print(backbone)
+    # backbone = list(backbone.children())[:-2]
+    # backbone = nn.Sequential(*backbone)
+    # ### print(backbone)
 
     # backbone = ResNet101(nInputChannels=config.NUM_CHANNELS, os=config.OUTPUT_STRIDE, pretrained=pretrained_backbone)
 

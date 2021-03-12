@@ -16,7 +16,7 @@ FRAMEWORK Selection:
 # TODO: prelim for naming
 FRAMEWORK           = 'MaskRCNN'
 EXP_DATASET_NAME    = 'UMD_Real_RGB'
-EXP_NUM             = 'v1_AffNet_128x128'
+EXP_NUM             = 'v2_AffNet_128x128_VGG16_No_Warmup'
 
 #######################################
 #######################################
@@ -35,13 +35,14 @@ NUM_D_CHANNELS      = 3
 
 OUTPUT_STRIDE = 16
 
-IS_PRETRAINED = True
+IS_PRETRAINED = False
 RESNET_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth'
 MASKRCNN_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/maskrcnn_resnet50_fpn_coco-bf2d0c1e.pth'
 
 # RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-MaskRCNN/snapshots/UMD_Real_RGB/MaskRCNN_UMD_Real_RGB_128x128_v0_Torchvision_MaskRCNN_128x128/BEST_MODEL.pth'
 # RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-MaskRCNN/snapshots/UMD_Real_RGB/MaskRCNN_UMD_Real_RGB_128x128_v0_Simple_MaskRCNN_128x128/BEST_MODEL.pth'
-RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-MaskRCNN/snapshots/UMD_Real_RGB/MaskRCNN_UMD_Real_RGB_128x128_v0_AffNet_128x128/affnet_epoch_9.pth'
+# RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-MaskRCNN/snapshots/UMD_Real_RGB/MaskRCNN_UMD_Real_RGB_128x128_v0_AffNet_128x128/BEST_MODEL.pth'
+RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-MaskRCNN/snapshots/UMD_Syn_RGB/MaskRCNN_UMD_Syn_RGB_128x128_v0_AffNet_128x128/BEST_MODEL.pth'
 
 #######################################
 #######################################
@@ -53,7 +54,7 @@ print("using device: {} ..".format(DEVICE))
 
 RANDOM_SEED = 1234
 
-NUM_EPOCHS = 10
+NUM_EPOCHS = 5
 
 NUM_TRAIN  = 5000
 NUM_VAL    = 1250
@@ -75,7 +76,7 @@ WEIGHT_DECAY = 1e-04
 ''' MaskRCNN configs '''
 # see https://www.telesens.co/2018/03/11/object-detection-and-classification-using-r-cnns/
 
-CONFIDENCE_THRESHOLD = 0.35 # TORCHVISION: 0.4 or SIMPLE:0.35
+CONFIDENCE_THRESHOLD = 0.5 # TORCHVISION: 0.4 or SIMPLE:0.35
 
 # Anchor Generator
 ANCHOR_SIZES = (16, 32, 64)
@@ -126,70 +127,73 @@ BOX_NUM_DETECTIONS = 100             # todo: change from default
 #######################################
 ''' DATASET PRELIMS'''
 
-ROOT_DATA_PATH = '/data/Akeaveny/Datasets/domain_adaptation/UMD/Sorted/'
+ROOT_DATA_PATH = '/data/Akeaveny/Datasets/UMD/'
 
 NUM_CLASSES = 7 + 1
 NUM_OBJECT_CLASSES = 17 + 1         # 1 is for the background
 NUM_AFF_CLASSES = 7 + 1         # 1 is for the background
 
-### source
-DATA_DIRECTORY = ROOT_DATA_PATH + 'Syn/'
-DATA_DIRECTORY_SOURCE_TRAIN = DATA_DIRECTORY + 'train/'
+#######################################
+#######################################
 
-DATA_DIRECTORY_PR = ROOT_DATA_PATH + 'PR/'
-DATA_DIRECTORY_SOURCE_TRAIN_PR = DATA_DIRECTORY_PR + 'train/'
+### REAL
+DATA_DIRECTORY = ROOT_DATA_PATH + 'Real/'
+DATA_DIRECTORY_TRAIN = DATA_DIRECTORY + 'train/'
+DATA_DIRECTORY_VAL = DATA_DIRECTORY + 'val/'
+DATA_DIRECTORY_TEST = DATA_DIRECTORY + 'test/'
 
-DATA_DIRECTORY_DR = ROOT_DATA_PATH + 'DR/'
-DATA_DIRECTORY_SOURCE_TRAIN_DR = DATA_DIRECTORY_DR + 'train/'
+# IMG_MEAN   = [98.92739272, 66.78827961, 71.00867078, 135.8963934]
+# IMG_STD    = [26.53540375, 31.51117582, 31.75977128, 38.23637208]
+# RESIZE     = (int(640/3), int(480/3))
+# INPUT_SIZE = (int(128), int(128))
 
-### target
-DATA_DIRECTORY_TARGET = ROOT_DATA_PATH + 'Real/'
-DATA_DIRECTORY_TARGET_TRAIN = DATA_DIRECTORY_TARGET + 'train/'
-DATA_DIRECTORY_TARGET_VAL = DATA_DIRECTORY_TARGET + 'val/'
-DATA_DIRECTORY_TARGET_TEST = DATA_DIRECTORY_TARGET + 'test/'
+### PR
+# DATA_DIRECTORY = ROOT_DATA_PATH + 'PR/'
+# DATA_DIRECTORY_TRAIN = DATA_DIRECTORY + 'train/'
+# DATA_DIRECTORY_VAL = DATA_DIRECTORY + 'val/'
+# DATA_DIRECTORY_TEST = DATA_DIRECTORY + 'test/'
 
-### TEST
-MATLAB_SCRIPTS_DIR = np.str(ROOT_DIR_PATH +'/matlab/')
-EVAL_SAVE_FOLDER = DATA_DIRECTORY_TARGET_TEST + 'pred/'
-
-NUM_TEST = 100
-TEST_GT_EXT = "_gt.png"
-TEST_PRED_EXT = "_pred.png"
-
-# ### PR
-# PR_NUM_IMAGES = 28556 - 1 # zero index in files
-# # FS
 # PR_IMG_MEAN   = [138.58907803, 151.88310081, 125.22561575, 130.00560063]
 # PR_IMG_STD    = [30.37894422, 38.44065602, 43.2841762, 43.57943909]
 # PR_RESIZE     = (int(640*1.35/3), int(480*1.35/3))
 # PR_INPUT_SIZE = (int(128), int(128))
-# ### DR
-# # FS
+
+### DR
+# DATA_DIRECTORY_DR = ROOT_DATA_PATH + 'DR/'
+# DATA_DIRECTORY_TRAIN = DATA_DIRECTORY + 'train/'
+# DATA_DIRECTORY_VAL = DATA_DIRECTORY + 'val/'
+# DATA_DIRECTORY_TEST = DATA_DIRECTORY + 'test/'
+
 # DR_IMG_MEAN   = [134.38601217, 137.02879418, 129.27239013, 140.01491372]
 # DR_IMG_STD    = [48.88474747, 54.86081706, 48.8507932, 32.20115424]
 # DR_RESIZE     = (int(640/3), int(480/3))
 # DR_INPUT_SIZE = (int(128), int(128))
-# ### SYN UMD
-# # FS
-# IMG_MEAN   = [135.4883242,  143.06856056, 125.6341276, 134.57706755]
-# IMG_STD    = [39.76640244, 46.91340711, 46.25064666, 38.62958981]
-# RESIZE     = (int(640/3), int(480/3))
-# INPUT_SIZE = (int(128), int(128))
 
-### REAL UMD
-# FS
-IMG_MEAN_TARGET   = [98.92739272, 66.78827961, 71.00867078, 135.8963934]
-IMG_STD_TARGET    = [26.53540375, 31.51117582, 31.75977128, 38.23637208]
-RESIZE_TARGET     = (int(640/3), int(480/3))
-INPUT_SIZE_TARGET = (int(128), int(128))
-# RESIZE_TARGET     = (int(640*1.5), int(480*1.5))
-# INPUT_SIZE_TARGET = (int(640), int(640))
 
-IMG_SIZE = str(INPUT_SIZE_TARGET[0]) + 'x' + str(INPUT_SIZE_TARGET[1])
+### SYN
+# DATA_DIRECTORY = ROOT_DATA_PATH + 'Syn/'
+# DATA_DIRECTORY_TRAIN = DATA_DIRECTORY + 'train/'
+# DATA_DIRECTORY_VAL = DATA_DIRECTORY + 'val/'
+# DATA_DIRECTORY_TEST = DATA_DIRECTORY + 'test/'
+
+IMG_MEAN   = [135.4883242,  143.06856056, 125.6341276, 134.57706755]
+IMG_STD    = [39.76640244, 46.91340711, 46.25064666, 38.62958981]
+RESIZE     = (int(640/3), int(480/3))
+INPUT_SIZE = (int(128), int(128))
+
+IMG_SIZE = str(INPUT_SIZE[0]) + 'x' + str(INPUT_SIZE[1])
 
 #######################################
 #######################################
 ''' PRELIM FOR SAVED WEIGHTS'''
+
+### TEST
+MATLAB_SCRIPTS_DIR = np.str(ROOT_DIR_PATH +'/matlab/')
+EVAL_SAVE_FOLDER = DATA_DIRECTORY_TEST + 'pred/'
+
+NUM_TEST = 100
+TEST_GT_EXT = "_gt.png"
+TEST_PRED_EXT = "_pred.png"
 
 EVAL_UPDATE         = int(NUM_STEPS/150) # eval model every thousand iterations
 TENSORBOARD_UPDATE  = int(NUM_STEPS/150)
@@ -197,7 +201,7 @@ SAVE_PRED_EVERY     = int(NUM_STEPS/NUM_EPOCHS*5)
 
 EXP_NAME = FRAMEWORK + '_' + EXP_DATASET_NAME + '_' + IMG_SIZE + '_' + EXP_NUM
 SNAPSHOT_DIR = str(ROOT_DIR_PATH) + 'snapshots/' + EXP_DATASET_NAME + '/' + EXP_NAME
-TEST_SAVE_FOLDER = DATA_DIRECTORY_TARGET_TEST + 'pred_' + EXP_NAME + '/'
+TEST_SAVE_FOLDER = DATA_DIRECTORY_TEST + 'pred_' + EXP_NAME + '/'
 
 MODEL_SAVE_PATH = str(SNAPSHOT_DIR) + '/'
 BEST_MODEL_SAVE_PATH = MODEL_SAVE_PATH + 'BEST_MODEL.pth'

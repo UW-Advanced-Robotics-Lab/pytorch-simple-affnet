@@ -61,7 +61,7 @@ class BasicDataSet(data.Dataset):
                  mean=config.IMG_MEAN,
                  std=config.IMG_STD,
                  resize=config.RESIZE,
-                 crop_size=config.INPUT_SIZE_TARGET,
+                 crop_size=config.INPUT_SIZE,
                  ### IMGAUG
                  apply_imgaug=False):
 
@@ -320,11 +320,11 @@ if __name__ == '__main__':
                         # resize=config.RESIZE,
                         # crop_size=config.INPUT_SIZE,
                         ### REAL
-                        dataset_dir=config.DATA_DIRECTORY_TARGET_TRAIN,
-                        mean=config.IMG_MEAN_TARGET,
-                        std=config.IMG_STD_TARGET,
-                        resize=config.RESIZE_TARGET,
-                        crop_size=config.INPUT_SIZE_TARGET,
+                        dataset_dir=config.DATA_DIRECTORY_TRAIN,
+                        mean=config.IMG_MEAN,
+                        std=config.IMG_STD,
+                        resize=config.RESIZE,
+                        crop_size=config.INPUT_SIZE,
                         ### EXTENDING DATASET
                         extend_dataset=True,
                         max_iters=1000,

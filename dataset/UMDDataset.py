@@ -63,10 +63,10 @@ class BasicDataSet(data.Dataset):
                  is_train=False,
                  is_eval=False,
                  ### PRE-PROCESSING
-                 mean=config.IMG_MEAN_TARGET,
-                 std=config.IMG_STD_TARGET,
-                 resize=config.RESIZE_TARGET,
-                 crop_size=config.INPUT_SIZE_TARGET,
+                 mean=config.IMG_MEAN,
+                 std=config.IMG_STD,
+                 resize=config.RESIZE,
+                 crop_size=config.INPUT_SIZE,
                  ### IMGAUG
                  apply_imgaug=False):
 

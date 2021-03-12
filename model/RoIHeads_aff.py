@@ -140,14 +140,7 @@ class RoIHeads(nn.Module):
                     mask_proposal = proposal[i].detach().cpu().numpy()
                     # print(f'mask_proposal: size:{mask_proposal.shape}, data:{mask_proposal}')
                     mask_proposal = np.tile(mask_proposal, num_aff_label).reshape(-1, 4)
-                    print(f'mask_proposal:{mask_proposal}')
-                    # TODO: add random noise to mask_proposal for multi-class seg
-                    for _mask_proposal in mask_proposal:
-                        _mask_proposal[0] += np.random.normal(0, 3, 1)
-                        _mask_proposal[1] += np.random.normal(0, 3, 1)
-                        _mask_proposal[2] += np.random.normal(0, 3, 1)
-                        _mask_proposal[3] += np.random.normal(0, 3, 1)
-                    print(f'mask_proposal:{mask_proposal}')
+                    # print(f'mask_proposal:{mask_proposal}')
 
                     # TODO: match pos idx
                     # pos_matched_idx = matched_idx[i].detach().cpu().numpy()

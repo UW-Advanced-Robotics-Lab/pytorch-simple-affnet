@@ -114,11 +114,10 @@ def main():
     model = ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, num_classes=config.NUM_CLASSES)
     model.to(config.DEVICE)
 
-    #######################
-    #######################
+    ######################
+    ######################
     print()
 
-    # let's train it for 10 epochs
     num_epochs = config.NUM_EPOCHS
     Fwb, best_Fwb = -np.inf, -np.inf
 
@@ -148,7 +147,6 @@ def main():
     # #######################
     # print()
     #
-    # # let's train it for 10 epochs
     # num_epochs = config.NUM_EPOCHS
     # Fwb, best_Fwb = -np.inf, -np.inf
     #
@@ -177,7 +175,7 @@ def main():
     #     # checkpoint_path = config.CHECKPOINT_PATH
     #     CHECKPOINT_PATH = config.MODEL_SAVE_PATH + 'affnet_epoch_' + np.str(epoch) + '.pth'
     #     train_helpers.save_checkpoint(model, optimizer, epoch, CHECKPOINT_PATH)
-
+    #
     # #######################
     # #######################
     # print()
