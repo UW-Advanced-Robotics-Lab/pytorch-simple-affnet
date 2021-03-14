@@ -12,7 +12,7 @@ from model.utils.losses_utils import fastrcnn_loss, maskrcnn_loss
 
 import cfg as config
 
-from dataset.utils import umd_utils
+from dataset.utils.UMD import umd_utils
 
 ###############################
 ###############################

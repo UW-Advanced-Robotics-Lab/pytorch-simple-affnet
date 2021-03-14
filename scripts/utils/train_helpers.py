@@ -12,9 +12,9 @@ import cv2
 
 import torchvision.models.detection.mask_rcnn
 
-from scripts.torchvision_mask_rcnn.vision.coco_utils import get_coco_api_from_dataset
-from scripts.torchvision_mask_rcnn.vision.coco_eval import CocoEvaluator
-from scripts.torchvision_mask_rcnn.vision import utils
+from utils.vision.coco_utils import get_coco_api_from_dataset
+from utils.vision.coco_eval import CocoEvaluator
+from utils.vision import utils
 
 from torch.utils import data
 from torch.utils.data import DataLoader, random_split, Subset

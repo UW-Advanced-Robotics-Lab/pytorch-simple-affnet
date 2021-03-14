@@ -22,7 +22,7 @@ import cfg as config
 ###########################
 
 from dataset.UMDDataset import BasicDataSet
-from dataset.utils import umd_utils
+from dataset.utils.UMD import umd_utils
 
 from dataset.PennFudanDataset import PennFudanDataset
 from model.MaskRCNN import ResNetMaskRCNN

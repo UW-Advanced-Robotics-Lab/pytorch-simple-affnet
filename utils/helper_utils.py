@@ -29,8 +29,9 @@ import cfg as config
 
 from model.utils import bbox_utils
 
-from dataset.utils import pennfudan_utils
-from dataset.utils import umd_utils
+from dataset.utils.PennFudan import pennfudan_utils
+from dataset.utils.UMD import umd_utils
+from dataset.utils.COCO import coco_utils
 
 ######################
 # IMG UTILS
@@ -53,10 +54,10 @@ def format_target_data(image, target):
 
     target['labels'] = np.array(target['labels'], dtype=np.int32).flatten()
     target['boxes'] = np.array(target['boxes'], dtype=np.int32).reshape(-1, 4)
-    target['aff_labels'] = np.array(target['aff_labels'], dtype=np.int32).flatten()
     target['masks'] = np.array(target['masks'], dtype=np.uint8).reshape(-1, height, width)
 
-    target['gt_mask'] = np.array(target['gt_mask'], dtype=np.uint8).reshape(height, width)
+    # target['aff_labels'] = np.array(target['aff_labels'], dtype=np.int32).flatten()
+    # target['gt_mask'] = np.array(target['gt_mask'], dtype=np.uint8).reshape(height, width)
 
     return target
 
@@ -128,7 +129,8 @@ def draw_bbox_on_img(image, labels, boxes, scores=None, is_gt=False):
             bbox_img = cv2.rectangle(bbox_img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), 255, 1)
 
             cv2.putText(bbox_img,
-                        umd_utils.object_id_to_name(label),
+                        coco_utils.object_id_to_name(label),
+                        # umd_utils.object_id_to_name(label),
                         # umd_utils.aff_id_to_name(label),
                         (bbox[0], bbox[1] - 5),
                         cv2.FONT_ITALIC,
@@ -143,7 +145,8 @@ def draw_bbox_on_img(image, labels, boxes, scores=None, is_gt=False):
 
                 label = labels[idx]
                 cv2.putText(bbox_img,
-                            umd_utils.object_id_to_name(label),
+                            coco_utils.object_id_to_name(label),
+                            # umd_utils.object_id_to_name(label),
                             # umd_utils.aff_id_to_name(label),
                             (bbox[0], bbox[1] - 5),
                             cv2.FONT_ITALIC,

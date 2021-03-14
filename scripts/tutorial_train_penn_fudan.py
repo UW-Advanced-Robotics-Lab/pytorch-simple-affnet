@@ -13,17 +13,21 @@ from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 ######################
 ######################
 
-from pathlib import Path
-ROOT_DIR_PATH = Path(__file__).resolve().parents[1]
+# from pathlib import Path
+# ROOT_DIR_PATH = Path(__file__).resolve().parents[1]
+
+import sys
+sys.path.append('..')
+# print(sys.path)
 
 import cfg as config
 
 ######################
 ######################
 
-from scripts.torchvision_mask_rcnn.vision.engine import train_one_epoch, evaluate
-from scripts.torchvision_mask_rcnn.vision import utils
-import scripts.torchvision_mask_rcnn.vision.transforms as T
+from utils.vision.engine import train_one_epoch, evaluate
+from utils.vision import utils
+import utils.vision.transforms as T
 
 from utils import helper_utils
 
@@ -95,7 +99,6 @@ class PennFudanDataset(object):
 
     def __len__(self):
         return len(self.imgs)
-
 
 def get_transform(train):
     transforms = []

@@ -22,7 +22,7 @@ from torch.utils import data
 from torch.utils.data import Dataset
 import torchvision
 
-import scripts.torchvision_mask_rcnn.vision.transforms as T
+import utils.vision.transforms as T
 
 from imgaug import augmenters as iaa
 from imgaug.augmentables.segmaps import SegmentationMapsOnImage
@@ -37,9 +37,9 @@ import cfg as config
 
 from utils import helper_utils
 
-from dataset.utils import umd_bbox_utils
-from dataset.utils import umd_coco_utils
-from dataset.utils import umd_utils
+from dataset.utils.UMD import umd_bbox_utils
+from dataset.utils.UMD import umd_coco_utils
+from dataset.utils.UMD import umd_utils
 
 ######################
 ######################

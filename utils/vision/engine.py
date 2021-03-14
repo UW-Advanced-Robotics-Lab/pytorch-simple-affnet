@@ -5,9 +5,9 @@ import torch
 
 import torchvision.models.detection.mask_rcnn
 
-from scripts.torchvision_mask_rcnn.vision.coco_utils import get_coco_api_from_dataset
-from scripts.torchvision_mask_rcnn.vision.coco_eval import CocoEvaluator
-from scripts.torchvision_mask_rcnn.vision import utils
+from utils.vision.coco_utils import get_coco_api_from_dataset
+from utils.vision.coco_eval import CocoEvaluator
+from utils.vision import utils
 
 
 def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
@@ -84,8 +84,8 @@ def evaluate(model, data_loader, device):
 
     for images, targets in metric_logger.log_every(data_loader, 100, header):
 
-        images = images.to(device)
-        targets = list([targets])
+        images = list(image.to(device) for image in images)
+        targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
         torch.cuda.synchronize()
         model_time = time.time()

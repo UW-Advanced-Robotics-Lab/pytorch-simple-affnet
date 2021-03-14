@@ -16,7 +16,7 @@ FRAMEWORK Selection:
 # TODO: prelim for naming
 FRAMEWORK           = 'MaskRCNN'
 EXP_DATASET_NAME    = 'UMD_Real_RGB'
-EXP_NUM             = 'v2_AffNet_128x128_VGG16_No_Warmup'
+EXP_NUM             = 'v3_AffNet_128x128_VGG16'
 
 #######################################
 #######################################
@@ -35,15 +35,11 @@ NUM_D_CHANNELS      = 3
 
 OUTPUT_STRIDE = 16
 
-IS_PRETRAINED = False
+IS_PRETRAINED = True
 RESNET_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth'
 MASKRCNN_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/maskrcnn_resnet50_fpn_coco-bf2d0c1e.pth'
 
-# RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-MaskRCNN/snapshots/UMD_Real_RGB/MaskRCNN_UMD_Real_RGB_128x128_v0_Torchvision_MaskRCNN_128x128/BEST_MODEL.pth'
-# RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-MaskRCNN/snapshots/UMD_Real_RGB/MaskRCNN_UMD_Real_RGB_128x128_v0_Simple_MaskRCNN_128x128/BEST_MODEL.pth'
-# RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-MaskRCNN/snapshots/UMD_Real_RGB/MaskRCNN_UMD_Real_RGB_128x128_v0_AffNet_128x128/BEST_MODEL.pth'
-RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-MaskRCNN/snapshots/UMD_Syn_RGB/MaskRCNN_UMD_Syn_RGB_128x128_v0_AffNet_128x128/BEST_MODEL.pth'
-
+RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-MaskRCNN/snapshots/UMD_Real_RGB/MaskRCNN_UMD_Real_RGB_128x128_v1_AffNet_128x128_VGG16_No_PreTrain/BEST_MODEL.pth'
 #######################################
 #######################################
 
@@ -54,10 +50,11 @@ print("using device: {} ..".format(DEVICE))
 
 RANDOM_SEED = 1234
 
-NUM_EPOCHS = 5
+NUM_EPOCHS = 30
 
-NUM_TRAIN  = 5000
-NUM_VAL    = 1250
+NUM_REAL_IMAGES = 20190
+NUM_TRAIN  = int(np.floor(0.7*NUM_REAL_IMAGES))
+NUM_VAL    = int(np.floor(0.3*NUM_REAL_IMAGES))
 
 NUM_STEPS      = int(NUM_EPOCHS*NUM_TRAIN) # ~30 epochs at 5000 images/epoch
 NUM_VAL_STEPS  = int(NUM_EPOCHS*NUM_VAL)   # ~30 epochs at 1250 images/epoch
@@ -76,7 +73,7 @@ WEIGHT_DECAY = 1e-04
 ''' MaskRCNN configs '''
 # see https://www.telesens.co/2018/03/11/object-detection-and-classification-using-r-cnns/
 
-CONFIDENCE_THRESHOLD = 0.5 # TORCHVISION: 0.4 or SIMPLE:0.35
+CONFIDENCE_THRESHOLD = 0.35 # TORCHVISION: 0.4 or SIMPLE:0.35
 
 # Anchor Generator
 ANCHOR_SIZES = (16, 32, 64)

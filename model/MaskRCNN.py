@@ -143,7 +143,7 @@ class MaskRCNN(nn.Module):
 
         self.backbone = backbone
         # out_channels = backbone.out_channels
-        out_channels = 512  # TODO
+        out_channels = 256 # ResNet50: 256 or Vgg16:512
 
         ###############################
         ### RPN
@@ -172,8 +172,9 @@ class MaskRCNN(nn.Module):
         resolution = box_roi_pool.output_size[0]
         in_channels = out_channels * resolution ** 2
         mid_channels = 1024
-        box_predictor = FastRCNNPredictor(in_channels, mid_channels, config.NUM_OBJECT_CLASSES)
-        
+        box_predictor = FastRCNNPredictor(in_channels, mid_channels, num_classes)
+        # box_predictor = FastRCNNPredictor(in_channels, mid_channels, config.NUM_OBJECT_CLASSES)
+
         self.head = RoIHeads(
              box_roi_pool, box_predictor,
              box_fg_iou_thresh, box_bg_iou_thresh,
@@ -186,7 +187,8 @@ class MaskRCNN(nn.Module):
         
         layers = (256, 256, 256, 256)
         dim_reduced = 256
-        self.head.mask_predictor = MaskRCNNPredictor(out_channels, layers, dim_reduced, config.NUM_AFF_CLASSES)
+        self.head.mask_predictor = MaskRCNNPredictor(out_channels, layers, dim_reduced, num_classes)
+        # self.head.mask_predictor = MaskRCNNPredictor(out_channels, layers, dim_reduced, config.NUM_AFF_CLASSES)
         
     def forward(self, image, target=None):
         if isinstance(image, list):
@@ -251,13 +253,13 @@ class MaskRCNNPredictor(nn.Sequential):
         ### nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding)
         d['mask_conv5'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
         d['relu5'] = nn.ReLU(inplace=True)
-        # ### output is [28x28] -> [56x56]
+        ### output is [28x28] -> [56x56]
         # d['mask_conv6'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
         # d['relu6'] = nn.ReLU(inplace=True)
         # ### output is [56x56] -> [112x112]
         # d['mask_conv7'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
         # d['relu7'] = nn.ReLU(inplace=True)
-        ### output is [112x112] -> [224x224]
+        # ## output is [112x112] -> [224x224]
         # d['mask_conv8'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
         # d['relu8'] = nn.ReLU(inplace=True)
 
@@ -285,15 +287,17 @@ def ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, pretrained_backbone=True,
     if pretrained:
         pretrained_backbone = False
 
-    # backbone = ResNetBackbone(backbone_feat_extractor, pretrained_backbone)
-
-    import torchvision.models as models
-    backbone = models.vgg16(pretrained=True)
-    ### print(backbone)
-    backbone = nn.Sequential(*list(backbone.features.children())[:-1])
-    ### print(backbone)
+    backbone = ResNetBackbone(backbone_feat_extractor, pretrained=True)
 
     # import torchvision.models as models
+    # print('using pretrained VGG16 weights ..')
+    # backbone = models.vgg16(pretrained=True)
+    # ### print(backbone)
+    # backbone = nn.Sequential(*list(backbone.features.children())[:-1])
+    # ### print(backbone)
+
+    # import torchvision.models as models
+    # print('using pretrained ResNet18 weights ..')
     # backbone = models.resnet18(pretrained=True)
     # ### print(backbone)
     # backbone = list(backbone.children())[:-2]

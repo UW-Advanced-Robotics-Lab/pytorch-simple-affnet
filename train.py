@@ -13,12 +13,12 @@ import torchvision
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 
-from scripts.torchvision_mask_rcnn.vision.engine import train_one_epoch, evaluate
-from scripts.torchvision_mask_rcnn.vision import utils
-import scripts.torchvision_mask_rcnn.vision.transforms as T
+from utils.vision.engine import train_one_epoch, evaluate
+from utils.vision import utils
+import utils.vision.transforms as T
 
-from scripts.torchvision_mask_rcnn.vision import utils
-import scripts.torchvision_mask_rcnn.vision.transforms as T
+from utils.vision import utils
+import utils.vision.transforms as T
 
 from torch.utils import data
 from torch.utils.data import DataLoader, random_split, Subset

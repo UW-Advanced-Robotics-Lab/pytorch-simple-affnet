@@ -9,7 +9,7 @@ import torchvision
 from pycocotools import mask as coco_mask
 from pycocotools.coco import COCO
 
-import scripts.torchvision_mask_rcnn.vision.transforms as T
+import utils.vision.transforms as T
 
 class FilterAndRemapCocoCategories(object):
     def __init__(self, categories, remap=True):

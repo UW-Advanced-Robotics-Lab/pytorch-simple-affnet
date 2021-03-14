@@ -13,6 +13,8 @@ from torchvision.ops import misc
 class ResNetBackbone(nn.Module):
     def __init__(self, backbone_name, pretrained):
         super().__init__()
+        if pretrained:
+            print('using pretrained ResNet50 weights ..')
         body = models.resnet.__dict__[backbone_name](pretrained=pretrained,
                                                      norm_layer=misc.FrozenBatchNorm2d)
 
