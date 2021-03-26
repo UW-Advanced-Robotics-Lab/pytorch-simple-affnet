@@ -34,7 +34,7 @@ import cfg as config
 ######################
 
 from dataset.UMDDataset import BasicDataSet
-from dataset.utils import umd_utils
+from dataset.utils.UMD import umd_utils
 
 from model.MaskRCNN import ResNetMaskRCNN
 

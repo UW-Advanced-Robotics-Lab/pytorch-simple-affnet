@@ -32,7 +32,7 @@ from tqdm import tqdm
 from utils import helper_utils
 
 from dataset.UMDDataset import BasicDataSet
-from dataset.utils import umd_utils
+from dataset.utils.UMD import umd_utils
 
 ###############################
 # DATASET UTILS

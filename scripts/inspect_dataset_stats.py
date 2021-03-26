@@ -49,30 +49,35 @@ def main():
     # dataset = PennFudanDataset(config.ROOT_DATASET_PATH)
 
     # COCO
-    dataset = COCODataSet(dataset_dir='/data/Akeaveny/Datasets/COCO/',
-                          split='val2017')
+    # dataset = COCODataSet(dataset_dir='/data/Akeaveny/Datasets/COCO/',
+    #                       split='val2017')
+    #
+    # np.random.seed(config.RANDOM_SEED)
+    # total_idx = np.arange(0, len(dataset), 1)
+    # test_idx = np.random.choice(total_idx, size=int(20), replace=False)
+    # dataset = torch.utils.data.Subset(dataset, test_idx)
+
     # UMD
-    # dataset = BasicDataSet(
-    #                     ### REAL
-    #                     dataset_dir=config.DATA_DIRECTORY_TRAIN,
-    #                     mean=config.IMG_MEAN,
-    #                     std=config.IMG_STD,
-    #                     resize=config.RESIZE,
-    #                     crop_size=config.INPUT_SIZE,
-    #                     ### EXTENDING DATASET
-    #                     extend_dataset=False,
-    #                     max_iters=1000,
-    #                     ### IMGAUG
-    #                     apply_imgaug=False)
+    dataset = BasicDataSet(
+                        ### REAL
+                        dataset_dir=config.DATA_DIRECTORY_TRAIN,
+                        mean=config.IMG_MEAN,
+                        std=config.IMG_STD,
+                        resize=config.RESIZE,
+                        crop_size=config.INPUT_SIZE,
+                        ### EXTENDING DATASET
+                        extend_dataset=False,
+                        max_iters=1000,
+                        ### IMGAUG
+                        apply_imgaug=False)
 
     # split the dataset in train and test set
-    # indices = torch.randperm(len(dataset)).tolist()
-    # dataset = torch.utils.data.Subset(dataset, indices[:-50])
+    indices = torch.randperm(len(dataset)).tolist()
+    dataset = torch.utils.data.Subset(dataset, indices[:-50])
 
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=1)
 
     for i, (image, target) in enumerate(data_loader):
-        print()
 
         #######################
         ### formatting data
@@ -98,22 +103,19 @@ def main():
         ### masks
         #######################
         mask = helper_utils.get_segmentation_masks(image=image,
-                                                   labels=target['labels'],
+                                                   labels=target['aff_labels'],
                                                    binary_masks=target['masks'],
                                                    is_gt=True)
+        # helper_utils.print_class_labels(mask)
+        # cv2.imshow('mask', mask)
+
         helper_utils.print_class_labels(mask)
-        cv2.imshow('mask', mask)
+        color_mask = umd_utils.colorize_mask(mask)
+        cv2.imshow('mask_color', cv2.cvtColor(color_mask, cv2.COLOR_BGR2RGB))
 
-        _labels = np.unique(mask)[1:]
-        for _label in _labels:
-            from dataset.utils.COCO import coco_utils
-            print(coco_utils.object_id_to_name(_label))
-
-        # color_mask = umd_utils.colorize_mask(mask)
-        # cv2.imshow('mask_color', cv2.cvtColor(color_mask, cv2.COLOR_BGR2RGB))
-
-        # gt_color_mask = umd_utils.colorize_mask(target['gt_mask'])
-        # cv2.imshow('gt_color', cv2.cvtColor(gt_color_mask, cv2.COLOR_BGR2RGB))
+        helper_utils.print_class_labels(target['gt_mask'])
+        gt_color_mask = umd_utils.colorize_mask(target['gt_mask'])
+        cv2.imshow('gt_color', cv2.cvtColor(gt_color_mask, cv2.COLOR_BGR2RGB))
 
         #######################
         ### Anchors
@@ -124,7 +126,7 @@ def main():
         #######################
         #######################
         print()
-        cv2.waitKey(1000)
+        cv2.waitKey(0)
 
 if __name__ == "__main__":
     main()

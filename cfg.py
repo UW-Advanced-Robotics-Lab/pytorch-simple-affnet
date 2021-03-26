@@ -16,7 +16,7 @@ FRAMEWORK Selection:
 # TODO: prelim for naming
 FRAMEWORK           = 'MaskRCNN'
 EXP_DATASET_NAME    = 'UMD_Real_RGB'
-EXP_NUM             = 'v3_AffNet_128x128_VGG16'
+EXP_NUM             = 'v0_Test_Resize_384'
 
 #######################################
 #######################################
@@ -24,22 +24,18 @@ EXP_NUM             = 'v3_AffNet_128x128_VGG16'
 '''
 BACKBONE Selection:
 'resnet50'
+'resnet18'
 '''
 
-BACKBONE_FEAT_EXTRACTOR = 'resnet50'
-
-IS_TRAIN_WITH_DEPTH = False
-NUM_CHANNELS        = 3     # RGB=3, DEPTH=1 or RGB=4
-NUM_RGB_CHANNELS    = 3
-NUM_D_CHANNELS      = 3
-
-OUTPUT_STRIDE = 16
+BACKBONE_FEAT_EXTRACTOR = 'resnet18'
 
 IS_PRETRAINED = True
 RESNET_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth'
-MASKRCNN_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/maskrcnn_resnet50_fpn_coco-bf2d0c1e.pth'
+# MASKRCNN_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/maskrcnn_resnet50_fpn_coco-bf2d0c1e.pth'
+MASKRCNN_PRETRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-MaskRCNN/snapshots/COCO_Real_RGB/MaskRCNN_COCO_Real_RGB_128x128_v0_SimpleMaskRCNN_ResNet18/coco_epoch_4.pth'
 
-RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-MaskRCNN/snapshots/UMD_Real_RGB/MaskRCNN_UMD_Real_RGB_128x128_v1_AffNet_128x128_VGG16_No_PreTrain/BEST_MODEL.pth'
+RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-MaskRCNN/snapshots/UMD_Syn_RGB/MaskRCNN_UMD_Syn_RGB_128x128_v4_AffNet_128x128_ResNet18_COCO_PreTrain/BEST_MODEL.pth'
+
 #######################################
 #######################################
 
@@ -52,9 +48,9 @@ RANDOM_SEED = 1234
 
 NUM_EPOCHS = 30
 
-NUM_REAL_IMAGES = 20190
-NUM_TRAIN  = int(np.floor(0.7*NUM_REAL_IMAGES))
-NUM_VAL    = int(np.floor(0.3*NUM_REAL_IMAGES))
+NUM_REAL_IMAGES = 5000
+NUM_TRAIN = int(np.floor(0.7*NUM_REAL_IMAGES))
+NUM_VAL   = int(np.floor(0.3*NUM_REAL_IMAGES))
 
 NUM_STEPS      = int(NUM_EPOCHS*NUM_TRAIN) # ~30 epochs at 5000 images/epoch
 NUM_VAL_STEPS  = int(NUM_EPOCHS*NUM_VAL)   # ~30 epochs at 1250 images/epoch
@@ -80,10 +76,10 @@ ANCHOR_SIZES = (16, 32, 64)
 ANCHOR_RATIOS = (0.5, 1, 1.5)
 
 # transform parameters
-MIN_SIZE = 800
-MAX_SIZE = 1333
-IMAGE_MEAN = [0.485, 0.456, 0.406]
-IMAGE_STD = [0.229, 0.224, 0.225]
+# MIN_SIZE = 800
+# MAX_SIZE = 1333
+# IMAGE_MEAN = [0.485, 0.456, 0.406]
+# IMAGE_STD = [0.229, 0.224, 0.225]
 
 # RPN parameters
 RPN_FG_IOU_THRESH = 0.7
@@ -113,13 +109,6 @@ BOX_NMS_THRESH = 0.6
 BOX_NUM_DETECTIONS = 100             # todo: change from default
 
 #######################################
-### PennFudan
-#######################################
-
-# ROOT_DATASET_PATH = '/data/Akeaveny/Datasets/PennFudanPed'
-# NUM_CLASSES = 2
-
-#######################################
 ### UMD
 #######################################
 ''' DATASET PRELIMS'''
@@ -130,42 +119,17 @@ NUM_CLASSES = 7 + 1
 NUM_OBJECT_CLASSES = 17 + 1         # 1 is for the background
 NUM_AFF_CLASSES = 7 + 1         # 1 is for the background
 
-#######################################
-#######################################
-
 ### REAL
 DATA_DIRECTORY = ROOT_DATA_PATH + 'Real/'
 DATA_DIRECTORY_TRAIN = DATA_DIRECTORY + 'train/'
 DATA_DIRECTORY_VAL = DATA_DIRECTORY + 'val/'
 DATA_DIRECTORY_TEST = DATA_DIRECTORY + 'test/'
 
-# IMG_MEAN   = [98.92739272, 66.78827961, 71.00867078, 135.8963934]
-# IMG_STD    = [26.53540375, 31.51117582, 31.75977128, 38.23637208]
-# RESIZE     = (int(640/3), int(480/3))
-# INPUT_SIZE = (int(128), int(128))
-
-### PR
-# DATA_DIRECTORY = ROOT_DATA_PATH + 'PR/'
-# DATA_DIRECTORY_TRAIN = DATA_DIRECTORY + 'train/'
-# DATA_DIRECTORY_VAL = DATA_DIRECTORY + 'val/'
-# DATA_DIRECTORY_TEST = DATA_DIRECTORY + 'test/'
-
-# PR_IMG_MEAN   = [138.58907803, 151.88310081, 125.22561575, 130.00560063]
-# PR_IMG_STD    = [30.37894422, 38.44065602, 43.2841762, 43.57943909]
-# PR_RESIZE     = (int(640*1.35/3), int(480*1.35/3))
-# PR_INPUT_SIZE = (int(128), int(128))
-
-### DR
-# DATA_DIRECTORY_DR = ROOT_DATA_PATH + 'DR/'
-# DATA_DIRECTORY_TRAIN = DATA_DIRECTORY + 'train/'
-# DATA_DIRECTORY_VAL = DATA_DIRECTORY + 'val/'
-# DATA_DIRECTORY_TEST = DATA_DIRECTORY + 'test/'
-
-# DR_IMG_MEAN   = [134.38601217, 137.02879418, 129.27239013, 140.01491372]
-# DR_IMG_STD    = [48.88474747, 54.86081706, 48.8507932, 32.20115424]
-# DR_RESIZE     = (int(640/3), int(480/3))
-# DR_INPUT_SIZE = (int(128), int(128))
-
+IMAGE_MEAN   = [98.92739272/255, 66.78827961/255, 71.00867078/255]
+IMAGE_STD    = [26.53540375/255, 31.51117582/255, 31.75977128/255]
+RESIZE       = (int(640/1), int(480/1))
+INPUT_SIZE   = (int(384), int(384))
+MIN_SIZE = MAX_SIZE = 384
 
 ### SYN
 # DATA_DIRECTORY = ROOT_DATA_PATH + 'Syn/'
@@ -173,10 +137,10 @@ DATA_DIRECTORY_TEST = DATA_DIRECTORY + 'test/'
 # DATA_DIRECTORY_VAL = DATA_DIRECTORY + 'val/'
 # DATA_DIRECTORY_TEST = DATA_DIRECTORY + 'test/'
 
-IMG_MEAN   = [135.4883242,  143.06856056, 125.6341276, 134.57706755]
-IMG_STD    = [39.76640244, 46.91340711, 46.25064666, 38.62958981]
-RESIZE     = (int(640/3), int(480/3))
-INPUT_SIZE = (int(128), int(128))
+# IMG_MEAN   = [135.4883242,  143.06856056, 125.6341276, 134.57706755]
+# IMG_STD    = [39.76640244, 46.91340711, 46.25064666, 38.62958981]
+# RESIZE     = (int(640/3), int(480/3))
+# INPUT_SIZE = (int(128), int(128))
 
 IMG_SIZE = str(INPUT_SIZE[0]) + 'x' + str(INPUT_SIZE[1])
 

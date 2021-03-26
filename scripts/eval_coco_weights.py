@@ -71,24 +71,6 @@ def main():
     train_split = 'train2017'
     val_split = 'val2017'
 
-    ### train
-    print("\nloading train ..")
-    dataset = COCODataSet(dataset_dir=dataset_dir,
-                          split=train_split,
-                          ###
-                          is_train=True,
-                          )
-
-    # np.random.seed(config.RANDOM_SEED)
-    # total_idx = np.arange(0, len(dataset), 1)
-    # train_idx = np.random.choice(total_idx, size=int(80), replace=False)
-    # dataset = torch.utils.data.Subset(dataset, train_idx)
-
-    data_loader = torch.utils.data.DataLoader(
-        dataset, batch_size=2, shuffle=True, num_workers=4,
-        collate_fn=utils.collate_fn)
-    print(f"train has {len(data_loader)} images ..")
-
     ### test
     print("\nloading test ..")
     dataset_test = COCODataSet(dataset_dir=dataset_dir,
@@ -97,10 +79,10 @@ def main():
                           is_eval=True,
                           )
 
-    # np.random.seed(config.RANDOM_SEED)
-    # total_idx = np.arange(0, len(dataset_test), 1)
-    # test_idx = np.random.choice(total_idx, size=int(20), replace=False)
-    # dataset_test = torch.utils.data.Subset(dataset_test, test_idx)
+    np.random.seed(config.RANDOM_SEED)
+    total_idx = np.arange(0, len(dataset_test), 1)
+    test_idx = np.random.choice(total_idx, size=int(100), replace=False)
+    dataset_test = torch.utils.data.Subset(dataset_test, test_idx)
 
     data_loader_test = torch.utils.data.DataLoader(
         dataset_test, batch_size=1, shuffle=False, num_workers=4,
@@ -117,39 +99,21 @@ def main():
     model = ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, num_classes=num_classes)
     model.to(config.DEVICE)
 
-    ######################
-    ######################
+    print(f"\nrestoring pre-trained MaskRCNN weights: {config.RESTORE_TRAINED_WEIGHTS} .. ")
+    checkpoint = torch.load(config.RESTORE_TRAINED_WEIGHTS, map_location=config.DEVICE)
+    model.load_state_dict(checkpoint["model"])
 
-    # construct an optimizer
-    params = [p for p in model.parameters() if p.requires_grad]
-    optimizer = torch.optim.SGD(params, lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY, momentum=0.9)
-
-    # and a learning rate scheduler
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
+    model.eval()  # todo: issues with batch size = 1
 
     ######################
     ######################
-
-    # let's train it for 10 epochs
-    num_epochs = 5
-    print(f'\nstarting training for {num_epochs} epochs ..')
-
-    for epoch in range(num_epochs):
-        # train for one epoch, printing every 10 iterations
-        train_one_epoch(model, optimizer, data_loader, config.DEVICE, epoch, print_freq=int(len(data_loader)/1000))
-
-        # update the learning rate
-        lr_scheduler.step()
-
-        # evaluate on the test dataset
-        # CHECKPOINT_PATH = config.MODEL_SAVE_PATH + 'coco_epoch_' + np.str(epoch) + '.pth'
-        # evaluate(model, data_loader_test, device=config.DEVICE, saved_model_path=CHECKPOINT_PATH)
-
-        # checkpoint_path = config.CHECKPOINT_PATH
-        CHECKPOINT_PATH = config.MODEL_SAVE_PATH + 'coco_epoch_' + np.str(epoch) + '.pth'
-        train_helpers.save_checkpoint(model, optimizer, epoch, CHECKPOINT_PATH)
-
-    print("That's it!")
+    print('\nstarting eval ..\n')
+    SAVED_MODEL_PATH = config.MODEL_SAVE_PATH + 'coco_eval.pth'
+    eval_output, iter_eval = evaluate(model, data_loader_test,
+                                         device=config.DEVICE,
+                                         saved_model_path=SAVED_MODEL_PATH,
+                                         generate=True)
+    print(f'\neval_output:{eval_output}')
     
 if __name__ == "__main__":
     main()

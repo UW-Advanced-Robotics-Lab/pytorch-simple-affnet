@@ -143,7 +143,7 @@ class MaskRCNN(nn.Module):
 
         self.backbone = backbone
         # out_channels = backbone.out_channels
-        out_channels = 256 # ResNet50: 256 or Vgg16:512
+        out_channels = 512 # ResNet50: 256 or Vgg16:512
 
         ###############################
         ### RPN
@@ -172,8 +172,8 @@ class MaskRCNN(nn.Module):
         resolution = box_roi_pool.output_size[0]
         in_channels = out_channels * resolution ** 2
         mid_channels = 1024
-        box_predictor = FastRCNNPredictor(in_channels, mid_channels, num_classes)
-        # box_predictor = FastRCNNPredictor(in_channels, mid_channels, config.NUM_OBJECT_CLASSES)
+        # box_predictor = FastRCNNPredictor(in_channels, mid_channels, num_classes)
+        box_predictor = FastRCNNPredictor(in_channels, mid_channels, config.NUM_OBJECT_CLASSES)
 
         self.head = RoIHeads(
              box_roi_pool, box_predictor,
@@ -187,8 +187,8 @@ class MaskRCNN(nn.Module):
         
         layers = (256, 256, 256, 256)
         dim_reduced = 256
-        self.head.mask_predictor = MaskRCNNPredictor(out_channels, layers, dim_reduced, num_classes)
-        # self.head.mask_predictor = MaskRCNNPredictor(out_channels, layers, dim_reduced, config.NUM_AFF_CLASSES)
+        # self.head.mask_predictor = MaskRCNNPredictor(out_channels, layers, dim_reduced, num_classes)
+        self.head.mask_predictor = MaskRCNNPredictor(out_channels, layers, dim_reduced, config.NUM_AFF_CLASSES)
         
     def forward(self, image, target=None):
         if isinstance(image, list):
@@ -283,18 +283,23 @@ def ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, pretrained_backbone=True,
         pretrained (bool): If True, returns a model pre-trained on COCO train2017.
         num_classes (int): number of classes (including the background).
     """
-    
+    print()
+
+    ##############################################
+    ### TODO: backbone
+    ##############################################
+
     if pretrained:
         pretrained_backbone = False
 
-    backbone = ResNetBackbone(backbone_feat_extractor, pretrained=True)
+    backbone = ResNetBackbone(backbone_name=backbone_feat_extractor, pretrained=True)
 
     # import torchvision.models as models
     # print('using pretrained VGG16 weights ..')
     # backbone = models.vgg16(pretrained=True)
     # ### print(backbone)
     # backbone = nn.Sequential(*list(backbone.features.children())[:-1])
-    # ### print(backbone)
+    # print(backbone)
 
     # import torchvision.models as models
     # print('using pretrained ResNet18 weights ..')
@@ -302,9 +307,16 @@ def ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, pretrained_backbone=True,
     # ### print(backbone)
     # backbone = list(backbone.children())[:-2]
     # backbone = nn.Sequential(*backbone)
-    # ### print(backbone)
+    ### print(backbone)
+
+    # from torchsummary import summary
+    # TORCH_SUMMARY = (config.NUM_CHANNELS, config.INPUT_SIZE[0], config.INPUT_SIZE[1])
+    # summary(backbone.to(config.DEVICE), TORCH_SUMMARY)
 
     # backbone = ResNet101(nInputChannels=config.NUM_CHANNELS, os=config.OUTPUT_STRIDE, pretrained=pretrained_backbone)
+
+    ##############################################
+    ##############################################
 
     model = MaskRCNN(backbone, num_classes)
 
@@ -318,42 +330,70 @@ def ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, pretrained_backbone=True,
         print(f"loading pre-trained MaskRCNN weights: {config.MASKRCNN_PRETRAINED_WEIGHTS} .. ")
         print(f'num classes: {num_classes} ..')
 
-        pretrained_msd = load_url(config.MASKRCNN_PRETRAINED_WEIGHTS)
+        checkpoint = torch.load(config.MASKRCNN_PRETRAINED_WEIGHTS, map_location=config.DEVICE)
+        pretrained_msd = checkpoint["model"]
         pretrained_msd_values = list(pretrained_msd.values())
         pretrained_msd_names = list(pretrained_msd.keys())
 
-        '''
-        265 to 271: backbone.fpn weights
-        273 to 279: backbone.fpn weights
-        '''
-
-        del_list = [i for i in range(265, 271)] + [i for i in range(273, 279)]
-        for i, del_idx in enumerate(del_list):
-            pretrained_msd_values.pop(del_idx - i)
-
-        '''
-        271: 'rpn.head.cls_logits.weight'
-        272: 'rpn.head.cls_logits.bias'
-        273: 'rpn.head.bbox_pred.weight'
-        274: 'rpn.head.bbox_pred.bias'
-        279: 'head.box_predictor.cls_score.weight'
-        280: 'head.box_predictor.cls_score.bias'
-        281: 'head.box_predictor.bbox_pred.weight'
-        282: 'head.box_predictor.bbox_pred.bias'
-        293 to end: 'head.mask_predictor'
-        '''
+        # We want to remove the heads
+        # 36 - head.box_predictor.cls_score.weight:
+        # 37 - head.box_predictor.cls_score.bias:
+        # 38 - head.box_predictor.bbox_pred.weight:
+        # 39 - head.box_predictor.bbox_pred.bias:
+        # 50 - head.mask_predictor.mask_fcn_logits.weight:
+        # 51 - head.mask_predictor.mask_fcn_logits.bias:
 
         msd = model.state_dict()
         msd_names = list(msd.keys())
-        skip_list = [271, 272, 273, 274, 279, 280, 281, 282, 293, 294, 295, 296, 297, 298, 299, 300, 301]
-        if num_classes == 91:
-            skip_list = [271, 272, 273, 274]
+        # skip_list = [36, 37, 38, 39, 50, 51]          # VGG16
+        # skip_list = [130, 131, 132, 133, 144, 145]      # ResNet18
+        skip_list = [114, 115, 116, 117, 128, 129]  # ResNet18
         for i, name in enumerate(msd):
             if i in skip_list:
                 continue
             # print(f'\tmsd_names:{msd_names[i]}')
             msd[name].copy_(pretrained_msd_values[i])
-
         model.load_state_dict(msd)
+
+        ##############################################
+        ##############################################
+
+        # pretrained_msd = load_url(config.MASKRCNN_PRETRAINED_WEIGHTS)
+        # pretrained_msd_values = list(pretrained_msd.values())
+        # pretrained_msd_names = list(pretrained_msd.keys())
+        #
+        # '''
+        # 265 to 271: backbone.fpn weights
+        # 273 to 279: backbone.fpn weights
+        # '''
+        #
+        # del_list = [i for i in range(265, 271)] + [i for i in range(273, 279)]
+        # for i, del_idx in enumerate(del_list):
+        #     pretrained_msd_values.pop(del_idx - i)
+        #
+        # '''
+        # 271: 'rpn.head.cls_logits.weight'
+        # 272: 'rpn.head.cls_logits.bias'
+        # 273: 'rpn.head.bbox_pred.weight'
+        # 274: 'rpn.head.bbox_pred.bias'
+        # 279: 'head.box_predictor.cls_score.weight'
+        # 280: 'head.box_predictor.cls_score.bias'
+        # 281: 'head.box_predictor.bbox_pred.weight'
+        # 282: 'head.box_predictor.bbox_pred.bias'
+        # 293 to end: 'head.mask_predictor'
+        # '''
+        #
+        # msd = model.state_dict()
+        # msd_names = list(msd.keys())
+        # skip_list = [271, 272, 273, 274, 279, 280, 281, 282, 293, 294, 295, 296, 297, 298, 299, 300, 301]
+        # if num_classes == 91:
+        #     skip_list = [271, 272, 273, 274]
+        # for i, name in enumerate(msd):
+        #     if i in skip_list:
+        #         continue
+        #     # print(f'\tmsd_names:{msd_names[i]}')
+        #     msd[name].copy_(pretrained_msd_values[i])
+        #
+        # model.load_state_dict(msd)
     
     return model

@@ -14,7 +14,7 @@ class ResNetBackbone(nn.Module):
     def __init__(self, backbone_name, pretrained):
         super().__init__()
         if pretrained:
-            print('using pretrained ResNet50 weights ..')
+            print('using pretrained ResNetX weights ..')
         body = models.resnet.__dict__[backbone_name](pretrained=pretrained,
                                                      norm_layer=misc.FrozenBatchNorm2d)
 
@@ -23,8 +23,8 @@ class ResNetBackbone(nn.Module):
                 parameter.requires_grad_(False)
 
         self.body = nn.ModuleDict(d for i, d in enumerate(body.named_children()) if i < 8)
-        in_channels = 2048
-        self.out_channels = 256
+        in_channels = 512
+        self.out_channels = 512
 
         self.inner_block_module = nn.Conv2d(in_channels, self.out_channels, 1)
         self.layer_block_module = nn.Conv2d(self.out_channels, self.out_channels, 3, 1, 1)
