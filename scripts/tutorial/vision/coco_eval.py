@@ -13,7 +13,7 @@ import pycocotools.mask as mask_util
 
 from collections import defaultdict
 
-from utils.vision import utils
+from scripts.tutorial.vision import utils
 
 class CocoEvaluator(object):
     def __init__(self, coco_gt, iou_types):

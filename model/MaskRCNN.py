@@ -24,7 +24,6 @@ import cfg as config
 from model.utils.transform_utils import Transformer
 from model.utils.bbox_utils import AnchorGenerator
 
-from model.ResNet import ResNet101
 from model.FeatureExtractor import ResNetBackbone
 from model.RPN import RPNHead, RegionProposalNetwork
 from model.RoIAlign import RoIAlign
@@ -172,8 +171,8 @@ class MaskRCNN(nn.Module):
         resolution = box_roi_pool.output_size[0]
         in_channels = out_channels * resolution ** 2
         mid_channels = 1024
-        # box_predictor = FastRCNNPredictor(in_channels, mid_channels, num_classes)
-        box_predictor = FastRCNNPredictor(in_channels, mid_channels, config.NUM_OBJECT_CLASSES)
+        box_predictor = FastRCNNPredictor(in_channels, mid_channels, num_classes)
+        # box_predictor = FastRCNNPredictor(in_channels, mid_channels, config.NUM_OBJECT_CLASSES)
 
         self.head = RoIHeads(
              box_roi_pool, box_predictor,
@@ -187,8 +186,8 @@ class MaskRCNN(nn.Module):
         
         layers = (256, 256, 256, 256)
         dim_reduced = 256
-        # self.head.mask_predictor = MaskRCNNPredictor(out_channels, layers, dim_reduced, num_classes)
-        self.head.mask_predictor = MaskRCNNPredictor(out_channels, layers, dim_reduced, config.NUM_AFF_CLASSES)
+        self.head.mask_predictor = MaskRCNNPredictor(out_channels, layers, dim_reduced, num_classes)
+        # self.head.mask_predictor = MaskRCNNPredictor(out_channels, layers, dim_reduced, config.NUM_AFF_CLASSES)
         
     def forward(self, image, target=None):
         if isinstance(image, list):

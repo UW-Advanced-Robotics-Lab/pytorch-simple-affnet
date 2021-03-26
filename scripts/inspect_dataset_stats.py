@@ -30,11 +30,11 @@ import cfg as config
 
 from dataset.COCODataset import COCODataSet
 
-from dataset.PennFudanDataset import PennFudanDataset
-from dataset.utils.PennFudan import pennfudan_utils
-
-from dataset.UMDDataset import BasicDataSet
+from dataset.UMDDataset import UMDDataSet
 from dataset.utils.UMD import umd_utils
+
+from dataset.ElevatorDataset import ElevatorDataSet
+from dataset.utils.Elevator import elevator_utils
 
 from model.utils.bbox_utils import AnchorGenerator
 
@@ -45,10 +45,9 @@ from utils import helper_utils
 
 def main():
 
-    # PennFudanDataset
-    # dataset = PennFudanDataset(config.ROOT_DATASET_PATH)
-
+    ######################
     # COCO
+    ######################
     # dataset = COCODataSet(dataset_dir='/data/Akeaveny/Datasets/COCO/',
     #                       split='val2017')
     #
@@ -57,17 +56,35 @@ def main():
     # test_idx = np.random.choice(total_idx, size=int(20), replace=False)
     # dataset = torch.utils.data.Subset(dataset, test_idx)
 
-    # UMD
-    dataset = BasicDataSet(
+    # ######################
+    # # UMD
+    # ######################
+    # dataset = UMDDataSet(
+    #                     ### REAL
+    #                     dataset_dir=config.DATA_DIRECTORY_TRAIN,
+    #                     mean=config.IMAGE_MEAN,
+    #                     std=config.IMAGE_STD,
+    #                     resize=config.RESIZE,
+    #                     crop_size=config.INPUT_SIZE,
+    #                     ### EXTENDING DATASET
+    #                     extend_dataset=False,
+    #                     max_iters=100,
+    #                     ### IMGAUG
+    #                     apply_imgaug=False)
+
+    ######################
+    # Elevator
+    ######################
+    dataset = ElevatorDataSet(
                         ### REAL
                         dataset_dir=config.DATA_DIRECTORY_TRAIN,
-                        mean=config.IMG_MEAN,
-                        std=config.IMG_STD,
+                        mean=config.IMAGE_MEAN,
+                        std=config.IMAGE_STD,
                         resize=config.RESIZE,
                         crop_size=config.INPUT_SIZE,
                         ### EXTENDING DATASET
                         extend_dataset=False,
-                        max_iters=1000,
+                        max_iters=100,
                         ### IMGAUG
                         apply_imgaug=False)
 
@@ -103,18 +120,18 @@ def main():
         ### masks
         #######################
         mask = helper_utils.get_segmentation_masks(image=image,
-                                                   labels=target['aff_labels'],
+                                                   labels=target['labels'],
                                                    binary_masks=target['masks'],
                                                    is_gt=True)
         # helper_utils.print_class_labels(mask)
         # cv2.imshow('mask', mask)
 
         helper_utils.print_class_labels(mask)
-        color_mask = umd_utils.colorize_mask(mask)
+        color_mask = elevator_utils.colorize_obj_mask(mask)
         cv2.imshow('mask_color', cv2.cvtColor(color_mask, cv2.COLOR_BGR2RGB))
 
         helper_utils.print_class_labels(target['gt_mask'])
-        gt_color_mask = umd_utils.colorize_mask(target['gt_mask'])
+        gt_color_mask = elevator_utils.colorize_obj_mask(target['gt_mask'])
         cv2.imshow('gt_color', cv2.cvtColor(gt_color_mask, cv2.COLOR_BGR2RGB))
 
         #######################
@@ -125,8 +142,7 @@ def main():
 
         #######################
         #######################
-        print()
-        cv2.waitKey(0)
+        cv2.waitKey(1)
 
 if __name__ == "__main__":
     main()

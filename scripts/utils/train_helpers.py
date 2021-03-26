@@ -12,9 +12,9 @@ import cv2
 
 import torchvision.models.detection.mask_rcnn
 
-from utils.vision.coco_utils import get_coco_api_from_dataset
-from utils.vision.coco_eval import CocoEvaluator
-from utils.vision import utils
+from scripts.tutorial.vision.coco_utils import get_coco_api_from_dataset
+from scripts.tutorial.vision.coco_eval import CocoEvaluator
+from scripts.tutorial.vision import utils
 
 from torch.utils import data
 from torch.utils.data import DataLoader, random_split, Subset
@@ -30,99 +30,6 @@ import cfg as config
 from tqdm import tqdm
 
 from utils import helper_utils
-
-from dataset.UMDDataset import BasicDataSet
-from dataset.utils.UMD import umd_utils
-
-###############################
-# DATASET UTILS
-###############################
-
-def load_umd_real_datasets():
-
-    ######################
-    # train + val
-    ######################
-    print("\nloading train and val ..")
-
-    dataset = BasicDataSet(
-        ### REAL
-        dataset_dir=config.DATA_DIRECTORY_TRAIN,
-        mean=config.IMG_MEAN,
-        std=config.IMG_STD,
-        resize=config.RESIZE,
-        crop_size=config.INPUT_SIZE,
-        ###
-        is_train=True,
-        ### EXTENDING DATASET
-        extend_dataset=False,
-        ### IMGAUG
-        apply_imgaug=True)
-
-    ### SELECTING A SUBSET OF IMAGES
-    np.random.seed(config.RANDOM_SEED)
-    total_idx = np.arange(0, len(dataset), 1)
-    train_idx = np.random.choice(total_idx, size=int(config.NUM_TRAIN+config.NUM_VAL), replace=False)
-    dataset = Subset(dataset, train_idx)
-
-    train_dataset, val_dataset = random_split(dataset, [config.NUM_TRAIN, config.NUM_VAL])
-
-    train_loader = DataLoader(train_dataset,
-                              batch_size=config.BATCH_SIZE,
-                              shuffle=True,
-                              num_workers=config.NUM_WORKERS,
-                              pin_memory=True,
-                              collate_fn=utils.collate_fn)
-
-    print(f"train has {len(train_loader)} images ..")
-    assert (len(train_loader) >= int(config.NUM_TRAIN))
-
-    val_loader = DataLoader(val_dataset,
-                            batch_size=config.BATCH_SIZE,
-                            shuffle=True,
-                            num_workers=config.NUM_WORKERS,
-                            pin_memory=True,
-                            collate_fn=utils.collate_fn)
-
-    print(f"val has {len(val_dataset)} images ..")
-    assert (len(val_loader) >= int(config.NUM_VAL))
-
-    ######################
-    # test
-    ######################
-    print("\nloading test ..")
-    print('eval in .. {}'.format(config.TEST_SAVE_FOLDER))
-
-    test_dataset = BasicDataSet(
-        ### REAL
-        dataset_dir=config.DATA_DIRECTORY_VAL,
-        mean=config.IMG_MEAN,
-        std=config.IMG_STD,
-        resize=config.RESIZE,
-        crop_size=config.INPUT_SIZE,
-        ###
-        is_train=True,
-        ### EXTENDING DATASET
-        extend_dataset=False,
-        ### IMGAUG
-        apply_imgaug=False)
-
-    ### SELECTING A SUBSET OF IMAGES
-    np.random.seed(config.RANDOM_SEED)
-    total_idx = np.arange(0, len(test_dataset), 1)
-    test_idx = np.random.choice(total_idx, size=int(config.NUM_TEST), replace=False)
-    test_dataset = Subset(test_dataset, test_idx)
-
-    test_loader = torch.utils.data.DataLoader(test_dataset,
-                                              batch_size=1,
-                                              shuffle=True,
-                                              num_workers=config.NUM_WORKERS,
-                                              collate_fn=utils.collate_fn)
-
-    print(f"test has {len(test_loader)} images ..")
-    assert (len(test_loader) >= int(config.NUM_TEST))
-
-    return train_loader, val_loader, test_loader
 
 ###############################
 # TRAINING UTILS
@@ -154,6 +61,10 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, writer):
     with tqdm(total=config.NUM_TRAIN, desc=f'Epoch:{epoch}', unit='iterations') as pbar:
         for i, batch in enumerate(data_loader):
             images, targets = batch
+
+            # for t in targets:
+            #     for k, v in t.items():
+            #         print(f'\nkeys:{k}\nvalues:{v}')
 
             images = list(image.to(device) for image in images)
             targets = [{k: v.to(device) for k, v in t.items()} for t in targets]

@@ -13,7 +13,7 @@ from torch.utils import data
 from torch.utils.data import Dataset
 import torchvision
 
-import utils.vision.transforms as T
+import torchvision.transforms as T
 
 ######################
 ######################

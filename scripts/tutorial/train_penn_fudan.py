@@ -25,9 +25,9 @@ import cfg as config
 ######################
 ######################
 
-from utils.vision.engine import train_one_epoch, evaluate
-from utils.vision import utils
-import utils.vision.transforms as T
+from scripts.tutorial.vision.engine import train_one_epoch, evaluate
+from scripts.tutorial.vision import utils
+import torchvision.transforms as T
 
 from utils import helper_utils
 

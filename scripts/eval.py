@@ -13,9 +13,6 @@ import torch
 import torchvision
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
-
-from scripts.tutorial.vision.engine import train_one_epoch, evaluate
-from scripts.tutorial.vision import utils
 import torchvision.transforms as T
 
 from torch.utils import data
@@ -27,6 +24,9 @@ from torch.utils.tensorboard import SummaryWriter
 
 # from pathlib import Path
 # ROOT_DIR_PATH = Path(__file__).parents[1]
+
+import sys
+sys.path.append('../')
 
 import cfg as config
 

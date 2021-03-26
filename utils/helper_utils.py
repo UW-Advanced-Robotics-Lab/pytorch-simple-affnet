@@ -29,13 +29,18 @@ import cfg as config
 
 from model.utils import bbox_utils
 
-from dataset.utils.PennFudan import pennfudan_utils
-from dataset.utils.UMD import umd_utils
 from dataset.utils.COCO import coco_utils
+from dataset.utils.UMD import umd_utils
+from dataset.utils.Elevator import elevator_utils
 
 ######################
 # IMG UTILS
 ######################
+
+def convert_16_bit_depth_to_8_bit(depth):
+    depth = np.array(depth, np.uint16)
+    depth = depth / np.max(depth) * (2 ** 8 - 1)
+    return np.array(depth, np.uint8)
 
 def print_depth_info(depth):
     depth = np.array(depth)
@@ -52,12 +57,13 @@ def print_class_labels(seg_mask):
 def format_target_data(image, target):
     height, width = image.shape[:2]
 
+    target['gt_mask'] = np.array(target['gt_mask'], dtype=np.uint8).reshape(height, width)
     target['labels'] = np.array(target['labels'], dtype=np.int32).flatten()
     target['boxes'] = np.array(target['boxes'], dtype=np.int32).reshape(-1, 4)
     target['masks'] = np.array(target['masks'], dtype=np.uint8).reshape(-1, height, width)
 
-    target['aff_labels'] = np.array(target['aff_labels'], dtype=np.int32).flatten()
-    target['gt_mask'] = np.array(target['gt_mask'], dtype=np.uint8).reshape(height, width)
+    if 'aff_labels' in target.keys():
+        target['aff_labels'] = np.array(target['aff_labels'], dtype=np.int32).flatten()
 
     return target
 
@@ -130,8 +136,9 @@ def draw_bbox_on_img(image, labels, boxes, scores=None, is_gt=False):
 
             cv2.putText(bbox_img,
                         # coco_utils.object_id_to_name(label),
-                        umd_utils.object_id_to_name(label),
+                        # umd_utils.object_id_to_name(label),
                         # umd_utils.aff_id_to_name(label),
+                        elevator_utils.object_id_to_name(label),
                         (bbox[0], bbox[1] - 5),
                         cv2.FONT_ITALIC,
                         0.4,

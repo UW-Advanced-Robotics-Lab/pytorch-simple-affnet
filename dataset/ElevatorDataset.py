@@ -20,10 +20,9 @@ from skimage.util import crop
 import torch
 from torch.utils import data
 from torch.utils.data import Dataset
-from torchvision.transforms import functional as F
 
 import torchvision
-import scripts.tutorial.vision.transforms as T
+from torchvision.transforms import functional as F
 
 from imgaug import augmenters as iaa
 from imgaug.augmentables.segmaps import SegmentationMapsOnImage
@@ -38,18 +37,17 @@ import cfg as config
 
 from utils import helper_utils
 
-from dataset.utils.UMD import umd_bbox_utils
-from dataset.utils.UMD import umd_coco_utils
-from dataset.utils.UMD import umd_utils
+from dataset.utils.Elevator import elevator_utils
+from dataset.utils.Elevator import elevator_coco_utils
+from dataset.utils.Elevator import elevator_bbox_utils
 
 ######################
 ######################
 
-class UMDDataSet(data.Dataset):
+class ElevatorDataSet(data.Dataset):
 
     def __init__(self,
                  dataset_dir,
-                 use_dr_and_pr_images=False,
                  ### FOLDER MUST BE CORRECTLY FORMATTED
                  rgb_dir='rgb/',
                  rgb_suffix='',
@@ -72,7 +70,6 @@ class UMDDataSet(data.Dataset):
                  apply_imgaug=False):
 
         self.dataset_dir = dataset_dir
-        self.use_dr_and_pr_images = use_dr_and_pr_images
         ### FOLDER MUST BE CORRECTLY FORMATTED
         self.rgb_dir = self.dataset_dir + rgb_dir
         self.rgb_suffix = rgb_suffix
@@ -89,9 +86,6 @@ class UMDDataSet(data.Dataset):
         self.std = std
         self.resize = resize
         self.crop_size = crop_size
-
-        if self.use_dr_and_pr_images:
-            print(f'Using PR and DR Synthetic Images ..')
 
         ################################
         ### EXTENDING DATASET
@@ -228,32 +222,8 @@ class UMDDataSet(data.Dataset):
         depth = np.array(depth, dtype=np.uint16)
         # helper_utils.print_depth_info(depth)
 
-        # if np.max(depth) > int(2**8-1):
-        #     depth = depth / 6500 * (2 ** 8 - 1)
-
-        depth = depth / np.max(depth) * (2 ** 8 - 1)
-        depth = np.array(depth, dtype=np.uint8)
+        depth = helper_utils.convert_16_bit_depth_to_8_bit(depth)
         # helper_utils.print_depth_info(depth)
-
-        ##################
-        ##################
-        # depth_file = glob(self.depth_dir + idx + self.depth_suffix + '.*')
-        # depth = skimage.io.imread(depth_file[0])
-        # helper_utils.print_depth_info(depth)
-
-        ##################
-        ##################
-
-        # if self.use_dr_and_pr_images:
-        #     if int(idx) <= config.PR_NUM_IMAGES:
-        #         # print(f'PR image ..')
-        #         self.resize = config.PR_RESIZE
-        #         self.mean = config.PR_IMG_MEAN
-        #         self.std = config.PR_IMG_STD
-        #     else:
-        #         self.resize = config.DR_RESIZE
-        #         self.mean = config.DR_IMG_MEAN
-        #         self.std = config.DR_IMG_STD
 
         ##################
         ### RESIZE & CROP
@@ -282,22 +252,25 @@ class UMDDataSet(data.Dataset):
         ### SEND TO NUMPY
         ##################
         image = np.array(image, dtype=np.uint8)
+        H, W, C = image.shape[0], image.shape[1], image.shape[2]
         gt_mask = np.array(label, dtype=np.uint8)
         depth = np.array(depth, dtype=np.uint8)
 
         ##################
         ### MASK
         ##################
-        binary_masks, aff_IDs = umd_coco_utils.extract_polygon_masks(image_idx=idx, rgb_img=image, label_img=label)
+        binary_masks, obj_id = elevator_coco_utils.extract_polygon_masks(image_idx=idx, rgb_img=image, label_img=label)
 
         ##################
         ### BBOX
         ##################
-        object_name = idx.split("_")[0]
-        object_IDs = umd_utils.object_name_to_id(object_name=object_name)
 
-        obj_boxes = umd_bbox_utils.extract_object_bboxes(mask=gt_mask)
-        aff_boxes = umd_bbox_utils.extract_aff_bboxes(image=image, mask=gt_mask)
+        step = 40
+        border_list = np.arange(start=0, stop=np.max([W, H]) + step, step=step)
+        # drawing bbox = (x1, y1), (x2, y2)
+        obj_boxes = elevator_bbox_utils.get_obj_bbox(mask=gt_mask, obj_id=obj_id,
+                                                     img_width=W, img_length=H,
+                                                     border_list=border_list)
 
         ##################
         ### SEND TO TORCH
@@ -305,30 +278,17 @@ class UMDDataSet(data.Dataset):
 
         gt_mask = torch.as_tensor(gt_mask, dtype=torch.uint8)
 
+        image_id = torch.tensor([index])
         obj_boxes = torch.as_tensor(obj_boxes, dtype=torch.float32)
-        obj_labels = torch.as_tensor((object_IDs,), dtype=torch.int64)
-        aff_boxes = torch.as_tensor(aff_boxes, dtype=torch.float32)
-        aff_labels = torch.as_tensor(aff_IDs, dtype=torch.int64)
+        obj_labels = torch.as_tensor((obj_id,), dtype=torch.int64)
         masks = torch.as_tensor(binary_masks, dtype=torch.uint8)
 
-        image_id = torch.tensor([index])
-        area = (aff_boxes[:, 3] - aff_boxes[:, 1]) * (aff_boxes[:, 2] - aff_boxes[:, 0])
-        # suppose all instances are not crowd
-        iscrowd = torch.zeros((len(aff_IDs),), dtype=torch.int64)
-
         target = {}
+        target['gt_mask'] = gt_mask
         target["labels"] = obj_labels
         target["boxes"] = obj_boxes
         target["masks"] = masks
-        target["aff_labels"] = aff_labels
-        target["aff_boxes"] = aff_boxes
-        target["obj_labels"] = obj_labels
-        target["obj_boxes"] = obj_boxes
         target["image_id"] = image_id
-        target["area"] = area
-        target["iscrowd"] = iscrowd
-
-        target['gt_mask'] = gt_mask
 
         if self.is_train or self.is_eval:
             img, target = self.transform(image, target)

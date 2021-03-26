@@ -22,6 +22,7 @@ def rpn_loss(idx, pos_idx, objectness, label, pred_bbox_delta, regression_target
 ###############################
 
 def fastrcnn_loss(class_logit, box_regression, label, regression_target):
+    print(f'class_logit:{class_logit}')
     classifier_loss = F.cross_entropy(class_logit, label)
 
     N, num_pos = class_logit.shape[0], regression_target.shape[0]

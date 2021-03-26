@@ -18,7 +18,7 @@ from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 # ROOT_DIR_PATH = Path(__file__).resolve().parents[1]
 
 import sys
-sys.path.append('..')
+sys.path.append('../../')
 # print(sys.path)
 
 import cfg as config
@@ -34,9 +34,10 @@ from scripts.utils import train_helpers
 ######################
 ######################
 
-from utils.pytorch_simple_maskrcnn.engine import train_one_epoch, evaluate
-from utils.vision import utils
-import utils.vision.transforms as T
+from scripts.coco_pretrained_weights.pytorch_simple_maskrcnn.engine import train_one_epoch, evaluate
+from scripts.tutorial.vision import utils
+
+import torchvision.transforms as T
 
 from utils import helper_utils
 
@@ -66,23 +67,13 @@ def main():
     # dataset
     ######################
 
-    num_classes = 79 + 1
-    dataset_dir = '/data/Akeaveny/Datasets/COCO/'
-    train_split = 'train2017'
-    val_split = 'val2017'
-
     ### train
     print("\nloading train ..")
-    dataset = COCODataSet(dataset_dir=dataset_dir,
-                          split=train_split,
+    dataset = COCODataSet(dataset_dir=config.COCO_ROOT_DATA_PATH,
+                          split=config.COCO_TRAIN_SPLIT,
                           ###
                           is_train=True,
                           )
-
-    # np.random.seed(config.RANDOM_SEED)
-    # total_idx = np.arange(0, len(dataset), 1)
-    # train_idx = np.random.choice(total_idx, size=int(80), replace=False)
-    # dataset = torch.utils.data.Subset(dataset, train_idx)
 
     data_loader = torch.utils.data.DataLoader(
         dataset, batch_size=2, shuffle=True, num_workers=4,
@@ -91,16 +82,11 @@ def main():
 
     ### test
     print("\nloading test ..")
-    dataset_test = COCODataSet(dataset_dir=dataset_dir,
-                          split=val_split,
+    dataset_test = COCODataSet(dataset_dir=config.COCO_ROOT_DATA_PATH,
+                          split=config.COCO_VAL_SPLIT,
                           ###
                           is_eval=True,
                           )
-
-    # np.random.seed(config.RANDOM_SEED)
-    # total_idx = np.arange(0, len(dataset_test), 1)
-    # test_idx = np.random.choice(total_idx, size=int(20), replace=False)
-    # dataset_test = torch.utils.data.Subset(dataset_test, test_idx)
 
     data_loader_test = torch.utils.data.DataLoader(
         dataset_test, batch_size=1, shuffle=False, num_workers=4,
@@ -111,10 +97,7 @@ def main():
     ### model
     #######################
 
-    # model = get_model_instance_segmentation(pretrained=config.IS_PRETRAINED, num_classes=num_classes)
-    # model.to(config.DEVICE)
-
-    model = ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, num_classes=num_classes)
+    model = ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, num_classes=config.COCO_NUM_CLASSES)
     model.to(config.DEVICE)
 
     ######################

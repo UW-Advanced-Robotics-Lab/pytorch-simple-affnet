@@ -12,13 +12,7 @@ import torch
 import torchvision
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
-
-from utils.vision.engine import train_one_epoch, evaluate
-from utils.vision import utils
-import utils.vision.transforms as T
-
-from utils.vision import utils
-import utils.vision.transforms as T
+import torchvision.transforms as T
 
 from torch.utils import data
 from torch.utils.data import DataLoader, random_split, Subset
@@ -32,21 +26,24 @@ os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 # from pathlib import Path
 # ROOT_DIR_PATH = Path(__file__).parents[1]
 
+import sys
+sys.path.append('../')
+
 import cfg as config
 
 ######################
 ######################
 
-from dataset.PennFudanDataset import PennFudanDataset
 from model.MaskRCNN import ResNetMaskRCNN
 
-from dataset.UMDDataset import BasicDataSet
+from dataset.UMDDataset import UMDDataSet
 from dataset.utils.UMD import umd_utils
 
 from model.MaskRCNN import ResNetMaskRCNN
 
 from utils import helper_utils
 
+from scripts.utils import dataset_helpers
 from scripts.utils import train_helpers
 
 ######################
@@ -101,7 +98,8 @@ def main():
     #######################
     ### data loader
     #######################
-    train_loader, val_loader, test_loader = train_helpers.load_umd_real_datasets()
+    # train_loader, val_loader, test_loader = dataset_helpers.load_umd_train_datasets()
+    train_loader, val_loader, test_loader = dataset_helpers.load_elevator_train_datasets()
 
     #######################
     ### model
@@ -142,70 +140,6 @@ def main():
         # checkpoint_path = config.CHECKPOINT_PATH
         CHECKPOINT_PATH = config.MODEL_SAVE_PATH + 'affnet_epoch_' + np.str(epoch) + '.pth'
         train_helpers.save_checkpoint(model, optimizer, epoch, CHECKPOINT_PATH)
-
-    # #######################
-    # #######################
-    # print()
-    #
-    # num_epochs = config.NUM_EPOCHS
-    # Fwb, best_Fwb = -np.inf, -np.inf
-    #
-    # print('freezing backbone weights ..\n')
-    # for layer in model.backbone.parameters():
-    #     layer.requires_grad = False
-    #
-    # # construct an optimizer
-    # params = [p for p in model.parameters() if p.requires_grad]
-    # optimizer = torch.optim.SGD(params, lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY, momentum=0.9)
-    #
-    # # and a learning rate scheduler
-    # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
-    #
-    # for epoch in range(0 * num_epochs, 1 * num_epochs):
-    #     # train & val for one epoch
-    #     model, optimizer = train_helpers.train_one_epoch(model, optimizer, train_loader, config.DEVICE, epoch, writer)
-    #     model, optimizer = train_helpers.val_one_epoch(model, optimizer, val_loader, config.DEVICE, epoch, writer)
-    #     # eval model
-    #     model = train_helpers.eval_model(model, test_loader)
-    #     Fwb, best_Fwb = train_helpers.eval_Fwb(model=model, optimizer=optimizer,
-    #                                            Fwb=Fwb, best_Fwb=best_Fwb,
-    #                                            epoch=epoch, writer=writer)
-    #     lr_scheduler.step()
-    #
-    #     # checkpoint_path = config.CHECKPOINT_PATH
-    #     CHECKPOINT_PATH = config.MODEL_SAVE_PATH + 'affnet_epoch_' + np.str(epoch) + '.pth'
-    #     train_helpers.save_checkpoint(model, optimizer, epoch, CHECKPOINT_PATH)
-    #
-    # #######################
-    # #######################
-    # print()
-    #
-    # print('unfreezing backbone weights ..\n')
-    # for layer in model.backbone.parameters():
-    #     layer.requires_grad = True
-    #
-    # # construct an optimizer
-    # params = [p for p in model.parameters() if p.requires_grad]
-    # optimizer = torch.optim.SGD(params, lr=config.LEARNING_RATE/100, weight_decay=config.WEIGHT_DECAY, momentum=0.9)
-    #
-    # # and a learning rate scheduler
-    # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
-    #
-    # for epoch in range(1*num_epochs, 2*num_epochs):
-    #     # train & val for one epoch
-    #     # train_one_epoch(model, optimizer, train_loader, config.DEVICE, epoch, print_freq=10)
-    #     model, optimizer = train_helpers.train_one_epoch(model, optimizer, train_loader, config.DEVICE, epoch, writer)
-    #     model, optimizer = train_helpers.val_one_epoch(model, optimizer, val_loader, config.DEVICE, epoch, writer)
-    #     # eval model
-    #     model = train_helpers.eval_model(model, test_loader)
-    #     Fwb, best_Fwb = train_helpers.eval_Fwb(model=model, optimizer=optimizer,
-    #                                            Fwb=Fwb, best_Fwb=best_Fwb,
-    #                                            epoch=epoch, writer=writer)
-    #     lr_scheduler.step()
-    #
-    #     # checkpoint_path = config.CHECKPOINT_PATH
-    #     CHECKPOINT_PATH = config.MODEL_SAVE_PATH + 'affnet_epoch_' + np.str(epoch) + '.pth'
-    #     train_helpers.save_checkpoint(model, optimizer, epoch, CHECKPOINT_PATH)
 
 if __name__ == "__main__":
     main()

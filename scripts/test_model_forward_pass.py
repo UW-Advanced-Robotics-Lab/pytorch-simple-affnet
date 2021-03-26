@@ -21,10 +21,6 @@ import cfg as config
 ###########################
 ###########################
 
-from dataset.UMDDataset import BasicDataSet
-from dataset.utils.UMD import umd_utils
-
-from dataset.PennFudanDataset import PennFudanDataset
 from model.MaskRCNN import ResNetMaskRCNN
 
 ######################
@@ -37,33 +33,6 @@ def main():
     #######################
     model = ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, num_classes=config.NUM_CLASSES)
     model.to(config.DEVICE)
-
-    ###########################
-    ### freezing resnet layers
-    ###########################
-
-    # print(f'\nfreezing backbone')
-    # for name, param in model.backbone.named_parameters():
-    #     param.requires_grad = False
-    #
-    # for name, param in model.named_parameters():
-    #     if param.requires_grad == True:
-    #         print("\tupdate:", name)
-    #     else:
-    #         print("\tfrozen:", name)
-    #
-    # print(f'\nunfreezing backbone')
-    # for name, param in model.backbone.named_parameters():
-    #     param.requires_grad = True
-    #
-    # for name, param in model.named_parameters():
-    #     if param.requires_grad == True:
-    #         print("\tupdate:", name)
-    #     else:
-    #         print("\tfrozen:", name)
-
-    # construct an optimizer
-    # params = [p for p in model.parameters() if p.requires_grad]
 
     #######################
     ### random for debugguing
@@ -80,42 +49,6 @@ def main():
     target["boxes"] = bbox
     target["labels"] = labels
     target["masks"] = mask
-
-    #######################
-    ### data loader
-    #######################
-
-    # PennFudan
-    # root_dataset_path = '/data/Akeaveny/Datasets/PennFudanPed'
-    # dataset = PennFudanDataset(root_dataset_path, is_train=True)
-    #
-    # UMD
-    # dataset = BasicDataSet(
-    #     ### REAL
-    #     dataset_dir=config.DATA_DIRECTORY_TEST,
-    #     mean=config.IMG_MEAN,
-    #     std=config.IMG_STD,
-    #     resize=config.RESIZE,
-    #     crop_size=config.INPUT_SIZE,
-    #     ###
-    #     is_train=True,
-    #     ### EXTENDING DATASET
-    #     extend_dataset=False,
-    #     ### IMGAUG
-    #     apply_imgaug=True)
-    #
-    # # split the dataset in train and test set
-    # indices = torch.randperm(len(dataset)).tolist()
-    # dataset = torch.utils.data.Subset(dataset, indices[:-50])
-    #
-    # data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=True, num_workers=4)
-    #
-    # _, batch = enumerate(data_loader).__next__()
-    # image, target = batch
-    #
-    # target['boxes'] = target['boxes'].squeeze(0)
-    # target['labels'] = target['labels'].squeeze(0)
-    # target['masks'] = target['masks'].squeeze(0)
 
     #######################
     #######################

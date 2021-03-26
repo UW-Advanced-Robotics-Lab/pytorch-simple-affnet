@@ -3,9 +3,9 @@ import time
 
 import torch
 
-from utils.pytorch_simple_maskrcnn.utils import Meter, TextArea
+from scripts.coco_pretrained_weights.pytorch_simple_maskrcnn.utils import Meter, TextArea
 try:
-    from utils.pytorch_simple_maskrcnn.coco_eval import CocoEvaluator, prepare_for_coco
+    from scripts.coco_pretrained_weights.pytorch_simple_maskrcnn.coco_eval import CocoEvaluator, prepare_for_coco
 except:
     pass
 
