@@ -278,9 +278,9 @@ class ElevatorDataSet(data.Dataset):
 
         gt_mask = torch.as_tensor(gt_mask, dtype=torch.uint8)
 
-        image_id = torch.tensor([index])
+        image_id = torch.tensor(index)
         obj_boxes = torch.as_tensor(obj_boxes, dtype=torch.float32)
-        obj_labels = torch.as_tensor((obj_id,), dtype=torch.int64)
+        obj_labels = torch.as_tensor(obj_id, dtype=torch.int64)
         masks = torch.as_tensor(binary_masks, dtype=torch.uint8)
 
         target = {}

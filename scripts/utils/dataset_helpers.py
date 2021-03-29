@@ -185,7 +185,8 @@ def load_elevator_train_datasets():
         ###
         is_train=True,
         ### EXTENDING DATASET
-        extend_dataset=False,
+        extend_dataset=True,
+        max_iters=int(20e3),
         ### IMGAUG
         apply_imgaug=True)
 
