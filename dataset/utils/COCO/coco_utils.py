@@ -19,9 +19,6 @@ import torch.nn.functional as F
 ######################
 ######################
 
-from pathlib import Path
-ROOT_DIR_PATH = Path(__file__).parents[1]
-
 import cfg as config
 
 ######################

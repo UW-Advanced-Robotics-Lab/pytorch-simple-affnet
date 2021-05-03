@@ -14,9 +14,6 @@ from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 ######################
 ######################
 
-# from pathlib import Path
-# ROOT_DIR_PATH = Path(__file__).resolve().parents[1]
-
 import sys
 sys.path.append('../../')
 # print(sys.path)

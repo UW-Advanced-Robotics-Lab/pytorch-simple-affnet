@@ -22,9 +22,6 @@ from torch.utils.tensorboard import SummaryWriter
 ###########################
 ###########################
 
-# from pathlib import Path
-# ROOT_DIR_PATH = Path(__file__).parents[1]
-
 import sys
 sys.path.append('../')
 
@@ -33,17 +30,17 @@ import cfg as config
 ######################
 ######################
 
-from dataset.UMDDataset import UMDDataSet
-from dataset.utils.UMD import umd_utils
-
 from model.MaskRCNN import ResNetMaskRCNN
-
-from utils import helper_utils
 
 from utils import helper_utils
 
 from scripts.utils import dataset_helpers
 from scripts.utils import train_helpers
+
+from dataset.utils.UMD import umd_utils
+from dataset.utils.Elevator import elevator_utils
+from dataset.utils.ARLVicon import arl_vicon_dataset_utils
+from dataset.utils.ARLAffPose import affpose_dataset_utils
 
 ######################
 ######################
@@ -91,7 +88,7 @@ def main():
     #######################
     print()
 
-    test_loader = dataset_helpers.load_eval_dataset()
+    test_loader = dataset_helpers.load_arl_vicon_eval_dataset()
 
     #######################
     ### model
@@ -129,6 +126,7 @@ def main():
         image = image[0]
         image = image.to(config.CPU_DEVICE)
         img = np.squeeze(np.array(image)).transpose(1, 2, 0)
+        img = np.array(img*(2**8-1), dtype=np.uint8)
         height, width = img.shape[:2]
 
         target = target[0]
@@ -162,18 +160,22 @@ def main():
         ### masks
         #######################
         mask = helper_utils.get_segmentation_masks(image=img,
-                                                   labels=aff_labels,
+                                                   labels=labels,
                                                    binary_masks=binary_masks,
                                                    scores=scores)
         # print(f'\nscores:{scores}')
         # helper_utils.print_class_labels(target['gt_mask'])
         # helper_utils.print_class_labels(mask)
 
-        pred_color_mask = umd_utils.colorize_mask(mask)
-        cv2.imshow('pred', pred_color_mask)
+        # pred_color_mask = umd_utils.colorize_mask(mask)
+        pred_color_mask = arl_vicon_dataset_utils.colorize_obj_mask(mask)
+        pred_color_mask = cv2.addWeighted(bbox_img, 0.35, pred_color_mask, 0.65, 0)
+        cv2.imshow('pred', cv2.cvtColor(pred_color_mask, cv2.COLOR_BGR2RGB))
 
-        gt_color_mask = umd_utils.colorize_mask(target['gt_mask'])
-        cv2.imshow('gt', gt_color_mask)
+        # gt_color_mask = umd_utils.colorize_mask(target['gt_mask'])
+        gt_color_mask = arl_vicon_dataset_utils.colorize_obj_mask(target['gt_mask'])
+        gt_color_mask = cv2.addWeighted(bbox_img, 0.35, gt_color_mask, 0.65, 0)
+        cv2.imshow('gt', cv2.cvtColor(gt_color_mask, cv2.COLOR_BGR2RGB))
 
         gt_name = config.EVAL_SAVE_FOLDER + str(image_idx) + config.TEST_GT_EXT
         cv2.imwrite(gt_name, target['gt_mask'])

@@ -13,9 +13,6 @@ from torchvision.ops import misc
 ###########################
 ###########################
 
-# from pathlib import Path
-# ROOT_DIR_PATH = Path(__file__).parents[1]
-
 import cfg as config
 
 ###########################

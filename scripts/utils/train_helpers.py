@@ -23,9 +23,6 @@ from torch.utils.tensorboard import SummaryWriter
 ###############################
 ###############################
 
-from pathlib import Path
-ROOT_DIR_PATH = Path(__file__).parents[1].absolute().resolve(strict=True)
-
 import cfg as config
 from tqdm import tqdm
 
@@ -236,7 +233,7 @@ def eval_model(model, test_loader):
         ### masks
         #######################
         mask = helper_utils.get_segmentation_masks(image=img,
-                                                   labels=aff_labels,
+                                                   labels=labels,
                                                    binary_masks=binary_masks,
                                                    scores=scores)
 

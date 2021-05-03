@@ -1,13 +1,13 @@
 function  AVE_F_wb = evaluate_UMD(path)
 
 % affordances index
-aff_start=1+1;   % ignore {background} label
-aff_end=7+1;   % change based on the dataset 
-aff_list = {1, 2, 3, 4, 5, 6, 7};
-% aff_list = {1, 5};
+aff_start=0+1;   % ignore {background} label
+aff_end=1+1;   % change based on the dataset 
+aff_list = {1};
+% aff_list = {1, 2, 3, 4, 5, 6, 7};
 
 % get all files
-list_gt = getAllFiles(path, '*_gt.png', 1);   % get all files in current folder
+list_gt = getAllFiles(path, '*_gt.png', 1);   % gWet all files in current folder
 list_predicted = getAllFiles(path, '*_pred.png', 1);
 
 list_predicted = sort(list_predicted);

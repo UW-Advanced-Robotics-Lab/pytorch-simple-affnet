@@ -13,9 +13,6 @@ from torchvision.ops import misc
 ###########################
 ###########################
 
-from pathlib import Path
-ROOT_DIR_PATH = Path(__file__).parents[1]
-
 import cfg as config
 
 ###########################
@@ -309,7 +306,7 @@ def ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, pretrained_backbone=True,
     ### print(backbone)
 
     # from torchsummary import summary
-    # TORCH_SUMMARY = (config.NUM_CHANNELS, config.INPUT_SIZE[0], config.INPUT_SIZE[1])
+    # TORCH_SUMMARY = (config.NUM_CHANNELS, config.CROP_SIZE[0], config.CROP_SIZE[1])
     # summary(backbone.to(config.DEVICE), TORCH_SUMMARY)
 
     # backbone = ResNet101(nInputChannels=config.NUM_CHANNELS, os=config.OUTPUT_STRIDE, pretrained=pretrained_backbone)
@@ -327,7 +324,7 @@ def ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, pretrained_backbone=True,
         if pretrained_backbone:
             print(f"loading pre-trained ResNet weights ..")
         print(f"loading pre-trained MaskRCNN weights: {config.MASKRCNN_PRETRAINED_WEIGHTS} .. ")
-        print(f'num classes: {num_classes} ..')
+        print(f'num classes (excluding background): {num_classes-1} ..')
 
         checkpoint = torch.load(config.MASKRCNN_PRETRAINED_WEIGHTS, map_location=config.DEVICE)
         pretrained_msd = checkpoint["model"]

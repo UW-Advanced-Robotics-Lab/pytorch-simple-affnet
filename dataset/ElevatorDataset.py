@@ -30,16 +30,13 @@ from imgaug.augmentables.segmaps import SegmentationMapsOnImage
 ######################
 ######################
 
-from pathlib import Path
-ROOT_DIR_PATH = Path(__file__).parents[1]
-
 import cfg as config
 
-from utils import helper_utils
-
 from dataset.utils.Elevator import elevator_utils
-from dataset.utils.Elevator import elevator_coco_utils
-from dataset.utils.Elevator import elevator_bbox_utils
+
+from utils import helper_utils
+from utils import coco_utils
+from utils import bbox_utils
 
 ######################
 ######################
@@ -48,47 +45,47 @@ class ElevatorDataSet(data.Dataset):
 
     def __init__(self,
                  dataset_dir,
-                 ### FOLDER MUST BE CORRECTLY FORMATTED
+                 # FOLDER MUST BE CORRECTLY FORMATTED
                  rgb_dir='rgb/',
                  rgb_suffix='',
                  masks_dir='masks/',
                  masks_suffix='_label',
                  depth_dir='depth/',
                  depth_suffix='_depth',
-                 ### EXTENDING DATASET
+                 # EXTENDING DATASET
                  extend_dataset=False,
                  max_iters=int(250e3),
-                 ###
+                 # TRAIN OR EVAL
                  is_train=False,
                  is_eval=False,
-                 ### PRE-PROCESSING
+                 # PRE-PROCESSING
                  mean=config.IMAGE_MEAN,
                  std=config.IMAGE_STD,
                  resize=config.RESIZE,
-                 crop_size=config.INPUT_SIZE,
-                 ### IMGAUG
+                 crop_size=config.CROP_SIZE,
+                 # IMGAUG
                  apply_imgaug=False):
 
         self.dataset_dir = dataset_dir
-        ### FOLDER MUST BE CORRECTLY FORMATTED
+        # FOLDER MUST BE CORRECTLY FORMATTED
         self.rgb_dir = self.dataset_dir + rgb_dir
         self.rgb_suffix = rgb_suffix
         self.masks_dir = self.dataset_dir + masks_dir
         self.masks_suffix = masks_suffix
         self.depth_dir = self.dataset_dir + depth_dir
         self.depth_suffix = depth_suffix
-        ###
+        # TRAIN OR EVAL
         self.is_train = is_train
         self.is_eval = is_eval
         self.transform = self.get_transform()
-        ### pre-processing
+        # PRE-PROCESSING
         self.mean = mean
         self.std = std
-        self.resize = resize
-        self.crop_size = crop_size
+        self.RESIZE = resize
+        self.CROP_SIZE = crop_size
 
         ################################
-        ### EXTENDING DATASET
+        # EXTENDING DATASET
         ################################
         self.extend_dataset = extend_dataset
         self.max_iters = max_iters
@@ -148,31 +145,6 @@ class ElevatorDataSet(data.Dataset):
     def __len__(self):
         return len(self.rgb_ids)
 
-    def crop(self, pil_img, is_img=False):
-        _dtype = np.array(pil_img).dtype
-        pil_img = Image.fromarray(pil_img)
-        crop_w, crop_h = self.crop_size
-        img_width, img_height = pil_img.size
-        left, right = (img_width - crop_w) / 2, (img_width + crop_w) / 2
-        top, bottom = (img_height - crop_h) / 2, (img_height + crop_h) / 2
-        left, top = round(max(0, left)), round(max(0, top))
-        right, bottom = round(min(img_width - 0, right)), round(min(img_height - 0, bottom))
-        # pil_img = pil_img.crop((left, top, right, bottom)).resize((crop_w, crop_h))
-        pil_img = pil_img.crop((left, top, right, bottom))
-        ###
-        if is_img:
-            img_channels = np.array(pil_img).shape[-1]
-            img_channels = 3 if img_channels == 4 else img_channels
-            resize_img = np.zeros((crop_w, crop_h, img_channels))
-            resize_img[0:(bottom - top), 0:(right - left), :img_channels] = np.array(pil_img)[..., :img_channels]
-        else:
-            resize_img = np.zeros((crop_w, crop_h))
-            resize_img[0:(bottom - top), 0:(right - left)] = np.array(pil_img)
-        ###
-        resize_img = np.array(resize_img, dtype=_dtype)
-
-        return Image.fromarray(resize_img)
-
     def apply_imgaug_to_imgs(self, rgb, mask, depth=None):
         rgb, mask, depth = np.array(rgb), np.array(mask), np.array(depth)
 
@@ -213,7 +185,7 @@ class ElevatorDataSet(data.Dataset):
         label = Image.open(mask_file[0])
 
         ##################
-        ### TODO: DEPTH
+        # TODO: DEPTH
         ##################
         depth_file = glob(self.depth_dir + idx + self.depth_suffix + '.*')
         assert len(depth_file) == 1, f'Either no image or multiple images found for the ID {idx}: {depth_file}'
@@ -226,30 +198,30 @@ class ElevatorDataSet(data.Dataset):
         # helper_utils.print_depth_info(depth)
 
         ##################
-        ### RESIZE & CROP
+        # RESIZE & CROP
         ##################
 
         image = np.array(image, dtype=np.uint8)
         label = np.array(label, dtype=np.uint8)
         depth = np.array(depth, dtype=np.uint8)
 
-        image = cv2.resize(image, self.resize, interpolation=cv2.INTER_CUBIC)
-        label = cv2.resize(label, self.resize, interpolation=cv2.INTER_NEAREST)
-        depth = cv2.resize(depth, self.resize, interpolation=cv2.INTER_NEAREST)
+        image = cv2.resize(image, self.RESIZE, interpolation=cv2.INTER_CUBIC)
+        label = cv2.resize(label, self.RESIZE, interpolation=cv2.INTER_NEAREST)
+        depth = cv2.resize(depth, self.RESIZE, interpolation=cv2.INTER_NEAREST)
 
-        image = self.crop(image, is_img=True)
-        label = self.crop(label)
-        depth = self.crop(depth)
+        image = helper_utils.crop(image, self.CROP_SIZE, is_img=True)
+        label = helper_utils.crop(label, self.CROP_SIZE)
+        depth = helper_utils.crop(depth, self.CROP_SIZE)
 
         ##################
-        ### IMGAUG
+        # IMGAUG
         ##################
 
         if self.apply_imgaug:
             image, label, depth = self.apply_imgaug_to_imgs(rgb=image, mask=label, depth=depth)
 
         ##################
-        ### SEND TO NUMPY
+        # SEND TO NUMPY
         ##################
         image = np.array(image, dtype=np.uint8)
         H, W, C = image.shape[0], image.shape[1], image.shape[2]
@@ -257,23 +229,19 @@ class ElevatorDataSet(data.Dataset):
         depth = np.array(depth, dtype=np.uint8)
 
         ##################
-        ### MASK
+        # MASK
         ##################
-        binary_masks, obj_id = elevator_coco_utils.extract_polygon_masks(image_idx=idx, rgb_img=image, label_img=label)
+        binary_masks, obj_id = coco_utils.extract_polygon_masks(image_idx=idx, rgb_img=image, label_img=label)
 
         ##################
-        ### BBOX
+        # BBOX
         ##################
 
-        step = 40
-        border_list = np.arange(start=0, stop=np.max([W, H]) + step, step=step)
         # drawing bbox = (x1, y1), (x2, y2)
-        obj_boxes = elevator_bbox_utils.get_obj_bbox(mask=gt_mask, obj_id=obj_id,
-                                                     img_width=W, img_length=H,
-                                                     border_list=border_list)
+        obj_boxes = bbox_utils.get_obj_bbox(mask=gt_mask, obj_id=obj_id, img_width=W, img_height=H)
 
         ##################
-        ### SEND TO TORCH
+        # SEND TO TORCH
         ##################
 
         gt_mask = torch.as_tensor(gt_mask, dtype=torch.uint8)
@@ -296,6 +264,9 @@ class ElevatorDataSet(data.Dataset):
             img = np.array(image, dtype=np.uint8)
 
         return img, target
+
+    ################################
+    ################################
 
     def get_transform(self):
         transforms = []

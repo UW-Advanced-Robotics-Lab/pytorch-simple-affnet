@@ -19,9 +19,6 @@ import torch.nn.functional as F
 ######################
 ######################
 
-from pathlib import Path
-ROOT_DIR_PATH = Path(__file__).parents[1]
-
 import cfg as config
 
 ######################
@@ -32,6 +29,8 @@ from model.utils import bbox_utils
 from dataset.utils.COCO import coco_utils
 from dataset.utils.UMD import umd_utils
 from dataset.utils.Elevator import elevator_utils
+from dataset.utils.ARLVicon import arl_vicon_dataset_utils
+from dataset.utils.ARLAffPose import affpose_dataset_utils
 
 ######################
 # IMG UTILS
@@ -51,6 +50,32 @@ def print_class_labels(seg_mask):
     print(f"Mask has {len(class_ids)-1} Labels: {class_ids[1:]}")
 
 ######################
+######################
+
+def crop(pil_img, crop_size, is_img=False):
+    _dtype = np.array(pil_img).dtype
+    pil_img = Image.fromarray(pil_img)
+    crop_w, crop_h = crop_size
+    img_width, img_height = pil_img.size
+    left, right = (img_width - crop_w) / 2, (img_width + crop_w) / 2
+    top, bottom = (img_height - crop_h) / 2, (img_height + crop_h) / 2
+    left, top = round(max(0, left)), round(max(0, top))
+    right, bottom = round(min(img_width - 0, right)), round(min(img_height - 0, bottom))
+    # pil_img = pil_img.crop((left, top, right, bottom)).resize((crop_w, crop_h))
+    pil_img = pil_img.crop((left, top, right, bottom))
+    ###
+    if is_img:
+        img_channels = np.array(pil_img).shape[-1]
+        img_channels = 3 if img_channels == 4 else img_channels
+        resize_img = np.zeros((crop_h, crop_w, img_channels))
+        resize_img[0:(bottom - top), 0:(right - left), :img_channels] = np.array(pil_img)[..., :img_channels]
+    else:
+        resize_img = np.zeros((crop_h, crop_w))
+        resize_img[0:(bottom - top), 0:(right - left)] = np.array(pil_img)
+
+    return np.array(resize_img, dtype=_dtype)
+
+######################
 # FORMAT UTILS
 ######################
 
@@ -61,6 +86,9 @@ def format_target_data(image, target):
     target['labels'] = np.array(target['labels'], dtype=np.int32).flatten()
     target['boxes'] = np.array(target['boxes'], dtype=np.int32).reshape(-1, 4)
     target['masks'] = np.array(target['masks'], dtype=np.uint8).reshape(-1, height, width)
+
+    if 'obj_labels' in target.keys():
+        target['obj_labels'] = np.array(target['obj_labels'], dtype=np.int32).flatten()
 
     if 'aff_labels' in target.keys():
         target['aff_labels'] = np.array(target['aff_labels'], dtype=np.int32).flatten()
@@ -138,7 +166,9 @@ def draw_bbox_on_img(image, labels, boxes, scores=None, is_gt=False):
                         # coco_utils.object_id_to_name(label),
                         # umd_utils.object_id_to_name(label),
                         # umd_utils.aff_id_to_name(label),
-                        elevator_utils.object_id_to_name(label),
+                        # elevator_utils.object_id_to_name(label),
+                        # arl_vicon_dataset_utils.map_obj_id_to_name(label),
+                        affpose_dataset_utils.map_obj_id_to_name(label),
                         (bbox[0], bbox[1] - 5),
                         cv2.FONT_ITALIC,
                         0.4,
@@ -153,8 +183,11 @@ def draw_bbox_on_img(image, labels, boxes, scores=None, is_gt=False):
                 label = labels[idx]
                 cv2.putText(bbox_img,
                             # coco_utils.object_id_to_name(label),
-                            umd_utils.object_id_to_name(label),
+                            # umd_utils.object_id_to_name(label),
                             # umd_utils.aff_id_to_name(label),
+                            # elevator_utils.object_id_to_name(label),
+                            # arl_vicon_dataset_utils.map_obj_id_to_name(label),
+                            affpose_dataset_utils.map_obj_id_to_name(label),
                             (bbox[0], bbox[1] - 5),
                             cv2.FONT_ITALIC,
                             0.4,

@@ -20,10 +20,9 @@ from skimage.util import crop
 import torch
 from torch.utils import data
 from torch.utils.data import Dataset
-from torchvision.transforms import functional as F
 
 import torchvision
-import scripts.tutorial.vision.transforms as T
+from torchvision.transforms import functional as F
 
 from imgaug import augmenters as iaa
 from imgaug.augmentables.segmaps import SegmentationMapsOnImage
@@ -34,72 +33,75 @@ from imgaug.augmentables.segmaps import SegmentationMapsOnImage
 import cfg as config
 
 from utils import helper_utils
-
-from dataset.utils.UMD import umd_bbox_utils
-from dataset.utils.UMD import umd_coco_utils
-from dataset.utils.UMD import umd_utils
+from utils import coco_utils
+from utils import bbox_utils
 
 ######################
 ######################
 
-class UMDDataSet(data.Dataset):
+class ARLAffPoseDataSet(data.Dataset):
 
     def __init__(self,
                  dataset_dir,
-                 use_dr_and_pr_images=False,
-                 ### FOLDER MUST BE CORRECTLY FORMATTED
+                 # FOLDER MUST BE CORRECTLY FORMATTED
                  rgb_dir='rgb/',
                  rgb_suffix='',
-                 masks_dir='masks/',
-                 masks_suffix='_label',
-                 depth_dir='depth/',
+                 obj_masks_dir='masks_obj/',
+                 obj_masks_suffix='_obj_label',
+                 obj_part_masks_dir='masks_obj_part/',
+                 obj_part_masks_suffix='_obj_part_labels',
+                 aff_masks_dir='masks_aff/',
+                 aff_masks_suffix='_aff_label',
+                 depth_folder='depth/',
                  depth_suffix='_depth',
-                 ### EXTENDING DATASET
+                 # EXTENDING DATASET
                  extend_dataset=False,
                  max_iters=int(250e3),
-                 ###
+                 # TRAIN OR EVAL
                  is_train=False,
                  is_eval=False,
-                 ### PRE-PROCESSING
+                 # PRE-PROCESSING
                  mean=config.IMAGE_MEAN,
                  std=config.IMAGE_STD,
                  resize=config.RESIZE,
                  crop_size=config.CROP_SIZE,
-                 ### IMGAUG
+                 # IMGAUG
                  apply_imgaug=False):
 
         self.dataset_dir = dataset_dir
-        self.use_dr_and_pr_images = use_dr_and_pr_images
-        ### FOLDER MUST BE CORRECTLY FORMATTED
+        # FOLDER MUST BE CORRECTLY FORMATTED
         self.rgb_dir = self.dataset_dir + rgb_dir
         self.rgb_suffix = rgb_suffix
-        self.masks_dir = self.dataset_dir + masks_dir
-        self.masks_suffix = masks_suffix
-        self.depth_dir = self.dataset_dir + depth_dir
+        self.obj_masks_dir = self.dataset_dir + obj_masks_dir
+        self.obj_masks_suffix = obj_masks_suffix
+        self.obj_part_masks_dir = self.dataset_dir + obj_part_masks_dir
+        self.obj_part_masks_suffix = obj_part_masks_suffix
+        self.aff_masks_dir = self.dataset_dir + aff_masks_dir
+        self.aff_masks_suffix = aff_masks_suffix
+        self.depth_dir = self.dataset_dir + depth_folder
         self.depth_suffix = depth_suffix
-        ###
+        # TRAIN OR EVAL
         self.is_train = is_train
         self.is_eval = is_eval
         self.transform = self.get_transform()
-        ### pre-processing
+        # PRE-PROCESSING
         self.mean = mean
         self.std = std
-        self.resize = resize
-        self.crop_size = crop_size
-
-        if self.use_dr_and_pr_images:
-            print(f'Using PR and DR Synthetic Images ..')
+        self.RESIZE = resize
+        self.CROP_SIZE = crop_size
 
         ################################
-        ### EXTENDING DATASET
+        # EXTENDING DATASET
         ################################
         self.extend_dataset = extend_dataset
         self.max_iters = max_iters
 
         self.rgb_ids = [splitext(file)[0] for file in listdir(self.rgb_dir) if not file.startswith('.')]
-        self.masks_ids = [splitext(file)[0] for file in listdir(self.masks_dir) if not file.startswith('.')]
+        self.obj_masks_ids = [splitext(file)[0] for file in listdir(self.obj_masks_dir) if not file.startswith('.')]
+        self.obj_part_masks_ids = [splitext(file)[0] for file in listdir(self.obj_part_masks_dir) if not file.startswith('.')]
+        self.aff_masks_ids = [splitext(file)[0] for file in listdir(self.aff_masks_dir) if not file.startswith('.')]
         self.depth_ids = [splitext(file)[0] for file in listdir(self.depth_dir) if not file.startswith('.')]
-        assert(len(self.rgb_ids) == len(self.masks_ids) == len(self.depth_ids))
+        assert(len(self.rgb_ids) == len(self.obj_masks_ids) == len(self.depth_ids))
         print(f'Dataset has {len(self.rgb_ids)} examples .. {dataset_dir}')
 
         # creating larger dataset
@@ -151,31 +153,6 @@ class UMDDataSet(data.Dataset):
     def __len__(self):
         return len(self.rgb_ids)
 
-    def crop(self, pil_img, is_img=False):
-        _dtype = np.array(pil_img).dtype
-        pil_img = Image.fromarray(pil_img)
-        crop_w, crop_h = self.crop_size
-        img_width, img_height = pil_img.size
-        left, right = (img_width - crop_w) / 2, (img_width + crop_w) / 2
-        top, bottom = (img_height - crop_h) / 2, (img_height + crop_h) / 2
-        left, top = round(max(0, left)), round(max(0, top))
-        right, bottom = round(min(img_width - 0, right)), round(min(img_height - 0, bottom))
-        # pil_img = pil_img.crop((left, top, right, bottom)).resize((crop_w, crop_h))
-        pil_img = pil_img.crop((left, top, right, bottom))
-        ###
-        if is_img:
-            img_channels = np.array(pil_img).shape[-1]
-            img_channels = 3 if img_channels == 4 else img_channels
-            resize_img = np.zeros((crop_w, crop_h, img_channels))
-            resize_img[0:(bottom - top), 0:(right - left), :img_channels] = np.array(pil_img)[..., :img_channels]
-        else:
-            resize_img = np.zeros((crop_w, crop_h))
-            resize_img[0:(bottom - top), 0:(right - left)] = np.array(pil_img)
-        ###
-        resize_img = np.array(resize_img, dtype=_dtype)
-
-        return Image.fromarray(resize_img)
-
     def apply_imgaug_to_imgs(self, rgb, mask, depth=None):
         rgb, mask, depth = np.array(rgb), np.array(mask), np.array(depth)
 
@@ -206,17 +183,22 @@ class UMDDataSet(data.Dataset):
 
         idx = self.rgb_ids[index]
         img_file = glob(self.rgb_dir + idx + self.rgb_suffix + '.*')
-        mask_file = glob(self.masks_dir + idx + self.masks_suffix + '.*')
+        obj_mask_file = glob(self.obj_masks_dir + idx + self.obj_masks_suffix + '.*')
+        obj_part_mask_file = glob(self.obj_part_masks_dir + idx + self.obj_part_masks_suffix + '.*')
+        aff_mask_file = glob(self.aff_masks_dir + idx + self.aff_masks_suffix + '.*')
 
         assert len(img_file) == 1, f'Either no image or multiple images found for the ID {idx}: {img_file}'
-        assert len(mask_file) == 1, f'Either no mask or multiple masks found for the ID {idx}: {mask_file}'
+        assert len(obj_mask_file) == 1, f'Either no mask or multiple masks found for the ID {idx}: {obj_mask_file}'
+        assert len(obj_part_mask_file) == 1, f'Either no mask or multiple masks found for the ID {idx}: {obj_part_mask_file}'
+        assert len(aff_mask_file) == 1, f'Either no mask or multiple masks found for the ID {idx}: {aff_mask_file}'
 
         image = Image.open(img_file[0]).convert('RGB')
-
-        label = Image.open(mask_file[0])
+        obj_label = Image.open(obj_mask_file[0])
+        obj_part_label = Image.open(obj_part_mask_file[0])
+        aff_label = Image.open(aff_mask_file[0])
 
         ##################
-        ### TODO: DEPTH
+        # TODO: DEPTH
         ##################
         depth_file = glob(self.depth_dir + idx + self.depth_suffix + '.*')
         assert len(depth_file) == 1, f'Either no image or multiple images found for the ID {idx}: {depth_file}'
@@ -225,107 +207,86 @@ class UMDDataSet(data.Dataset):
         depth = np.array(depth, dtype=np.uint16)
         # helper_utils.print_depth_info(depth)
 
-        # if np.max(depth) > int(2**8-1):
-        #     depth = depth / 6500 * (2 ** 8 - 1)
-
-        depth = depth / np.max(depth) * (2 ** 8 - 1)
-        depth = np.array(depth, dtype=np.uint8)
+        depth = helper_utils.convert_16_bit_depth_to_8_bit(depth)
         # helper_utils.print_depth_info(depth)
 
         ##################
-        ##################
-        # depth_file = glob(self.depth_dir + idx + self.depth_suffix + '.*')
-        # depth = skimage.io.imread(depth_file[0])
-        # helper_utils.print_depth_info(depth)
-
-        ##################
-        ##################
-
-        # if self.use_dr_and_pr_images:
-        #     if int(idx) <= config.PR_NUM_IMAGES:
-        #         # print(f'PR image ..')
-        #         self.resize = config.PR_RESIZE
-        #         self.mean = config.PR_IMG_MEAN
-        #         self.std = config.PR_IMG_STD
-        #     else:
-        #         self.resize = config.DR_RESIZE
-        #         self.mean = config.DR_IMG_MEAN
-        #         self.std = config.DR_IMG_STD
-
-        ##################
-        ### RESIZE & CROP
+        # RESIZE & CROP
         ##################
 
         image = np.array(image, dtype=np.uint8)
-        label = np.array(label, dtype=np.uint8)
+        obj_label = np.array(obj_label, dtype=np.uint8)
+        obj_part_label = np.array(obj_part_label, dtype=np.uint8)
+        aff_label = np.array(aff_label, dtype=np.uint8)
         depth = np.array(depth, dtype=np.uint8)
 
-        image = cv2.resize(image, self.resize, interpolation=cv2.INTER_CUBIC)
-        label = cv2.resize(label, self.resize, interpolation=cv2.INTER_NEAREST)
-        depth = cv2.resize(depth, self.resize, interpolation=cv2.INTER_NEAREST)
+        image = cv2.resize(image, self.RESIZE, interpolation=cv2.INTER_CUBIC)
+        obj_label = cv2.resize(obj_label, self.RESIZE, interpolation=cv2.INTER_NEAREST)
+        obj_part_label = cv2.resize(obj_part_label, self.RESIZE, interpolation=cv2.INTER_NEAREST)
+        aff_label = cv2.resize(aff_label, self.RESIZE, interpolation=cv2.INTER_NEAREST)
+        depth = cv2.resize(depth, self.RESIZE, interpolation=cv2.INTER_CUBIC)
 
-        image = self.crop(image, is_img=True)
-        label = self.crop(label)
-        depth = self.crop(depth)
+        image = helper_utils.crop(image, self.CROP_SIZE, is_img=True)
+        obj_label = helper_utils.crop(obj_label, self.CROP_SIZE)
+        obj_part_label = helper_utils.crop(obj_part_label, self.CROP_SIZE)
+        aff_label = helper_utils.crop(aff_label, self.CROP_SIZE)
+        depth = helper_utils.crop(depth, self.CROP_SIZE)
 
         ##################
-        ### IMGAUG
+        # IMGAUG
         ##################
 
         if self.apply_imgaug:
-            image, label, depth = self.apply_imgaug_to_imgs(rgb=image, mask=label, depth=depth)
+            image, aff_label, depth = self.apply_imgaug_to_imgs(rgb=image, mask=aff_label, depth=depth)
 
         ##################
         ### SEND TO NUMPY
         ##################
         image = np.array(image, dtype=np.uint8)
-        gt_mask = np.array(label, dtype=np.uint8)
+        gt_mask = np.array(aff_label, dtype=np.uint8)
         depth = np.array(depth, dtype=np.uint8)
 
         ##################
         ### MASK
         ##################
-        binary_masks, aff_IDs = umd_coco_utils.extract_polygon_masks(image_idx=idx, rgb_img=image, label_img=label)
+        binary_masks, aff_ids = coco_utils.extract_polygon_masks(image_idx=idx, rgb_img=image, label_img=aff_label)
 
         ##################
         ### BBOX
         ##################
-        object_name = idx.split("_")[0]
-        object_IDs = umd_utils.object_name_to_id(object_name=object_name)
 
-        obj_boxes = umd_bbox_utils.extract_object_bboxes(mask=gt_mask)
-        aff_boxes = umd_bbox_utils.extract_aff_bboxes(image=image, mask=gt_mask)
+        H, W = image.shape[0], image.shape[1]
+
+        obj_ids = np.unique(obj_label)[1:]
+        obj_boxes = bbox_utils.get_obj_bbox(mask=obj_label, obj_ids=obj_ids, img_width=W, img_height=H)
+
+        obj_part_ids = np.unique(obj_part_label)[1:]
+        aff_boxes = bbox_utils.get_obj_bbox(mask=obj_part_label, obj_ids=obj_part_ids, img_width=W, img_height=H)
 
         ##################
         ### SEND TO TORCH
         ##################
 
-        gt_mask = torch.as_tensor(gt_mask, dtype=torch.uint8)
+        image_id = torch.tensor([index])
 
-        obj_boxes = torch.as_tensor(obj_boxes, dtype=torch.float32)
-        obj_labels = torch.as_tensor((object_IDs,), dtype=torch.int64)
-        aff_boxes = torch.as_tensor(aff_boxes, dtype=torch.float32)
-        aff_labels = torch.as_tensor(aff_IDs, dtype=torch.int64)
+        gt_mask = torch.as_tensor(gt_mask, dtype=torch.uint8)
         masks = torch.as_tensor(binary_masks, dtype=torch.uint8)
 
-        image_id = torch.tensor([index])
-        area = (aff_boxes[:, 3] - aff_boxes[:, 1]) * (aff_boxes[:, 2] - aff_boxes[:, 0])
-        # suppose all instances are not crowd
-        iscrowd = torch.zeros((len(aff_IDs),), dtype=torch.int64)
+        obj_labels = torch.as_tensor((obj_ids,), dtype=torch.int64)
+        obj_boxes = torch.as_tensor(obj_boxes, dtype=torch.float32)
+        aff_labels = torch.as_tensor(aff_ids, dtype=torch.int64)
+        aff_boxes = torch.as_tensor(aff_boxes, dtype=torch.float32)
 
         target = {}
+        target["image_id"] = image_id
+        target['gt_mask'] = gt_mask
+        target["masks"] = masks
         target["labels"] = obj_labels
         target["boxes"] = obj_boxes
-        target["masks"] = masks
         target["aff_labels"] = aff_labels
         target["aff_boxes"] = aff_boxes
         target["obj_labels"] = obj_labels
         target["obj_boxes"] = obj_boxes
-        target["image_id"] = image_id
-        target["area"] = area
-        target["iscrowd"] = iscrowd
-
-        target['gt_mask'] = gt_mask
 
         if self.is_train or self.is_eval:
             img, target = self.transform(image, target)
@@ -333,6 +294,9 @@ class UMDDataSet(data.Dataset):
             img = np.array(image, dtype=np.uint8)
 
         return img, target
+
+    ################################
+    ################################
 
     def get_transform(self):
         transforms = []

@@ -23,9 +23,6 @@ from torch.utils.tensorboard import SummaryWriter
 
 os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
-# from pathlib import Path
-# ROOT_DIR_PATH = Path(__file__).parents[1]
-
 import sys
 sys.path.append('../')
 
@@ -99,7 +96,8 @@ def main():
     ### data loader
     #######################
     # train_loader, val_loader, test_loader = dataset_helpers.load_umd_train_datasets()
-    train_loader, val_loader, test_loader = dataset_helpers.load_elevator_train_datasets()
+    # train_loader, val_loader, test_loader = dataset_helpers.load_elevator_train_datasets()
+    train_loader, val_loader, test_loader = dataset_helpers.load_arl_vicon_train_datasets()
 
     #######################
     ### model
