@@ -11,12 +11,13 @@ ROOT_DIR_PATH = str(ROOT_DIR_PATH) + '/'
 '''
 FRAMEWORK Selection:
 'MaskRCNN'
+'AffNet'
 '''
 
 # TODO: prelim for naming
-FRAMEWORK           = 'MaskRCNN'
-EXP_DATASET_NAME    = 'ARLVicon_Real_RGB'
-EXP_NUM             = 'v1_Test_Resize_640'
+FRAMEWORK           = 'MaskRCNN' # MaskRCNN or AffNet
+EXP_DATASET_NAME    = 'ARLAffPose_Real_RGB'
+EXP_NUM             = 'v0'
 
 #######################################
 #######################################
@@ -31,10 +32,10 @@ BACKBONE_FEAT_EXTRACTOR = 'resnet18'
 
 IS_PRETRAINED = True
 RESNET_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth'
-MASKRCNN_PRETRAINED_WEIGHTS = ROOT_DIR_PATH + 'pretrained_coco_weights.pth' # 'https://download.pytorch.org/models/maskrcnn_resnet50_fpn_coco-bf2d0c1e.pth'
+# MASKRCNN_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/maskrcnn_resnet50_fpn_coco-bf2d0c1e.pth'   # resnet50
+MASKRCNN_PRETRAINED_WEIGHTS = ROOT_DIR_PATH + 'pretrained_coco_weights.pth'                                     # resnet18
 
-# RESTORE_TRAINED_WEIGHTS = '/data/Akeaveny/weights/AffNet/UMD_Real_RGB/MaskRCNN_UMD_Real_RGB_384x384_v4_Test_Resize_384/BEST_MODEL.pth'
-RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-AffNet/snapshots/ARLVicon_Real_RGB/MaskRCNN_ARLVicon_Real_RGB_640x640_v0_Test_Resize_640/BEST_MODEL.pth'
+RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-AffNet/trained_models/ARLAffPose_Real_RGB/AffNet_ARLAffPose_Real_RGB_640x480_v0/BEST_MODEL.pth'
 
 #######################################
 #######################################
@@ -46,9 +47,9 @@ print("using device: {} ..".format(DEVICE))
 
 RANDOM_SEED = 1234
 
-NUM_EPOCHS = 30
+NUM_EPOCHS = 20
 
-NUM_REAL_IMAGES = int(20e3) # 20190
+NUM_REAL_IMAGES = 5000 # 20000 or 5000
 NUM_TRAIN = int(np.floor(0.7*NUM_REAL_IMAGES))
 NUM_VAL   = int(np.floor(0.3*NUM_REAL_IMAGES))
 
@@ -78,8 +79,8 @@ ANCHOR_RATIOS = (0.5, 1, 1.5)
 # transform parameters
 # MIN_SIZE = 800
 # MAX_SIZE = 1333
-IMAGE_MEAN = [0.485, 0.456, 0.406]
-IMAGE_STD = [0.229, 0.224, 0.225]
+# IMAGE_MEAN = [0.485, 0.456, 0.406]
+# IMAGE_STD = [0.229, 0.224, 0.225]
 
 # RPN parameters
 RPN_FG_IOU_THRESH = 0.7
@@ -138,7 +139,7 @@ BOX_NUM_DETECTIONS = 100             # todo: change from default
 # IMAGE_STD    = [26.53540375/255, 31.51117582/255, 31.75977128/255]
 # RESIZE       = (int(640/1), int(480/1))
 # CROP_SIZE   = (int(384), int(384))
-# MIN_SIZE = MAX_SIZE = 384
+# MIN_SIZE, MAX_SIZE = 384, 384
 #
 # ### SYN
 # # DATA_DIRECTORY = ROOT_DATA_PATH + 'Syn/'
@@ -168,6 +169,8 @@ BOX_NUM_DETECTIONS = 100             # todo: change from default
 # DATA_DIRECTORY_VAL = DATA_DIRECTORY + 'val/'
 # DATA_DIRECTORY_TEST = DATA_DIRECTORY + 'test/'
 #
+# # IMAGE_MEAN   = [135.4883242/255, 143.06856056/255, 125.6341276/255]
+# # IMAGE_STD    = [39.76640244/255, 46.91340711/255,  46.25064666/255]
 # RESIZE       = (int(672/1), int(376/1))
 # CROP_SIZE   = (int(384), int(384))
 # MIN_SIZE = MAX_SIZE = 384
@@ -178,53 +181,59 @@ BOX_NUM_DETECTIONS = 100             # todo: change from default
 ### ARL VICON
 #######################################
 
-ROOT_DATA_PATH = '/data/Akeaveny/Datasets/ARLVicon/'
-
-NUM_CLASSES = 1 + 1
-NUM_OBJECT_CLASSES = 1 + 1      # 1 is for the background
-NUM_AFF_CLASSES = 2 + 1         # 1 is for the background
-
-### Syn
+# ROOT_DATA_PATH = '/data/Akeaveny/Datasets/ARLVicon/'
+#
+# NUM_CLASSES = 1 + 1
+# NUM_OBJECT_CLASSES = 1 + 1      # 1 is for the background
+# NUM_AFF_CLASSES = 2 + 1         # 1 is for the background
+#
 # DATA_DIRECTORY = ROOT_DATA_PATH + 'Real/'
-# DATA_DIRECTORY = ROOT_DATA_PATH + 'Syn/'
-DATA_DIRECTORY = ROOT_DATA_PATH + 'RealandSyn/'
-DATA_DIRECTORY_TRAIN = DATA_DIRECTORY + 'train/'
-DATA_DIRECTORY_VAL = DATA_DIRECTORY + 'val/'
-DATA_DIRECTORY_TEST = DATA_DIRECTORY + 'test/'
-
-RESIZE       = (int(1280/1), int(720/1))
-CROP_SIZE   = (int(640), int(640))
-MIN_SIZE = MAX_SIZE = 640
-
-IMG_SIZE = str(CROP_SIZE[0]) + 'x' + str(CROP_SIZE[1])
+# DATA_DIRECTORY_TRAIN = DATA_DIRECTORY + 'train/'
+# DATA_DIRECTORY_VAL = DATA_DIRECTORY + 'val/'
+# DATA_DIRECTORY_TEST = DATA_DIRECTORY + 'test/'
+#
+# # SYN_DATA_DIRECTORY = ROOT_DATA_PATH + 'Syn/'
+# SYN_DATA_DIRECTORY = ROOT_DATA_PATH + 'RealandSyn/'
+# SYN_DATA_DIRECTORY_TRAIN = SYN_DATA_DIRECTORY + 'train/'
+# SYN_DATA_DIRECTORY_VAL = SYN_DATA_DIRECTORY + 'val/'
+# SYN_DATA_DIRECTORY_TEST = SYN_DATA_DIRECTORY + 'test/'
+#
+# # IMAGE_MEAN   = [103.91716901/255,  147.01096571/255, 137.81038345/255]
+# # IMAGE_STD    = [42.1715359/255, 56.94489209/255,  34.60286997/255]
+# RESIZE       = (int(1280/1), int(720/1))
+# CROP_SIZE   = (int(640), int(640))
+# MIN_SIZE = MAX_SIZE = 640
+#
+# IMG_SIZE = str(CROP_SIZE[0]) + 'x' + str(CROP_SIZE[1])
 
 #######################################
 ### ARL AffPose
 #######################################
 
-# ROOT_DATA_PATH = '/data/Akeaveny/Datasets/ARLAffPose/'
-#
-# NUM_CLASSES = 11 + 1
-# NUM_OBJECT_CLASSES = 11 + 1     # 1 is for the background
-# NUM_AFF_CLASSES = 9 + 1         # 1 is for the background
-#
-# ### REAL
-# # DATA_DIRECTORY = ROOT_DATA_PATH + 'Real/'
-# # DATA_DIRECTORY_TRAIN = DATA_DIRECTORY + 'train/'
-# # DATA_DIRECTORY_VAL = DATA_DIRECTORY + 'val/'
-# # DATA_DIRECTORY_TEST = DATA_DIRECTORY + 'test/'
-#
-# ### SYN
-# DATA_DIRECTORY = ROOT_DATA_PATH + 'Syn/'
-# DATA_DIRECTORY_TRAIN = DATA_DIRECTORY + 'train/'
-# DATA_DIRECTORY_VAL = DATA_DIRECTORY + 'val/'
-# DATA_DIRECTORY_TEST = DATA_DIRECTORY + 'test/'
-#
-# RESIZE       = (int(1280/1), int(720/1))
-# CROP_SIZE   = (int(640), int(640))
-# MIN_SIZE, MAX_SIZE = 480, 640
-#
-# IMG_SIZE = str(CROP_SIZE[0]) + 'x' + str(CROP_SIZE[1])
+ROOT_DATA_PATH = '/data/Akeaveny/Datasets/ARLAffPose/'
+
+NUM_CLASSES = 11 + 1
+NUM_OBJECT_CLASSES = 11 + 1     # 1 is for the background
+NUM_AFF_CLASSES = 9 + 1         # 1 is for the background
+
+IMAGE_MEAN   = [114.56952669/255, 94.64837922/255, 84.55035708/255]
+IMAGE_STD    = [56.73802969/255, 57.59622507/255, 37.48271254/255]
+RESIZE       = (int(1280/1), int(720/1))
+CROP_SIZE   = (int(640), int(480))
+MIN_SIZE, MAX_SIZE = 640, 640
+
+DATA_DIRECTORY = ROOT_DATA_PATH + 'Real/'
+DATA_DIRECTORY_TRAIN = DATA_DIRECTORY + 'train/'
+DATA_DIRECTORY_VAL = DATA_DIRECTORY + 'val/'
+DATA_DIRECTORY_TEST = DATA_DIRECTORY + 'test/'
+
+# # SYN_DATA_DIRECTORY = ROOT_DATA_PATH + 'Syn/'
+# SYN_DATA_DIRECTORY = ROOT_DATA_PATH + 'RealandSyn/'
+# SYN_DATA_DIRECTORY_TRAIN = SYN_DATA_DIRECTORY + 'train/'
+# SYN_DATA_DIRECTORY_VAL = SYN_DATA_DIRECTORY + 'val/'
+# SYN_DATA_DIRECTORY_TEST = SYN_DATA_DIRECTORY + 'test/'
+
+IMG_SIZE = str(CROP_SIZE[0]) + 'x' + str(CROP_SIZE[1])
 
 #######################################
 #######################################
@@ -239,10 +248,10 @@ TEST_GT_EXT = "_gt.png"
 TEST_PRED_EXT = "_pred.png"
 
 EXP_NAME = FRAMEWORK + '_' + EXP_DATASET_NAME + '_' + IMG_SIZE + '_' + EXP_NUM
-SNAPSHOT_DIR = str(ROOT_DIR_PATH) + 'snapshots/' + EXP_DATASET_NAME + '/' + EXP_NAME
+TRAINED_MODELS_DIR = str(ROOT_DIR_PATH) + 'trained_models/' + EXP_DATASET_NAME + '/' + EXP_NAME
 TEST_SAVE_FOLDER = DATA_DIRECTORY_TEST + 'pred_' + EXP_NAME + '/'
 
-MODEL_SAVE_PATH = str(SNAPSHOT_DIR) + '/'
+MODEL_SAVE_PATH = str(TRAINED_MODELS_DIR) + '/'
 BEST_MODEL_SAVE_PATH = MODEL_SAVE_PATH + 'BEST_MODEL.pth'
 
 

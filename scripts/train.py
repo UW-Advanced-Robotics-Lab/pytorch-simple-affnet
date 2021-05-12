@@ -84,20 +84,21 @@ def main():
     ######################
     # LOGGING
     ######################
-    print('\nsaving run in .. {}'.format(config.SNAPSHOT_DIR))
+    print('\nsaving run in .. {}'.format(config.TRAINED_MODELS_DIR))
 
-    if not os.path.exists(config.SNAPSHOT_DIR):
-        os.makedirs(config.SNAPSHOT_DIR)
+    if not os.path.exists(config.TRAINED_MODELS_DIR):
+        os.makedirs(config.TRAINED_MODELS_DIR)
 
     ### TENSORBOARD
-    writer = SummaryWriter(f'{config.SNAPSHOT_DIR}')
+    writer = SummaryWriter(f'{config.TRAINED_MODELS_DIR}')
 
     #######################
     ### data loader
     #######################
     # train_loader, val_loader, test_loader = dataset_helpers.load_umd_train_datasets()
     # train_loader, val_loader, test_loader = dataset_helpers.load_elevator_train_datasets()
-    train_loader, val_loader, test_loader = dataset_helpers.load_arl_vicon_train_datasets()
+    # train_loader, val_loader, test_loader = dataset_helpers.load_arl_vicon_train_datasets()
+    train_loader, val_loader, test_loader = dataset_helpers.load_arl_affpose_train_datasets()
 
     #######################
     ### model

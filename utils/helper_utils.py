@@ -46,8 +46,20 @@ def print_depth_info(depth):
     print(f"Depth of type:{depth.dtype} has min:{np.min(depth)} & max:{np.max(depth)}")
 
 def print_class_labels(seg_mask):
-    class_ids = np.unique(np.array(seg_mask, dtype=np.uint8))
-    print(f"Mask has {len(class_ids)-1} Labels: {class_ids[1:]}")
+    class_ids = np.unique(np.array(seg_mask, dtype=np.uint8))[1:]  # exclude the background
+    print(f"Mask has {len(class_ids)} Labels: {class_ids}")
+
+def print_class_obj_names(obj_labels):
+    print('')
+    for obj_label in obj_labels:
+        _object = affpose_dataset_utils.map_obj_id_to_name(obj_label)
+        print(f"Obj Id:{obj_label}, Object: {_object}")
+
+def print_class_aff_names(aff_labels):
+    print('')
+    for aff_label in aff_labels:
+        _affordance = affpose_dataset_utils.map_aff_id_to_name(aff_label)
+        print(f"Aff Id:{aff_label}, Affordance: {_affordance}")
 
 ######################
 ######################
@@ -217,8 +229,6 @@ def get_segmentation_masks(image, labels, binary_masks, scores=None, is_gt=False
         for idx, label in enumerate(labels):
             label = labels[idx]
             binary_mask = np.array(binary_masks[idx, :, :], dtype=np.uint8)
-            # print(f'binary_mask: label:{label}, data:{np.unique(binary_mask, return_counts=True)}')
-            # print_class_labels(binary_mask)
 
             instance_mask = instance_mask_one * label
             instance_masks = np.where(binary_mask, instance_mask, instance_masks).astype(np.uint8)

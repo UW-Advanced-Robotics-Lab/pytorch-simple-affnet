@@ -55,10 +55,10 @@ def main():
     ######################
     # LOGGING
     ######################
-    print('\nsaving run in .. {}'.format(config.SNAPSHOT_DIR))
+    print('\nsaving run in .. {}'.format(config.TRAINED_MODELS_DIR))
 
-    if not os.path.exists(config.SNAPSHOT_DIR):
-        os.makedirs(config.SNAPSHOT_DIR)
+    if not os.path.exists(config.TRAINED_MODELS_DIR):
+        os.makedirs(config.TRAINED_MODELS_DIR)
 
     ######################
     # dataset

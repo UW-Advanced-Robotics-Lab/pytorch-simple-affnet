@@ -13,6 +13,9 @@ from torchvision.ops import misc
 ###########################
 ###########################
 
+import sys
+sys.path.append('../')
+
 import cfg as config
 
 ###########################

@@ -7,24 +7,28 @@ from torch.utils.model_zoo import load_url
 from torchvision import models
 from torchvision.ops import misc
 
-###############################
-###############################
+###########################
+###########################
+
+import cfg as config
+
+###########################
+###########################
 
 class ResNetBackbone(nn.Module):
     def __init__(self, backbone_name, pretrained):
         super().__init__()
         if pretrained:
-            print('using pretrained ResNetX weights ..')
-        body = models.resnet.__dict__[backbone_name](pretrained=pretrained,
-                                                     norm_layer=misc.FrozenBatchNorm2d)
+            print(f'using pretrained {config.BACKBONE_FEAT_EXTRACTOR} weights ..')
+        body = models.resnet.__dict__[backbone_name](pretrained=pretrained, norm_layer=misc.FrozenBatchNorm2d)
 
         for name, parameter in body.named_parameters():
             if 'layer2' not in name and 'layer3' not in name and 'layer4' not in name:
                 parameter.requires_grad_(False)
 
         self.body = nn.ModuleDict(d for i, d in enumerate(body.named_children()) if i < 8)
-        in_channels = 512
-        self.out_channels = 512
+        in_channels = 512      # Resnet50:2048 vs Resnet18:512
+        self.out_channels = 512 # Resnet50:256  vs Resnet18:512
 
         self.inner_block_module = nn.Conv2d(in_channels, self.out_channels, 1)
         self.layer_block_module = nn.Conv2d(self.out_channels, self.out_channels, 3, 1, 1)

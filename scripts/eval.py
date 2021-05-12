@@ -88,7 +88,9 @@ def main():
     #######################
     print()
 
-    test_loader = dataset_helpers.load_arl_vicon_eval_dataset()
+    # test_loader = dataset_helpers.load_umd_eval_dataset()
+    # test_loader = dataset_helpers.load_arl_vicon_eval_dataset()
+    test_loader = dataset_helpers.load_arl_affpose_eval_datasets()
 
     #######################
     ### model
@@ -160,22 +162,25 @@ def main():
         ### masks
         #######################
         mask = helper_utils.get_segmentation_masks(image=img,
-                                                   labels=labels,
+                                                   # labels=labels,
+                                                   labels=aff_labels,
                                                    binary_masks=binary_masks,
                                                    scores=scores)
         # print(f'\nscores:{scores}')
         # helper_utils.print_class_labels(target['gt_mask'])
         # helper_utils.print_class_labels(mask)
 
-        # pred_color_mask = umd_utils.colorize_mask(mask)
-        pred_color_mask = arl_vicon_dataset_utils.colorize_obj_mask(mask)
-        pred_color_mask = cv2.addWeighted(bbox_img, 0.35, pred_color_mask, 0.65, 0)
-        cv2.imshow('pred', cv2.cvtColor(pred_color_mask, cv2.COLOR_BGR2RGB))
-
-        # gt_color_mask = umd_utils.colorize_mask(target['gt_mask'])
-        gt_color_mask = arl_vicon_dataset_utils.colorize_obj_mask(target['gt_mask'])
+        # gt_color_mask = umd_utils.colorize_aff_mask(target['gt_mask'])
+        # gt_color_mask = arl_vicon_dataset_utils.colorize_obj_mask(target['gt_mask'])
+        gt_color_mask = affpose_dataset_utils.colorize_aff_mask(target['gt_mask'])
         gt_color_mask = cv2.addWeighted(bbox_img, 0.35, gt_color_mask, 0.65, 0)
         cv2.imshow('gt', cv2.cvtColor(gt_color_mask, cv2.COLOR_BGR2RGB))
+
+        # pred_color_mask = umd_utils.colorize_aff_mask(mask)
+        # pred_color_mask = arl_vicon_dataset_utils.colorize_obj_mask(mask)
+        pred_color_mask = affpose_dataset_utils.colorize_aff_mask(mask)
+        pred_color_mask = cv2.addWeighted(bbox_img, 0.35, pred_color_mask, 0.65, 0)
+        cv2.imshow('pred', cv2.cvtColor(pred_color_mask, cv2.COLOR_BGR2RGB))
 
         gt_name = config.EVAL_SAVE_FOLDER + str(image_idx) + config.TEST_GT_EXT
         cv2.imwrite(gt_name, target['gt_mask'])
@@ -192,7 +197,9 @@ def main():
     os.chdir(config.MATLAB_SCRIPTS_DIR)
     import matlab.engine
     eng = matlab.engine.start_matlab()
-    Fwb = eng.evaluate_UMD(config.EVAL_SAVE_FOLDER, nargout=1)
+    # Fwb = eng.evaluate_UMD(config.TEST_SAVE_FOLDER, nargout=1)
+    # Fwb = eng.evaluate_ARLVicon(config.TEST_SAVE_FOLDER, nargout=1)
+    Fwb = eng.evaluate_ARLAffPose(config.TEST_SAVE_FOLDER, nargout=1)
     os.chdir(config.ROOT_DIR_PATH)
 
 if __name__ == "__main__":

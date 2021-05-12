@@ -300,32 +300,31 @@ class UMDDataSet(data.Dataset):
         ### SEND TO TORCH
         ##################
 
+        image_id = torch.tensor([index])
+
         gt_mask = torch.as_tensor(gt_mask, dtype=torch.uint8)
+        masks = torch.as_tensor(binary_masks, dtype=torch.uint8)
 
         obj_boxes = torch.as_tensor(obj_boxes, dtype=torch.float32)
         obj_labels = torch.as_tensor((object_IDs,), dtype=torch.int64)
         aff_boxes = torch.as_tensor(aff_boxes, dtype=torch.float32)
         aff_labels = torch.as_tensor(aff_IDs, dtype=torch.int64)
-        masks = torch.as_tensor(binary_masks, dtype=torch.uint8)
 
-        image_id = torch.tensor([index])
         area = (aff_boxes[:, 3] - aff_boxes[:, 1]) * (aff_boxes[:, 2] - aff_boxes[:, 0])
-        # suppose all instances are not crowd
         iscrowd = torch.zeros((len(aff_IDs),), dtype=torch.int64)
 
         target = {}
+        target["image_id"] = image_id
+        target['gt_mask'] = gt_mask
+        target["masks"] = masks
         target["labels"] = obj_labels
         target["boxes"] = obj_boxes
-        target["masks"] = masks
         target["aff_labels"] = aff_labels
         target["aff_boxes"] = aff_boxes
         target["obj_labels"] = obj_labels
         target["obj_boxes"] = obj_boxes
-        target["image_id"] = image_id
         target["area"] = area
         target["iscrowd"] = iscrowd
-
-        target['gt_mask'] = gt_mask
 
         if self.is_train or self.is_eval:
             img, target = self.transform(image, target)

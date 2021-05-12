@@ -27,6 +27,8 @@ from torchvision.transforms import functional as F
 from imgaug import augmenters as iaa
 from imgaug.augmentables.segmaps import SegmentationMapsOnImage
 
+from dataset.utils.ARLAffPose import affpose_dataset_utils
+
 ######################
 ######################
 
@@ -153,31 +155,60 @@ class ARLAffPoseDataSet(data.Dataset):
     def __len__(self):
         return len(self.rgb_ids)
 
-    def apply_imgaug_to_imgs(self, rgb, mask, depth=None):
-        rgb, mask, depth = np.array(rgb), np.array(mask), np.array(depth)
+    def apply_imgaug_to_imgs(self, rgb, aff_mask, obj_mask, obj_part_mask, depth):
+        rgb, depth = np.array(rgb), np.array(depth)
+        aff_mask, obj_mask, obj_part_mask = np.array(aff_mask), np.array(obj_mask), np.array(obj_part_mask)
 
         H, W, C = rgb.shape[0], rgb.shape[1], rgb.shape[2]
 
         concat_img = np.zeros(shape=(H, W, C + 1))
         concat_img[:, :, :C] = rgb
-        concat_img[:, :, -1] = depth[:, :]
+        concat_img[:, :, -1] = depth
         concat_img = np.array(concat_img, dtype=np.uint8)
 
-        segmap = SegmentationMapsOnImage(mask, shape=np.array(rgb).shape)
-        aug_concat_img, segmap = self.affine(image=concat_img, segmentation_maps=segmap)
-        mask = segmap.get_arr()
+        concat_mask = np.zeros(shape=(H, W, 3))
+        concat_mask[:, :, 0] = aff_mask
+        concat_mask[:, :, 1] = obj_mask
+        concat_mask[:, :, 2] = obj_part_mask
+        concat_mask = np.array(concat_mask, dtype=np.uint8)
 
-        rgb = aug_concat_img[:, :, :C]
-        depth = aug_concat_img[:, :, -1]
+        segmap = SegmentationMapsOnImage(concat_mask, shape=np.array(rgb).shape)
+        aug_concat_img, segmap = self.affine(image=concat_img, segmentation_maps=segmap)
+        aug_concat_mask = segmap.get_arr()
+
+        rgb           = aug_concat_img[:, :, :C]
+        depth         = aug_concat_img[:, :, -1]
+
+        aff_mask      = aug_concat_mask[:, :, 0]
+        obj_mask      = aug_concat_mask[:, :, 1]
+        obj_part_mask = aug_concat_mask[:, :, 2]
 
         rgb = self.colour_aug(image=rgb)
         depth = self.depth_aug(image=depth)
 
-        rgb = np.array(rgb, dtype=np.uint8)
-        mask = np.array(mask, dtype=np.uint8)
-        depth = np.array(depth, dtype=np.uint8)
+        rgb           = np.array(rgb, dtype=np.uint8)
+        aff_mask      = np.array(aff_mask, dtype=np.uint8)
+        obj_mask      = np.array(obj_mask, dtype=np.uint8)
+        obj_part_mask = np.array(obj_part_mask, dtype=np.uint8)
+        depth         = np.array(depth, dtype=np.uint8)
 
-        return rgb, mask, depth
+        ##################
+        # check
+        ##################
+        # helper_utils.print_class_labels(aff_mask)
+        # helper_utils.print_class_labels(obj_mask)
+        # helper_utils.print_class_labels(obj_part_mask)
+        # cv2.imshow('rgb', cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB))
+        # color_aff_mask = affpose_dataset_utils.colorize_aff_mask(aff_mask)
+        # cv2.imshow('color_aff_mask', cv2.cvtColor(color_aff_mask, cv2.COLOR_BGR2RGB))
+        # color_obj_mask = affpose_dataset_utils.colorize_obj_mask(obj_mask)
+        # cv2.imshow('color_obj_mask', cv2.cvtColor(color_obj_mask, cv2.COLOR_BGR2RGB))
+        # color_obj_part_mask = affpose_dataset_utils.convert_obj_part_mask_to_obj_mask(obj_part_mask)
+        # color_obj_part_mask = affpose_dataset_utils.colorize_obj_mask(color_obj_part_mask)
+        # cv2.imshow('color_obj_part_mask', cv2.cvtColor(color_obj_part_mask, cv2.COLOR_BGR2RGB))
+        # cv2.waitKey(0)
+
+        return rgb, aff_mask, obj_mask, obj_part_mask, depth
 
     def __getitem__(self, index):
 
@@ -237,19 +268,31 @@ class ARLAffPoseDataSet(data.Dataset):
         ##################
 
         if self.apply_imgaug:
-            image, aff_label, depth = self.apply_imgaug_to_imgs(rgb=image, mask=aff_label, depth=depth)
+            image, aff_label, obj_label, obj_part_label, depth = self.apply_imgaug_to_imgs(rgb=image,
+                                                                                           aff_mask=aff_label,
+                                                                                           obj_mask=obj_label,
+                                                                                           obj_part_mask=obj_part_label,
+                                                                                           depth=depth)
 
         ##################
         ### SEND TO NUMPY
         ##################
         image = np.array(image, dtype=np.uint8)
-        gt_mask = np.array(aff_label, dtype=np.uint8)
+        gt_mask = np.array(obj_label, dtype=np.uint8)
         depth = np.array(depth, dtype=np.uint8)
 
         ##################
-        ### MASK
+        ### OBJ MASK
         ##################
-        binary_masks, aff_ids = coco_utils.extract_polygon_masks(image_idx=idx, rgb_img=image, label_img=aff_label)
+        binary_masks, obj_ids = coco_utils.extract_polygon_masks(image_idx=idx, rgb_img=image, label_img=obj_label)
+
+        ##################
+        ### Aff MASK
+        ##################
+        # binary_masks, obj_part_ids = coco_utils.extract_polygon_masks(image_idx=idx, rgb_img=image, label_img=obj_part_label)
+        # aff_ids = []
+        # for obj_part_id in obj_part_ids:
+        #     aff_ids.append(affpose_dataset_utils.map_obj_part_id_to_aff_id(obj_part_id))
 
         ##################
         ### BBOX
@@ -258,10 +301,12 @@ class ARLAffPoseDataSet(data.Dataset):
         H, W = image.shape[0], image.shape[1]
 
         obj_ids = np.unique(obj_label)[1:]
-        obj_boxes = bbox_utils.get_obj_bbox(mask=obj_label, obj_ids=obj_ids, img_width=W, img_height=H)
+        obj_boxes = bbox_utils.get_obj_bbox(mask=obj_label, obj_ids=obj_ids, img_width=H, img_height=W)
 
         obj_part_ids = np.unique(obj_part_label)[1:]
-        aff_boxes = bbox_utils.get_obj_bbox(mask=obj_part_label, obj_ids=obj_part_ids, img_width=W, img_height=H)
+        aff_boxes = bbox_utils.get_obj_bbox(mask=obj_part_label, obj_ids=obj_part_ids, img_width=H, img_height=W)
+
+        aff_ids = np.unique(aff_label)[1:]
 
         ##################
         ### SEND TO TORCH
@@ -272,7 +317,7 @@ class ARLAffPoseDataSet(data.Dataset):
         gt_mask = torch.as_tensor(gt_mask, dtype=torch.uint8)
         masks = torch.as_tensor(binary_masks, dtype=torch.uint8)
 
-        obj_labels = torch.as_tensor((obj_ids,), dtype=torch.int64)
+        obj_labels = torch.as_tensor(obj_ids, dtype=torch.int64)
         obj_boxes = torch.as_tensor(obj_boxes, dtype=torch.float32)
         aff_labels = torch.as_tensor(aff_ids, dtype=torch.int64)
         aff_boxes = torch.as_tensor(aff_boxes, dtype=torch.float32)

@@ -216,35 +216,35 @@ class ARLViconDataSet(data.Dataset):
         ##################
 
         image = np.array(image, dtype=np.uint8)
+        depth = np.array(depth, dtype=np.uint8)
         obj_label = np.array(obj_label, dtype=np.uint8)
         obj_part_label = np.array(obj_part_label, dtype=np.uint8)
         aff_label = np.array(aff_label, dtype=np.uint8)
-        depth = np.array(depth, dtype=np.uint8)
 
         image = cv2.resize(image, self.RESIZE, interpolation=cv2.INTER_CUBIC)
+        depth = cv2.resize(depth, self.RESIZE, interpolation=cv2.INTER_CUBIC)
         obj_label = cv2.resize(obj_label, self.RESIZE, interpolation=cv2.INTER_NEAREST)
         obj_part_label = cv2.resize(obj_part_label, self.RESIZE, interpolation=cv2.INTER_NEAREST)
         aff_label = cv2.resize(aff_label, self.RESIZE, interpolation=cv2.INTER_NEAREST)
-        depth = cv2.resize(depth, self.RESIZE, interpolation=cv2.INTER_CUBIC)
 
         image = helper_utils.crop(image, self.CROP_SIZE, is_img=True)
+        depth = helper_utils.crop(depth, self.CROP_SIZE)
         obj_label = helper_utils.crop(obj_label, self.CROP_SIZE)
         obj_part_label = helper_utils.crop(obj_part_label, self.CROP_SIZE)
         aff_label = helper_utils.crop(aff_label, self.CROP_SIZE)
-        depth = helper_utils.crop(depth, self.CROP_SIZE)
 
         ##################
         # IMGAUG
         ##################
 
         if self.apply_imgaug:
-            image, aff_label, depth = self.apply_imgaug_to_imgs(rgb=image, mask=aff_label, depth=depth)
+            image, obj_label, depth = self.apply_imgaug_to_imgs(rgb=image, mask=obj_label, depth=depth) # todo: obj_label or aff_label
 
         ##################
         ### SEND TO NUMPY
         ##################
         image = np.array(image, dtype=np.uint8)
-        gt_mask = np.array(obj_label, dtype=np.uint8)
+        gt_mask = np.array(obj_label, dtype=np.uint8) # todo: obj_label or aff_label
         depth = np.array(depth, dtype=np.uint8)
 
         ##################

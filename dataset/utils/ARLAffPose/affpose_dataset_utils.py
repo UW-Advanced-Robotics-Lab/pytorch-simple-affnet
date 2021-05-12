@@ -155,11 +155,48 @@ def map_obj_id_to_name(object_id):
     elif object_id == 11:       # 051_large_clamp
         return 'large_clamp'
     else:
-        print(" --- Object ID does not map to Object Label --- ")
+        print(f" --- Object ID:{object_id} does not map to Object Label --- ")
+        exit(1)
+
+def map_aff_id_to_name(aff_id):
+
+    if aff_id == 1:
+        return 'grasp'
+    elif aff_id == 2:
+        return 'screw'
+    elif aff_id == 3:
+        return 'scoop'
+    elif aff_id == 4:
+        return 'pound'
+    elif aff_id == 5:
+        return 'support'
+    elif aff_id == 6:
+        return 'cut'
+    elif aff_id == 7:
+        return 'wrap-grasp'
+    elif aff_id == 8:
+        return 'contain'
+    elif aff_id == 9:
+        return 'clamp'
+    else:
+        print(f" --- Affordance ID:{aff_id} does not map to Object Label --- ")
         exit(1)
 
 ##################################
 ##################################
+
+def format_obj_ids_to_aff_ids_list(object_ids):
+    if len(object_ids) == 0:
+        return []
+    else:
+        _aff_ids_list = []
+        for object_id in object_ids:
+            _object_part_ids_list = []
+            object_part_ids = map_obj_id_to_obj_part_ids(object_id)
+            for object_part_id in object_part_ids:
+                _object_part_ids_list.append(map_obj_part_id_to_aff_id(object_part_id))
+            _aff_ids_list.append(_object_part_ids_list)
+        return _aff_ids_list
 
 def map_obj_id_to_obj_part_ids(object_id):
 

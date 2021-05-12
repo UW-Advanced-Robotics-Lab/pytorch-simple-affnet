@@ -48,7 +48,8 @@ def maskrcnn_loss(mask_logit, proposal, matched_idx, label, gt_mask):
     idx = torch.arange(label.shape[0], device=label.device)
 
     # print(f"matched_idx:{matched_idx}")
-    # print(f"idx:{idx}, label:{label}")
+    # print(f"idx:{idx}")
+    # print(f"label:{label}")
     # print(f"mask_logit:{mask_logit[idx, label].size()}, mask_target:{mask_target.size()}")
 
     # for i in range(len(idx)):

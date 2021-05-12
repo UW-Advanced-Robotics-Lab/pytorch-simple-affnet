@@ -57,12 +57,8 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, writer):
     assert (len(data_loader) == config.NUM_TRAIN)
     with tqdm(total=config.NUM_TRAIN, desc=f'Epoch:{epoch}', unit='iterations') as pbar:
         for i, batch in enumerate(data_loader):
+
             images, targets = batch
-
-            # for t in targets:
-            #     for k, v in t.items():
-            #         print(f'\nkeys:{k}\nvalues:{v}')
-
             images = list(image.to(device) for image in images)
             targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
@@ -89,21 +85,13 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, writer):
                 lr_scheduler.step()
 
             ## TENSORBOARD
-            # writer.add_scalar('Learning_rate/train',  optimizer.param_groups[0]['lr'],          int(epoch * config.NUM_TRAIN + i))
-            # writer.add_scalar('Loss',                 loss_value,                               int(epoch * config.NUM_TRAIN + i))
-            # writer.add_scalar('RPN/objectness_loss',  loss_dict_reduced['rpn_objectness_loss'], int(epoch * config.NUM_TRAIN + i))
-            # writer.add_scalar('RPN/box_loss',         loss_dict_reduced['rpn_box_loss'],        int(epoch * config.NUM_TRAIN + i))
-            # writer.add_scalar('RoI/classifier_loss',  loss_dict_reduced['roi_classifier_loss'], int(epoch * config.NUM_TRAIN + i))
-            # writer.add_scalar('RoI/box_loss',         loss_dict_reduced['roi_box_loss'],        int(epoch * config.NUM_TRAIN + i))
-            # writer.add_scalar('RoI/mask_loss',        loss_dict_reduced['roi_mask_loss'],       int(epoch * config.NUM_TRAIN + i))
-
-            writer.add_scalar('Learning_rate/train',  optimizer.param_groups[0]['lr'],       int(epoch * config.NUM_TRAIN + i))
-            writer.add_scalar('Loss',                 loss_value,                            int(epoch * config.NUM_TRAIN + i))
-            writer.add_scalar('RPN/objectness_loss',  loss_dict_reduced['loss_objectness'],  int(epoch * config.NUM_TRAIN + i))
-            writer.add_scalar('RPN/box_loss',         loss_dict_reduced['loss_rpn_box_reg'], int(epoch * config.NUM_TRAIN + i))
-            writer.add_scalar('RoI/classifier_loss',  loss_dict_reduced['loss_classifier'],  int(epoch * config.NUM_TRAIN + i))
-            writer.add_scalar('RoI/box_loss',         loss_dict_reduced['loss_box_reg'],     int(epoch * config.NUM_TRAIN + i))
-            writer.add_scalar('RoI/mask_loss',        loss_dict_reduced['loss_mask'],        int(epoch * config.NUM_TRAIN + i))
+            writer.add_scalar('Learning_rate/train',        optimizer.param_groups[0]['lr'],       int(epoch * config.NUM_TRAIN + i))
+            writer.add_scalar('Loss/train',                 loss_value,                            int(epoch * config.NUM_TRAIN + i))
+            writer.add_scalar('RPN/train_objectness_loss',  loss_dict_reduced['loss_objectness'],  int(epoch * config.NUM_TRAIN + i))
+            writer.add_scalar('RPN/train_box_loss',         loss_dict_reduced['loss_rpn_box_reg'], int(epoch * config.NUM_TRAIN + i))
+            writer.add_scalar('RoI/train_classifier_loss',  loss_dict_reduced['loss_classifier'],  int(epoch * config.NUM_TRAIN + i))
+            writer.add_scalar('RoI/train_box_loss',         loss_dict_reduced['loss_box_reg'],     int(epoch * config.NUM_TRAIN + i))
+            writer.add_scalar('RoI/train_mask_loss',        loss_dict_reduced['loss_mask'],        int(epoch * config.NUM_TRAIN + i))
 
             pbar.update(config.BATCH_SIZE)
     return model, optimizer
@@ -117,20 +105,8 @@ def val_one_epoch(model, optimizer, data_loader, device, epoch, writer):
     assert (len(data_loader) == config.NUM_VAL)
     with tqdm(total=config.NUM_VAL, desc=f'Epoch:{epoch}', unit='iterations') as pbar:
         for i, batch in enumerate(data_loader):
+
             images, targets = batch
-
-            # targets['boxes'] = targets['boxes'].squeeze(0)
-            # targets['labels'] = targets['labels'].squeeze(0)
-            # targets['masks'] = targets['masks'].squeeze(0)
-            #
-            # targets['obj_boxes'] = targets['obj_boxes'].squeeze(0)
-            # targets['obj_labels'] = targets['obj_labels'].squeeze(0)
-            # targets['aff_boxes'] = targets['aff_boxes'].squeeze(0)
-            # targets['aff_labels'] = targets['aff_labels'].squeeze(0)
-            #
-            # images = images.to(device)
-            # targets = {k: v.to(device) for k, v in targets.items()}
-
             images = list(image.to(device) for image in images)
             targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
@@ -154,21 +130,13 @@ def val_one_epoch(model, optimizer, data_loader, device, epoch, writer):
             # optimizer.step()
 
             ## TENSORBOARD
-            # writer.add_scalar('Learning_rate/val',       optimizer.param_groups[0]['lr'],          int(epoch * config.NUM_VAL + i))
-            # writer.add_scalar('ValLoss',                 loss_value,                               int(epoch * config.NUM_VAL + i))
-            # writer.add_scalar('ValRPN/objectness_loss',  loss_dict_reduced['rpn_objectness_loss'], int(epoch * config.NUM_VAL + i))
-            # writer.add_scalar('ValRPN/box_loss',         loss_dict_reduced['rpn_box_loss'],        int(epoch * config.NUM_VAL + i))
-            # writer.add_scalar('ValRoI/classifier_loss',  loss_dict_reduced['roi_classifier_loss'], int(epoch * config.NUM_VAL + i))
-            # writer.add_scalar('ValRoI/box_loss',         loss_dict_reduced['roi_box_loss'],        int(epoch * config.NUM_VAL + i))
-            # writer.add_scalar('ValRoI/mask_loss',        loss_dict_reduced['roi_mask_loss'],       int(epoch * config.NUM_VAL + i))
-
-            writer.add_scalar('Learning_rate/val',      optimizer.param_groups[0]['lr'],           int(epoch * config.NUM_VAL + i))
-            writer.add_scalar('ValLoss',                loss_value,                                int(epoch * config.NUM_VAL + i))
-            writer.add_scalar('ValRPN/objectness_loss', loss_dict_reduced['loss_objectness'],      int(epoch * config.NUM_VAL + i))
-            writer.add_scalar('ValRPN/box_loss',        loss_dict_reduced['loss_rpn_box_reg'],     int(epoch * config.NUM_VAL + i))
-            writer.add_scalar('ValRoI/classifier_loss', loss_dict_reduced['loss_classifier'],      int(epoch * config.NUM_VAL + i))
-            writer.add_scalar('ValRoI/box_loss',        loss_dict_reduced['loss_box_reg'],         int(epoch * config.NUM_VAL + i))
-            writer.add_scalar('ValRoI/mask_loss',       loss_dict_reduced['loss_mask'],            int(epoch * config.NUM_VAL + i))
+            writer.add_scalar('Learning_rate/val',       optimizer.param_groups[0]['lr'],           int(epoch * config.NUM_VAL + i))
+            writer.add_scalar('Loss/val',                loss_value,                                int(epoch * config.NUM_VAL + i))
+            writer.add_scalar('RPN/val_objectness_loss', loss_dict_reduced['loss_objectness'],      int(epoch * config.NUM_VAL + i))
+            writer.add_scalar('RPN/val_box_loss',        loss_dict_reduced['loss_rpn_box_reg'],     int(epoch * config.NUM_VAL + i))
+            writer.add_scalar('RoI/val_classifier_loss', loss_dict_reduced['loss_classifier'],      int(epoch * config.NUM_VAL + i))
+            writer.add_scalar('RoI/val_box_loss',        loss_dict_reduced['loss_box_reg'],         int(epoch * config.NUM_VAL + i))
+            writer.add_scalar('RoI/val_mask_loss',       loss_dict_reduced['loss_mask'],            int(epoch * config.NUM_VAL + i))
 
             pbar.update(config.BATCH_SIZE)
     return model, optimizer
@@ -222,7 +190,6 @@ def eval_model(model, test_loader):
 
         scores = np.array(outputs['scores'], dtype=np.float32).flatten()
         labels = np.array(outputs['labels'], dtype=np.int32).flatten()
-
         binary_masks = np.squeeze(np.array(outputs['masks'] > config.CONFIDENCE_THRESHOLD, dtype=np.uint8))
 
         aff_labels = labels.copy()
@@ -234,6 +201,7 @@ def eval_model(model, test_loader):
         #######################
         mask = helper_utils.get_segmentation_masks(image=img,
                                                    labels=labels,
+                                                   # labels=aff_labels,
                                                    binary_masks=binary_masks,
                                                    scores=scores)
 
@@ -242,6 +210,7 @@ def eval_model(model, test_loader):
 
         pred_name = config.TEST_SAVE_FOLDER + str(image_idx) + config.TEST_PRED_EXT
         cv2.imwrite(pred_name, mask)
+    model.train()
     return model
 
 #######################
@@ -254,7 +223,9 @@ def eval_Fwb(model, optimizer, Fwb, best_Fwb, epoch, writer, matlab_scrips_dir=c
     # print(matlab_scrips_dir)
     import matlab.engine
     eng = matlab.engine.start_matlab()
-    Fwb = eng.evaluate_UMD(config.TEST_SAVE_FOLDER, nargout=1)
+    # Fwb = eng.evaluate_UMD(config.TEST_SAVE_FOLDER, nargout=1)
+    # Fwb = eng.evaluate_ARLVicon(config.TEST_SAVE_FOLDER, nargout=1)
+    Fwb = eng.evaluate_ARLAffPose(config.TEST_SAVE_FOLDER, nargout=1)
     writer.add_scalar('eval/Fwb', Fwb, int(epoch * config.NUM_TRAIN))
     os.chdir(config.ROOT_DIR_PATH)
 

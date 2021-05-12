@@ -47,7 +47,7 @@ def aff_id_to_name(aff_id):
 ######################
 ######################
 
-def colorize_mask(instance_mask):
+def colorize_aff_mask(instance_mask):
 
     instance_to_color = color_map_aff_id()
     color_mask = np.zeros((instance_mask.shape[0], instance_mask.shape[1], 3), dtype=np.uint8)
@@ -197,14 +197,14 @@ def object_id_to_aff_id(object_ids):
             assert (" --- Object does not exist in UMD dataset --- ")
     return aff_ids
 
-def format_object_id_to_aff_id(object_ids, aff_id):
+def format_obj_ids_to_aff_ids_list(object_ids, aff_ids):
     if len(object_ids) == 0:
         return []
     else:
-        aff_ids = []
+        _aff_ids_list = []
         for i in range(len(object_ids)):
-            aff_ids.append(list(aff_id))
-        return aff_ids
+            _aff_ids_list.append(list(aff_ids))
+        return _aff_ids_list
 
 ######################
 ######################

@@ -67,4 +67,6 @@ def get_obj_bbox(mask, obj_ids, img_width, img_height):
         # cv2.rectangle(img_bbox, (x1, y1), (x2, y2), (255, 0, 0), 2)
         # return [x1, y1, x2, y2]
         boxes[idx] = np.array([x1, y1, x2, y2])
-    return boxes[0].reshape(1, -1).astype(np.int32)
+    # boxes = boxes.reshape(1, -1).astype(np.int32)
+    # print(f'boxes:{boxes.shape},\n{boxes}')
+    return boxes
