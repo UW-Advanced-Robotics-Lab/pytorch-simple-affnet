@@ -8,7 +8,6 @@ I based this work on [TorchVision](https://github.com/pytorch/vision) and [PyTor
 1. [Labelusion](https://github.com/akeaveny/LabelFusion) for generating Real Images
 2. [NDDS](https://github.com/NVIDIA/Dataset_Synthesizer) for generating Synthetic Images   
 3. [DenseFusion](https://github.com/akeaveny/DenseFusion) for predicting 6-DoF Object Pose.
-4. [AffDenseFusionROSNode](https://github.com/akeaveny/DenseFusionROSNode) custom rospy node for running AffPose in near real time.
 
 In the sample below we see the differences between traditional Object Instance Segmentation (left) and Object-based Affordance Detection (right).
 ![Alt text](samples/AffPose.png?raw=true "Title")
