@@ -12,6 +12,7 @@ This work is largely based on:
 3. [DenseFusion](https://github.com/j96w/DenseFusion) in Torch 1.0.1
 4. [DenseFusionROSNode](https://github.com/akeaveny/DenseFusionROSNode) custom rospy node for running AffPose in near real time
 
+In the sample below we see the differnces between traditional Object Instance Segmentation (left) and Object-based Affordance Detection (right).
 ![Alt text](samples/AffPose.png?raw=true "Title")
 
 ## Requirements
