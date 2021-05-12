@@ -1,7 +1,5 @@
 # PyTorch-Simple-AffNet
 
-A PyTorch implementation of simple Mask R-CNN.
-
 The code is developed to simply and implement [AffordanceNet](https://github.com/nqanh/affordance-net) in PyTorch.
 I based this work on [TorchVision](https://github.com/pytorch/vision) and [PyTorch-Simple-AffNet](https://github.com/pytorch/vision).
 
