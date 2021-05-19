@@ -27,8 +27,8 @@ class ResNetBackbone(nn.Module):
                 parameter.requires_grad_(False)
 
         self.body = nn.ModuleDict(d for i, d in enumerate(body.named_children()) if i < 8)
-        in_channels = 512      # Resnet50:2048 vs Resnet18:512
-        self.out_channels = 512 # Resnet50:256  vs Resnet18:512
+        in_channels = 2048      # Resnet50:2048 vs Resnet18:512
+        self.out_channels = 256 # Resnet50:256  vs Resnet18:512
 
         self.inner_block_module = nn.Conv2d(in_channels, self.out_channels, 1)
         self.layer_block_module = nn.Conv2d(self.out_channels, self.out_channels, 3, 1, 1)

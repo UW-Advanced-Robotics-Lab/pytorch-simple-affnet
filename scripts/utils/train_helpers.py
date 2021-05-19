@@ -54,7 +54,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, writer):
 
         lr_scheduler = utils.warmup_lr_scheduler(optimizer, warmup_iters, warmup_factor)
 
-    assert (len(data_loader) == config.NUM_TRAIN)
+    assert (len(data_loader)*config.BATCH_SIZE == config.NUM_TRAIN)
     with tqdm(total=config.NUM_TRAIN, desc=f'Epoch:{epoch}', unit='iterations') as pbar:
         for i, batch in enumerate(data_loader):
 
@@ -102,7 +102,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, writer):
 def val_one_epoch(model, optimizer, data_loader, device, epoch, writer):
     model.train()
 
-    assert (len(data_loader) == config.NUM_VAL)
+    assert (len(data_loader)*config.BATCH_SIZE == config.NUM_VAL)
     with tqdm(total=config.NUM_VAL, desc=f'Epoch:{epoch}', unit='iterations') as pbar:
         for i, batch in enumerate(data_loader):
 
@@ -200,8 +200,8 @@ def eval_model(model, test_loader):
         ### masks
         #######################
         mask = helper_utils.get_segmentation_masks(image=img,
-                                                   labels=labels,
-                                                   # labels=aff_labels,
+                                                   # labels=labels,
+                                                   labels=aff_labels,
                                                    binary_masks=binary_masks,
                                                    scores=scores)
 

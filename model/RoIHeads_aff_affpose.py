@@ -1,5 +1,7 @@
 import numpy as np
 
+import cv2
+
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -62,6 +64,7 @@ class RoIHeads(nn.Module):
 
         obj_regression_target = self.box_coder.encode(obj_gt_box[obj_matched_idx[obj_pos_idx]],
                                                       obj_proposal[obj_pos_idx])
+
         obj_proposal = obj_proposal[obj_idx]
         obj_matched_idx = obj_matched_idx[obj_idx]
         obj_label = obj_gt_label[obj_matched_idx]
@@ -124,9 +127,14 @@ class RoIHeads(nn.Module):
                 # print(f'\nnum_pos:{num_pos}')
 
                 obj_labels = label[:num_pos].detach().cpu().numpy()
-                # _aff_labels = target['aff_labels'].detach().cpu().numpy()
-                aff_labels = affpose_dataset_utils.format_obj_ids_to_aff_ids_list(object_ids=obj_labels)
+                # gt_aff_labels = target['aff_labels'].detach().cpu().numpy()
+                # print(f'gt_aff_labels:{gt_aff_labels}')
+                gt_object_part_ids = target['obj_part_labels'].detach().cpu().numpy()
+                # print(f'gt_object_part_ids:{gt_object_part_ids}')
+                object_part_labels, aff_labels = affpose_dataset_utils.format_obj_ids_to_aff_ids_list(object_ids=obj_labels, gt_object_part_ids=gt_object_part_ids)
                 # print(f'obj_label:{obj_labels}, aff_labels:{aff_labels}')
+
+                # _aff_labels = affpose_dataset_utils.map_obj_ids_to_aff_ids_list(object_ids=obj_labels)
                 # print(f'_aff_labels:{_aff_labels}')
 
                 _aff_labels = []
@@ -137,7 +145,7 @@ class RoIHeads(nn.Module):
 
                     aff_label = aff_labels[i]
                     num_aff_label = len(aff_label)
-                    # print(f'aff_label: len:{num_aff_label} data:{aff_label}')
+                    print(f'\naff_label: len:{num_aff_label} data:{aff_label}')
 
                     mask_proposal = proposal[i].detach().cpu().numpy()
                     # print(f'mask_proposal: size:{mask_proposal.shape}, data:{mask_proposal}')
@@ -145,11 +153,8 @@ class RoIHeads(nn.Module):
                     # print(f'mask_proposal:{mask_proposal}')
 
                     # TODO: match pos idx
-                    # pos_matched_idx = matched_idx[i].detach().cpu().numpy()
-                    # print(f'pos_matched_idx: size:{pos_matched_idx.shape}, data:{pos_matched_idx}')
-                    # pos_matched_idx = np.repeat(pos_matched_idx, num_aff_label)
-                    pos_matched_idx = np.arange(start=0, stop=num_aff_label)
-                    # print(f'pos_matched_idx:{pos_matched_idx}')
+                    pos_matched_idx = np.flatnonzero(np.isin(gt_object_part_ids, object_part_labels[i]))
+                    print(f'idx:{pos_matched_idx}')
 
                     _aff_labels.extend(aff_label)
                     _mask_proposal.extend(mask_proposal.tolist())
@@ -176,39 +181,50 @@ class RoIHeads(nn.Module):
                 # print(f'mask_proposal:{mask_proposal}')
 
                 obj_labels = result['labels'].detach().cpu().numpy()
-                # aff_labels = umd_utils.object_id_to_aff_id(object_ids=obj_labels)
-                aff_labels = affpose_dataset_utils.format_obj_ids_to_aff_ids_list(object_ids=obj_labels)
+                object_part_labels, aff_labels = affpose_dataset_utils.map_obj_ids_to_aff_ids_list(object_ids=obj_labels)
+                flat_object_part_labels = [item for sublist in object_part_labels for item in sublist]
+                gt_object_part_labels = np.unique(np.array(flat_object_part_labels))
                 # print(f'obj_label:{obj_labels}, aff_labels:{aff_labels}')
 
                 _aff_labels = []
                 _mask_proposals = []
+                _object_part_labels = []
+                _idxs = []
                 for i in range(num_pos):
+
                     _aff_label = aff_labels[i]
                     num_aff_label = len(_aff_label)
                     # print(f'\naff_label: len:{num_aff_label} data:{_aff_label}')
 
+                    _object_part_label = object_part_labels[i]
+                    # print(f'\n_object_part_labels:{_object_part_labels}, gt_object_part_labels:{gt_object_part_labels}')
+                    _object_part_label_idx = np.flatnonzero(np.isin(gt_object_part_labels, _object_part_label))
+                    # print(f'_object_part_label:{_object_part_label}')
+
                     _mask_proposal = mask_proposal[i].detach().cpu().numpy()
-                    # print(f'mask_proposal: size:{mask_proposal.shape}, data:{_mask_proposal}')
                     _mask_proposal = np.tile(_mask_proposal, num_aff_label).reshape(-1, 4)
                     # print(f'mask_proposal:{_mask_proposal}')
-                    # # TODO: add random noise to mask_proposal for multi-class seg
-                    # for __mask_proposal in _mask_proposal:
-                    #     __mask_proposal[0] += np.random.normal(0, 3, 1)
-                    #     __mask_proposal[1] += np.random.normal(0, 3, 1)
-                    #     __mask_proposal[2] += np.random.normal(0, 3, 1)
-                    #     __mask_proposal[3] += np.random.normal(0, 3, 1)
-                    # print(f'mask_proposal:{_mask_proposal}')
+
+                    _idx = np.zeros(shape=num_aff_label)
+                    _idx.fill(i)
+                    # print(f'_idx:{_idx}')
 
                     _aff_labels.extend(_aff_label)
+                    _object_part_labels.extend(_object_part_label_idx)
                     _mask_proposals.extend(_mask_proposal.tolist())
+                    _idxs.extend(_idx)
 
                 aff_labels = torch.as_tensor(_aff_labels).to(config.DEVICE)
+                # object_part_labels = torch.as_tensor(object_part_labels).to(config.DEVICE)
                 mask_proposal = torch.as_tensor(_mask_proposals).to(config.DEVICE)
-                idx = torch.arange(aff_labels.shape[0], device=aff_labels.device)
+                result['boxes'] = mask_proposal
+                # idxs = torch.as_tensor(_idxs, dtype=torch.long).to(config.DEVICE)
+                idxs = torch.arange(aff_labels.shape[0], device=aff_labels.device)
 
-                # print(f'\naff_labels:{aff_labels}')
-                # print(f'mask_proposal:{mask_proposal}')
-                # print(f'idx:{idx}')
+                print(f'\naff_labels: len:{len(aff_labels)}, data:{aff_labels}')
+                # print(f'_object_part_labels:{_object_part_labels}')
+                # print(f'\nmask_proposal:{mask_proposal}')
+                # print(f'idxs:{idxs}')
 
                 if mask_proposal.shape[0] == 0:
                     result.update(dict(masks=torch.empty((0, 28, 28))))
@@ -221,6 +237,7 @@ class RoIHeads(nn.Module):
 
             if self.training:
                 gt_mask = target['masks']
+                # print(f'\ngt_mask:{gt_mask.size()}')
                 mask_loss = maskrcnn_loss(mask_logit=mask_logit,
                                           gt_mask=gt_mask,
                                           proposal=mask_proposal,
@@ -228,18 +245,18 @@ class RoIHeads(nn.Module):
                                           label=aff_labels)
                 losses.update(dict(loss_mask=mask_loss))
             else:
-                mask_logit = mask_logit[idx, aff_labels]
+                # print(f"\nidxs:{len(idxs)}")
+                # print(f"mask_logit:{mask_logit.shape}")
+                mask_logit = mask_logit[idxs, aff_labels]
 
                 mask_prob = mask_logit.sigmoid()
                 # print(f'mask_prob:{mask_prob.size()}')
 
-                result.update(dict(masks=mask_prob, aff_labels=aff_labels))
+                # for i in range(mask_prob.size(0)):
+                #     _mask_prob = mask_prob[i, :, :].detach().cpu().numpy()
+                #     cv2.imshow('mask_logit', _mask_prob)
+                #     cv2.waitKey(0)
 
-                # binary_masks = np.squeeze(np.array(mask_prob.detach().cpu()>0.35, dtype=np.float))
-                # print(f'binary_masks:{binary_masks.shape}')
-                # for i in range(len(aff_labels)):
-                #     aff_label = aff_labels[i].detach().cpu()
-                #     binary_mask = binary_masks[i, :, :]
-                #     print(f'pre-processing: aff_label:{aff_label}, data:{np.unique(binary_mask, return_counts=True)}')
+                result.update(dict(masks=mask_prob, aff_labels=aff_labels))
 
         return result, losses

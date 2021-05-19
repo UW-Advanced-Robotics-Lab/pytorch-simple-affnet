@@ -76,10 +76,12 @@ def main():
     # INIT
     ######################
 
+    random.seed(config.RANDOM_SEED)
+    np.random.seed(config.RANDOM_SEED)
     torch.manual_seed(config.RANDOM_SEED)
     torch.cuda.manual_seed(config.RANDOM_SEED)
-    np.random.seed(config.RANDOM_SEED)
-    random.seed(config.RANDOM_SEED)
+
+    torch.backends.cudnn.benchmark = True
 
     ######################
     # LOGGING

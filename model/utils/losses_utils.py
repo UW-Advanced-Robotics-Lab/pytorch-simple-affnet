@@ -44,6 +44,7 @@ def maskrcnn_loss(mask_logit, proposal, matched_idx, label, gt_mask):
     M = mask_logit.shape[-1]
     gt_mask = gt_mask[:, None].to(roi)
     mask_target = roi_align(gt_mask, roi, 1., M, M, -1)[:, 0]
+    # print(f'mask_target:{mask_target.size()}')
 
     idx = torch.arange(label.shape[0], device=label.device)
 
@@ -55,7 +56,7 @@ def maskrcnn_loss(mask_logit, proposal, matched_idx, label, gt_mask):
     # for i in range(len(idx)):
     #     _label = label[i]
     #     _gt_mask = mask_target[i, :, :].detach().cpu().numpy()
-    #     # print(f"\tlabel:{_label}, gt_mask:{_gt_mask.shape}")
+    #     print(f"\tlabel:{_label}, gt_mask:{_gt_mask.shape}")
     #     cv2.imshow('gt', _gt_mask)
     #     _mask_logit = mask_logit[idx, label][i, :, :].detach().cpu().numpy()
     #     cv2.imshow('mask_logit', _mask_logit)

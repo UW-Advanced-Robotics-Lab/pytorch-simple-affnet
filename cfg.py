@@ -15,9 +15,9 @@ FRAMEWORK Selection:
 '''
 
 # TODO: prelim for naming
-FRAMEWORK           = 'MaskRCNN' # MaskRCNN or AffNet
+FRAMEWORK           = 'AffNet' # MaskRCNN or AffNet
 EXP_DATASET_NAME    = 'ARLAffPose_Real_RGB'
-EXP_NUM             = 'v0'
+EXP_NUM             = 'v1'
 
 #######################################
 #######################################
@@ -28,14 +28,14 @@ BACKBONE Selection:
 'resnet18'
 '''
 
-BACKBONE_FEAT_EXTRACTOR = 'resnet18'
+BACKBONE_FEAT_EXTRACTOR = 'resnet50'
 
 IS_PRETRAINED = True
 RESNET_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth'
-# MASKRCNN_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/maskrcnn_resnet50_fpn_coco-bf2d0c1e.pth'   # resnet50
-MASKRCNN_PRETRAINED_WEIGHTS = ROOT_DIR_PATH + 'pretrained_coco_weights.pth'                                     # resnet18
+MASKRCNN_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/maskrcnn_resnet50_fpn_coco-bf2d0c1e.pth'   # resnet50
+# MASKRCNN_PRETRAINED_WEIGHTS = ROOT_DIR_PATH + 'pretrained_coco_weights.pth'                                 # resnet18
 
-RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-AffNet/trained_models/ARLAffPose_Real_RGB/AffNet_ARLAffPose_Real_RGB_640x480_v0/BEST_MODEL.pth'
+RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-AffNet/trained_models/ARLAffPose_Real_RGB/AffNet_ARLAffPose_Real_RGB_640x640_v1/BEST_MODEL.pth'
 
 #######################################
 #######################################
@@ -49,7 +49,7 @@ RANDOM_SEED = 1234
 
 NUM_EPOCHS = 20
 
-NUM_REAL_IMAGES = 5000 # 20000 or 5000
+NUM_REAL_IMAGES = 20000 # 20000 or 5000
 NUM_TRAIN = int(np.floor(0.7*NUM_REAL_IMAGES))
 NUM_VAL   = int(np.floor(0.3*NUM_REAL_IMAGES))
 
@@ -57,7 +57,7 @@ NUM_STEPS      = int(NUM_EPOCHS*NUM_TRAIN) # ~30 epochs at 5000 images/epoch
 NUM_VAL_STEPS  = int(NUM_EPOCHS*NUM_VAL)   # ~30 epochs at 1250 images/epoch
 
 BATCH_SIZE  = 1
-NUM_WORKERS = 2
+NUM_WORKERS = 4
 
 #######################################
 #######################################
@@ -70,7 +70,7 @@ WEIGHT_DECAY = 1e-04
 ''' MaskRCNN configs '''
 # see https://www.telesens.co/2018/03/11/object-detection-and-classification-using-r-cnns/
 
-CONFIDENCE_THRESHOLD = 0.35 # TORCHVISION: 0.4 or SIMPLE:0.35
+CONFIDENCE_THRESHOLD = 0.5 # TORCHVISION: 0.4 or SIMPLE:0.35
 
 # Anchor Generator
 ANCHOR_SIZES = (16, 32, 64)
@@ -219,7 +219,7 @@ NUM_AFF_CLASSES = 9 + 1         # 1 is for the background
 IMAGE_MEAN   = [114.56952669/255, 94.64837922/255, 84.55035708/255]
 IMAGE_STD    = [56.73802969/255, 57.59622507/255, 37.48271254/255]
 RESIZE       = (int(1280/1), int(720/1))
-CROP_SIZE   = (int(640), int(480))
+CROP_SIZE   = (int(640), int(640))
 MIN_SIZE, MAX_SIZE = 640, 640
 
 DATA_DIRECTORY = ROOT_DATA_PATH + 'Real/'

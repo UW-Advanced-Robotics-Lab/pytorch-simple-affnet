@@ -185,18 +185,41 @@ def map_aff_id_to_name(aff_id):
 ##################################
 ##################################
 
-def format_obj_ids_to_aff_ids_list(object_ids):
+def format_obj_ids_to_aff_ids_list(object_ids, gt_object_part_ids):
+    if len(object_ids) == 0:
+        return []
+    else:
+        _current_idx = 0
+        _aff_ids_list = []
+        _obj_part_ids_list = []
+        for i, object_id in enumerate(object_ids):
+            object_part_ids = map_obj_id_to_obj_part_ids(object_id)
+            # _aff_ids_list.append(list(aff_ids[_current_idx:(_current_idx+len(object_part_ids))]))
+            # _current_idx += len(object_part_ids)
+            _obj_part_temp, _aff_temp = [], []
+            for object_part_id in object_part_ids:
+                if object_part_id in gt_object_part_ids:
+                    _obj_part_temp.append(object_part_id)
+                    _aff_temp.append(map_obj_part_id_to_aff_id(object_part_id))
+            _obj_part_ids_list.append(_obj_part_temp)
+            _aff_ids_list.append(_aff_temp)
+        return _obj_part_ids_list, _aff_ids_list
+
+def map_obj_ids_to_aff_ids_list(object_ids):
     if len(object_ids) == 0:
         return []
     else:
         _aff_ids_list = []
+        _obj_part_ids_list = []
         for object_id in object_ids:
-            _object_part_ids_list = []
+            _obj_part_temp = []
             object_part_ids = map_obj_id_to_obj_part_ids(object_id)
             for object_part_id in object_part_ids:
-                _object_part_ids_list.append(map_obj_part_id_to_aff_id(object_part_id))
-            _aff_ids_list.append(_object_part_ids_list)
-        return _aff_ids_list
+                _obj_part_temp.append(map_obj_part_id_to_aff_id(object_part_id))
+                # _object_part_ids_list.append(object_part_id)
+            _obj_part_ids_list.append(object_part_ids)
+            _aff_ids_list.append(_obj_part_temp)
+        return _obj_part_ids_list, _aff_ids_list
 
 def map_obj_id_to_obj_part_ids(object_id):
 

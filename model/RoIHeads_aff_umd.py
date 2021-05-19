@@ -125,7 +125,7 @@ class RoIHeads(nn.Module):
 
                 obj_labels = label[:num_pos].detach().cpu().numpy()
                 aff_labels = target['aff_labels'].detach().cpu().numpy()
-                # aff_labels = umd_utils.format_object_id_to_aff_id(object_ids=obj_labels, aff_id=aff_labels)
+                aff_labels = umd_utils.format_obj_ids_to_aff_ids_list(object_ids=obj_labels, aff_ids=aff_labels)
                 # print(f'obj_label:{obj_labels}, aff_labels:{aff_labels}')
 
                 _aff_labels = []
@@ -175,9 +175,8 @@ class RoIHeads(nn.Module):
                 # print(f'mask_proposal:{mask_proposal}')
 
                 obj_labels = result['labels'].detach().cpu().numpy()
-                # aff_labels = umd_utils.object_id_to_aff_id(object_ids=obj_labels)
-                aff_labels = affpose_dataset_utils.map_obj_id_to_aff_ids(object_ids=obj_labels)
-                # print(f'obj_label:{obj_labels}, aff_labels:{aff_labels}')
+                aff_labels = umd_utils.object_id_to_aff_id(object_ids=obj_labels)
+                print(f'obj_label:{obj_labels}, aff_labels:{aff_labels}')
 
                 _aff_labels = []
                 _mask_proposals = []

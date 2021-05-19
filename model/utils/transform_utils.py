@@ -1,5 +1,8 @@
 import math
 
+from collections import Counter
+
+import numpy as np
 import torch
 import torch.nn.functional as F
 
@@ -67,9 +70,14 @@ class Transformer:
         box[:, [1, 3]] = box[:, [1, 3]] * ori_image_shape[0] / image_shape[0]
         result['boxes'] = box
 
+        aff_box = result['aff_boxes']
+        aff_box[:, [0, 2]] = aff_box[:, [0, 2]] * ori_image_shape[1] / image_shape[1]
+        aff_box[:, [1, 3]] = aff_box[:, [1, 3]] * ori_image_shape[0] / image_shape[0]
+        result['aff_boxes'] = aff_box
+
         if 'masks' in result:
             mask = result['masks']
-            mask = paste_masks_in_image(mask, box, 1, ori_image_shape)
+            mask = paste_masks_in_image(mask, aff_box, 1, ori_image_shape)
             result['masks'] = mask
 
         return result
@@ -100,14 +108,15 @@ def paste_masks_in_image(mask, box, padding, image_shape):
     mask, box = expand_detection(mask, box, padding)
 
     N = mask.shape[0]
-    # print(f'mask.shape:{mask.shape}')
+    # print(f'\nmask: shape:{mask.shape}')
 
     # todo: needed for multi-class aff seg
-    # if len(box.size()) != 0:
-    if box.nelement() != 0:
-        # print(f'box: shape:{box.shape}')
-        box = torch.cat(N*[box])
-        # print(f'box: shape:{box.shape}')
+    # if box.nelement() != 0:
+    #     print(f'\nbox: shape:{box.shape}')
+    #     # print(f'box: data:{box}')
+    #     box = torch.cat(N*[box])
+    #     print(f'box: shape:{box.shape}')
+    #     # print(f'box: data:{box}')
 
     size = (N,) + tuple(image_shape)
     im_mask = torch.zeros(size, dtype=mask.dtype, device=mask.device)

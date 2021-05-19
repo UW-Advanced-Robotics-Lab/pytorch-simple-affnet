@@ -454,7 +454,7 @@ def load_arl_affpose_train_datasets():
                               collate_fn=utils.collate_fn)
 
     print(f"train has {len(train_loader)} images ..")
-    assert (len(train_loader) >= int(config.NUM_TRAIN))
+    assert (len(train_loader)*config.BATCH_SIZE >= int(config.NUM_TRAIN))
 
     val_loader = DataLoader(val_dataset,
                             batch_size=config.BATCH_SIZE,
@@ -464,7 +464,7 @@ def load_arl_affpose_train_datasets():
                             collate_fn=utils.collate_fn)
 
     print(f"val has {len(val_dataset)} images ..")
-    assert (len(val_loader) >= int(config.NUM_VAL))
+    assert (len(val_loader)*config.BATCH_SIZE >= int(config.NUM_VAL))
 
     ######################
     # test
