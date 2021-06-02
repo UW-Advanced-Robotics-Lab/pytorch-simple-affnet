@@ -72,9 +72,12 @@ def main():
                           is_train=True,
                           )
 
-    data_loader = torch.utils.data.DataLoader(
-        dataset, batch_size=2, shuffle=True, num_workers=4,
-        collate_fn=utils.collate_fn)
+    data_loader = torch.utils.data.DataLoader(dataset,
+                                              batch_size=config.BATCH_SIZE,
+                                              shuffle=True,
+                                              num_workers=config.NUM_WORKERS,
+                                              pin_memory=True,
+                                              collate_fn=utils.collate_fn)
     print(f"train has {len(data_loader)} images ..")
 
     ### test
@@ -85,9 +88,12 @@ def main():
                           is_eval=True,
                           )
 
-    data_loader_test = torch.utils.data.DataLoader(
-        dataset_test, batch_size=1, shuffle=False, num_workers=4,
-        collate_fn=utils.collate_fn)
+    data_loader_test = torch.utils.data.DataLoader(dataset_test,
+                                                   batch_size=1,
+                                                   shuffle=False,
+                                                   num_workers=config.NUM_WORKERS,
+                                                   pin_memory=True,
+                                                   collate_fn=utils.collate_fn)
     print(f"test has {len(data_loader_test)} images ..")
 
     #######################
@@ -111,7 +117,7 @@ def main():
     ######################
 
     # let's train it for 10 epochs
-    num_epochs = 5
+    num_epochs = 10
     print(f'\nstarting training for {num_epochs} epochs ..')
 
     for epoch in range(num_epochs):

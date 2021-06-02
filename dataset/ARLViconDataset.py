@@ -204,12 +204,20 @@ class ARLViconDataSet(data.Dataset):
         depth_file = glob(self.depth_dir + idx + self.depth_suffix + '.*')
         assert len(depth_file) == 1, f'Either no image or multiple images found for the ID {idx}: {depth_file}'
 
-        depth = cv2.imread(depth_file[0], -1)
-        depth = np.array(depth, dtype=np.uint16)
+        depth_16bit = cv2.imread(depth_file[0], -1)
+        depth_16bit = np.array(depth_16bit, dtype=np.float16)
         # helper_utils.print_depth_info(depth)
 
-        depth = helper_utils.convert_16_bit_depth_to_8_bit(depth)
+        depth = helper_utils.convert_16_bit_depth_to_8_bit(depth_16bit)
         # helper_utils.print_depth_info(depth)
+
+        ##################
+        ##################
+
+        obj_id = np.unique(obj_label)[1:]
+        mask_label = np.ma.getmaskarray(np.ma.masked_equal(obj_label, obj_id)).astype(np.uint8)
+        mask_depth_16bit = mask_label * depth_16bit.copy()
+        mask_depth = mask_label * depth.copy()
 
         ##################
         # RESIZE & CROP
@@ -279,6 +287,8 @@ class ARLViconDataSet(data.Dataset):
         aff_boxes = torch.as_tensor(aff_boxes, dtype=torch.float32)
 
         target = {}
+        target["depth_16bit"] = mask_depth_16bit
+        target["depth"] = mask_depth
         target["image_id"] = image_id
         target['gt_mask'] = gt_mask
         target["masks"] = masks

@@ -16,8 +16,8 @@ FRAMEWORK Selection:
 
 # TODO: prelim for naming
 FRAMEWORK           = 'AffNet' # MaskRCNN or AffNet
-EXP_DATASET_NAME    = 'ARLAffPose_Real_RGB'
-EXP_NUM             = 'v1'
+EXP_DATASET_NAME    = 'ARLAffPose_RealandSyn_RGB'
+EXP_NUM             = 'v2_resnet50'
 
 #######################################
 #######################################
@@ -33,9 +33,9 @@ BACKBONE_FEAT_EXTRACTOR = 'resnet50'
 IS_PRETRAINED = True
 RESNET_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth'
 MASKRCNN_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/maskrcnn_resnet50_fpn_coco-bf2d0c1e.pth'   # resnet50
-# MASKRCNN_PRETRAINED_WEIGHTS = ROOT_DIR_PATH + 'pretrained_coco_weights.pth'                                 # resnet18
+# MASKRCNN_PRETRAINED_WEIGHTS = ROOT_DIR_PATH + 'pretrained_coco_weights.pth'                   # resnet18 or resnet50
 
-RESTORE_TRAINED_WEIGHTS = '/home/akeaveny/git/PyTorch-Simple-AffNet/trained_models/ARLAffPose_Real_RGB/AffNet_ARLAffPose_Real_RGB_640x640_v1/BEST_MODEL.pth'
+RESTORE_TRAINED_WEIGHTS = '/data/Akeaveny/weights/AffNet/ARLAffPose/ARLAffPose_Real_RGB/AffNet_ARLAffPose_Real_RGB_640x640_v0_resnet50/BEST_MODEL.pth'
 
 #######################################
 #######################################
@@ -49,7 +49,7 @@ RANDOM_SEED = 1234
 
 NUM_EPOCHS = 20
 
-NUM_REAL_IMAGES = 20000 # 20000 or 5000
+NUM_REAL_IMAGES = 63728 # 20000 or 5000
 NUM_TRAIN = int(np.floor(0.7*NUM_REAL_IMAGES))
 NUM_VAL   = int(np.floor(0.3*NUM_REAL_IMAGES))
 
@@ -198,8 +198,8 @@ BOX_NUM_DETECTIONS = 100             # todo: change from default
 # SYN_DATA_DIRECTORY_VAL = SYN_DATA_DIRECTORY + 'val/'
 # SYN_DATA_DIRECTORY_TEST = SYN_DATA_DIRECTORY + 'test/'
 #
-# # IMAGE_MEAN   = [103.91716901/255,  147.01096571/255, 137.81038345/255]
-# # IMAGE_STD    = [42.1715359/255, 56.94489209/255,  34.60286997/255]
+# IMAGE_MEAN   = [103.91716901/255,  147.01096571/255, 137.81038345/255]
+# IMAGE_STD    = [42.1715359/255, 56.94489209/255,  34.60286997/255]
 # RESIZE       = (int(1280/1), int(720/1))
 # CROP_SIZE   = (int(640), int(640))
 # MIN_SIZE = MAX_SIZE = 640
@@ -227,11 +227,11 @@ DATA_DIRECTORY_TRAIN = DATA_DIRECTORY + 'train/'
 DATA_DIRECTORY_VAL = DATA_DIRECTORY + 'val/'
 DATA_DIRECTORY_TEST = DATA_DIRECTORY + 'test/'
 
-# # SYN_DATA_DIRECTORY = ROOT_DATA_PATH + 'Syn/'
-# SYN_DATA_DIRECTORY = ROOT_DATA_PATH + 'RealandSyn/'
-# SYN_DATA_DIRECTORY_TRAIN = SYN_DATA_DIRECTORY + 'train/'
-# SYN_DATA_DIRECTORY_VAL = SYN_DATA_DIRECTORY + 'val/'
-# SYN_DATA_DIRECTORY_TEST = SYN_DATA_DIRECTORY + 'test/'
+# SYN_DATA_DIRECTORY = ROOT_DATA_PATH + 'Syn/'
+SYN_DATA_DIRECTORY = ROOT_DATA_PATH + 'RealandSyn/'
+SYN_DATA_DIRECTORY_TRAIN = SYN_DATA_DIRECTORY + 'train/'
+SYN_DATA_DIRECTORY_VAL = SYN_DATA_DIRECTORY + 'val/'
+SYN_DATA_DIRECTORY_TEST = SYN_DATA_DIRECTORY + 'test/'
 
 IMG_SIZE = str(CROP_SIZE[0]) + 'x' + str(CROP_SIZE[1])
 
@@ -244,6 +244,7 @@ MATLAB_SCRIPTS_DIR = np.str(ROOT_DIR_PATH +'/matlab/')
 EVAL_SAVE_FOLDER = DATA_DIRECTORY_TEST + 'pred/'
 
 NUM_TEST = 50
+NUM_EVAL = 100
 TEST_GT_EXT = "_gt.png"
 TEST_PRED_EXT = "_pred.png"
 

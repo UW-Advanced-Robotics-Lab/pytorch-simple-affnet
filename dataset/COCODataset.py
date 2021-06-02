@@ -15,6 +15,8 @@ import torchvision
 
 import torchvision.transforms as T
 
+from torchvision.transforms import functional as F
+
 ######################
 ######################
 
@@ -180,11 +182,6 @@ class COCODataSet(data.Dataset):
         new_box[:, 3] = box[:, 1] + box[:, 3]
         return new_box  # new_box format: (xmin, ymin, xmax, ymax)
 
-    def get_transform(self):
-        transforms = []
-        transforms.append(T.ToTensor())
-        return T.Compose(transforms)
-
     def __getitem__(self, i):
 
         img_id = self.ids[i]
@@ -200,4 +197,29 @@ class COCODataSet(data.Dataset):
         else:
             image = np.array(image, dtype=np.uint8)
 
+        return image, target
+
+        ################################
+        ################################
+
+    def get_transform(self):
+        transforms = []
+        transforms.append(ToTensor())
+        return Compose(transforms)
+
+################################
+################################
+
+class ToTensor(object):
+    def __call__(self, image, target):
+        image = F.to_tensor(image)
+        return image, target
+
+class Compose(object):
+    def __init__(self, transforms):
+        self.transforms = transforms
+
+    def __call__(self, image, target):
+        for t in self.transforms:
+            image, target = t(image, target)
         return image, target

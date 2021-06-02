@@ -13,6 +13,8 @@ import cv2
 from PIL import Image
 import matplotlib.pyplot as plt
 
+from shapely.geometry import Polygon
+
 import torch
 import torch.nn.functional as F
 
@@ -25,6 +27,7 @@ import cfg as config
 ######################
 
 from model.utils import bbox_utils
+from utils import bbox_utils as _bbox_utils
 
 from dataset.utils.COCO import coco_utils
 from dataset.utils.UMD import umd_utils
@@ -158,6 +161,39 @@ def visualize_anchors(image):
     return anchor_img
 
 ######################
+######################
+
+def get_iou(pred_box, gt_box):
+    """
+    pred_box : the coordinate for predict bounding box
+    gt_box :   the coordinate for ground truth bounding box
+    return :   the iou score
+    the  left-down coordinate of  pred_box:(pred_box[0], pred_box[1])
+    the  right-up coordinate of  pred_box:(pred_box[2], pred_box[3])
+    """
+    # 1.get the coordinate of inters
+    ixmin = max(pred_box[0], gt_box[0])
+    ixmax = min(pred_box[2], gt_box[2])
+    iymin = max(pred_box[1], gt_box[1])
+    iymax = min(pred_box[3], gt_box[3])
+
+    iw = np.maximum(ixmax-ixmin+1., 0.)
+    ih = np.maximum(iymax-iymin+1., 0.)
+
+    # 2. calculate the area of inters
+    inters = iw*ih
+
+    # 3. calculate the area of union
+    uni = ((pred_box[2]-pred_box[0]+1.) * (pred_box[3]-pred_box[1]+1.) +
+           (gt_box[2] - gt_box[0] + 1.) * (gt_box[3] - gt_box[1] + 1.) -
+           inters)
+
+    # 4. calculate the overlaps between pred_box and gt_box
+    iou = inters / uni
+
+    return iou
+
+######################
 # MaskRCNN UTILS
 ######################
 
@@ -237,4 +273,49 @@ def get_segmentation_masks(image, labels, binary_masks, scores=None, is_gt=False
 
     # print_class_labels(instance_masks)
     return instance_masks
+
+def get_obj_part_mask(image, obj_ids, bboxs, aff_ids, binary_masks, scores):
+
+    height, width = image.shape[:2]
+    # print(f'height:{height}, width:{width}')
+
+    instance_masks = np.zeros((height, width), dtype=np.uint8)
+    instance_mask_one = np.ones((height, width), dtype=np.uint8)
+
+    if len(binary_masks.shape) == 2:
+        binary_masks = binary_masks[np.newaxis, :, :]
+
+    for idx, aff_id in enumerate(aff_ids):
+
+        binary_mask = np.array(binary_masks[idx, :, :], dtype=np.uint8)
+        # cv2.imshow('binary_mask', binary_mask * 255)
+        # cv2.waitKey(0)
+
+        try:
+            obj_part_bbox = _bbox_utils.get_obj_bbox(mask=binary_mask, obj_ids=np.array([1]), img_width=height, img_height=width)[0]
+
+            best_iou, best_idx = -np.inf, None
+            for bbox_idx, bbox in enumerate(bboxs):
+                score = scores[bbox_idx]
+                if score > config.CONFIDENCE_THRESHOLD:
+                    iou = get_iou(pred_box=obj_part_bbox, gt_box=bbox)
+                    if iou > best_iou:
+                        best_iou = iou
+                        best_idx = bbox_idx
+
+            obj_id = obj_ids[best_idx]
+            obj_part_id = affpose_dataset_utils.map_obj_id_and_aff_id_to_obj_part_ids(obj_id, aff_id)
+            # print(f'\tobj_id:{affpose_dataset_utils.map_obj_id_to_name(obj_id)}')
+            # print(f'\tobj_part_id:{obj_part_id}')
+
+            instance_mask = instance_mask_one * obj_part_id
+            instance_masks = np.where(binary_mask, instance_mask, instance_masks).astype(np.uint8)
+        except:
+            pass
+
+    return instance_masks
+
+
+
+
 

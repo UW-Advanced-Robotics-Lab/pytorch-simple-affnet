@@ -145,7 +145,7 @@ class RoIHeads(nn.Module):
 
                     aff_label = aff_labels[i]
                     num_aff_label = len(aff_label)
-                    print(f'\naff_label: len:{num_aff_label} data:{aff_label}')
+                    # print(f'\naff_label: len:{num_aff_label} data:{aff_label}')
 
                     mask_proposal = proposal[i].detach().cpu().numpy()
                     # print(f'mask_proposal: size:{mask_proposal.shape}, data:{mask_proposal}')
@@ -154,7 +154,7 @@ class RoIHeads(nn.Module):
 
                     # TODO: match pos idx
                     pos_matched_idx = np.flatnonzero(np.isin(gt_object_part_ids, object_part_labels[i]))
-                    print(f'idx:{pos_matched_idx}')
+                    # print(f'idx:{pos_matched_idx}')
 
                     _aff_labels.extend(aff_label)
                     _mask_proposal.extend(mask_proposal.tolist())
@@ -217,11 +217,11 @@ class RoIHeads(nn.Module):
                 aff_labels = torch.as_tensor(_aff_labels).to(config.DEVICE)
                 # object_part_labels = torch.as_tensor(object_part_labels).to(config.DEVICE)
                 mask_proposal = torch.as_tensor(_mask_proposals).to(config.DEVICE)
-                result['boxes'] = mask_proposal
+                result['aff_boxes'] = mask_proposal
                 # idxs = torch.as_tensor(_idxs, dtype=torch.long).to(config.DEVICE)
                 idxs = torch.arange(aff_labels.shape[0], device=aff_labels.device)
 
-                print(f'\naff_labels: len:{len(aff_labels)}, data:{aff_labels}')
+                # print(f'\naff_labels: len:{len(aff_labels)}, data:{aff_labels}')
                 # print(f'_object_part_labels:{_object_part_labels}')
                 # print(f'\nmask_proposal:{mask_proposal}')
                 # print(f'idxs:{idxs}')

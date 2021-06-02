@@ -150,7 +150,7 @@ def load_umd_eval_dataset():
     ### SELECTING A SUBSET OF IMAGES
     np.random.seed(config.RANDOM_SEED)
     total_idx = np.arange(0, len(test_dataset), 1)
-    test_idx = np.random.choice(total_idx, size=int(config.NUM_TEST), replace=False)
+    test_idx = np.random.choice(total_idx, size=int(config.NUM_EVAL), replace=False)
     test_dataset = Subset(test_dataset, test_idx)
 
     test_loader = torch.utils.data.DataLoader(test_dataset,
@@ -160,7 +160,7 @@ def load_umd_eval_dataset():
                                               collate_fn=utils.collate_fn)
 
     print(f"test has {len(test_loader)} images ..")
-    assert (len(test_loader) >= int(config.NUM_TEST))
+    assert (len(test_loader) >= int(config.NUM_EVAL))
 
     return test_loader
 
@@ -274,7 +274,7 @@ def load_elevator_eval_dataset():
     ### SELECTING A SUBSET OF IMAGES
     np.random.seed(config.RANDOM_SEED)
     total_idx = np.arange(0, len(test_dataset), 1)
-    test_idx = np.random.choice(total_idx, size=int(config.NUM_TEST), replace=False)
+    test_idx = np.random.choice(total_idx, size=int(config.NUM_EVAL), replace=False)
     test_dataset = Subset(test_dataset, test_idx)
 
     test_loader = torch.utils.data.DataLoader(test_dataset,
@@ -284,7 +284,7 @@ def load_elevator_eval_dataset():
                                               collate_fn=utils.collate_fn)
 
     print(f"test has {len(test_loader)} images ..")
-    assert (len(test_loader) >= int(config.NUM_TEST))
+    assert (len(test_loader) >= int(config.NUM_EVAL))
 
     return test_loader
 
@@ -398,7 +398,7 @@ def load_arl_vicon_eval_dataset():
     ### SELECTING A SUBSET OF IMAGES
     np.random.seed(config.RANDOM_SEED)
     total_idx = np.arange(0, len(test_dataset), 1)
-    test_idx = np.random.choice(total_idx, size=int(config.NUM_TEST), replace=False)
+    test_idx = np.random.choice(total_idx, size=int(config.NUM_EVAL), replace=False)
     test_dataset = Subset(test_dataset, test_idx)
 
     test_loader = torch.utils.data.DataLoader(test_dataset,
@@ -408,7 +408,7 @@ def load_arl_vicon_eval_dataset():
                                               collate_fn=utils.collate_fn)
 
     print(f"test has {len(test_loader)} images ..")
-    assert (len(test_loader) >= int(config.NUM_TEST))
+    assert (len(test_loader) >= int(config.NUM_EVAL))
 
     return test_loader
 
@@ -425,7 +425,7 @@ def load_arl_affpose_train_datasets():
 
     dataset = ARLAffPoseDataSet(
         ### REAL
-        dataset_dir=config.DATA_DIRECTORY_TRAIN,
+        dataset_dir=config.SYN_DATA_DIRECTORY_TRAIN,
         mean=config.IMAGE_MEAN,
         std=config.IMAGE_STD,
         resize=config.RESIZE,
@@ -433,7 +433,8 @@ def load_arl_affpose_train_datasets():
         ###
         is_train=True,
         ### EXTENDING DATASET
-        extend_dataset=True,
+        extend_dataset=False,
+        # extend_dataset=True,
         max_iters=config.NUM_REAL_IMAGES,
         ### IMGAUG
         apply_imgaug=True)
@@ -522,7 +523,7 @@ def load_arl_affpose_eval_datasets():
     ### SELECTING A SUBSET OF IMAGES
     np.random.seed(config.RANDOM_SEED)
     total_idx = np.arange(0, len(test_dataset), 1)
-    test_idx = np.random.choice(total_idx, size=int(config.NUM_TEST), replace=False)
+    test_idx = np.random.choice(total_idx, size=int(config.NUM_EVAL), replace=False)
     test_dataset = Subset(test_dataset, test_idx)
 
     test_loader = torch.utils.data.DataLoader(test_dataset,
@@ -532,6 +533,6 @@ def load_arl_affpose_eval_datasets():
                                               collate_fn=utils.collate_fn)
 
     print(f"test has {len(test_loader)} images ..")
-    assert (len(test_loader) >= int(config.NUM_TEST))
+    assert (len(test_loader) >= int(config.NUM_EVAL))
 
     return test_loader

@@ -70,15 +70,21 @@ class Transformer:
         box[:, [1, 3]] = box[:, [1, 3]] * ori_image_shape[0] / image_shape[0]
         result['boxes'] = box
 
-        aff_box = result['aff_boxes']
-        aff_box[:, [0, 2]] = aff_box[:, [0, 2]] * ori_image_shape[1] / image_shape[1]
-        aff_box[:, [1, 3]] = aff_box[:, [1, 3]] * ori_image_shape[0] / image_shape[0]
-        result['aff_boxes'] = aff_box
+        if 'aff_boxes' in result.keys():
+            aff_box = result['aff_boxes']
+            aff_box[:, [0, 2]] = aff_box[:, [0, 2]] * ori_image_shape[1] / image_shape[1]
+            aff_box[:, [1, 3]] = aff_box[:, [1, 3]] * ori_image_shape[0] / image_shape[0]
+            result['aff_boxes'] = aff_box
 
-        if 'masks' in result:
-            mask = result['masks']
-            mask = paste_masks_in_image(mask, aff_box, 1, ori_image_shape)
-            result['masks'] = mask
+            if 'masks' in result:
+                mask = result['masks']
+                mask = paste_masks_in_image(mask, aff_box, 1, ori_image_shape)
+                result['masks'] = mask
+        else:
+            if 'masks' in result:
+                mask = result['masks']
+                mask = paste_masks_in_image(mask, box, 1, ori_image_shape)
+                result['masks'] = mask
 
         return result
 

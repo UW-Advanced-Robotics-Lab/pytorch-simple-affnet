@@ -1,6 +1,5 @@
 import numpy as np
-
-from utils import helper_utils
+import cv2
 
 #######################################
 # OBJECT CONFIGS
@@ -155,7 +154,7 @@ def map_obj_id_to_name(object_id):
     elif object_id == 11:       # 051_large_clamp
         return 'large_clamp'
     else:
-        print(f" --- Object ID:{object_id} does not map to Object Label --- ")
+        print(" --- Object ID:{} does not map to Object Label --- ".format(object_id))
         exit(1)
 
 def map_aff_id_to_name(aff_id):
@@ -179,7 +178,7 @@ def map_aff_id_to_name(aff_id):
     elif aff_id == 9:
         return 'clamp'
     else:
-        print(f" --- Affordance ID:{aff_id} does not map to Object Label --- ")
+        print(" --- Affordance ID:{} does not map to Object Label --- ".format(aff_id))
         exit(1)
 
 ##################################
@@ -251,6 +250,62 @@ def map_obj_id_to_obj_part_ids(object_id):
     else:
         print(" --- Object ID does not map to Object Part IDs --- ")
         exit(1)
+
+def map_obj_id_and_aff_id_to_obj_part_ids(object_id, aff_id):
+
+    if object_id == 1 and aff_id == 1:          # 001_mallet
+        return 1
+    if object_id == 1 and aff_id == 4:
+        return 2
+    if object_id == 2 and aff_id == 1:          # 002_spatula
+        return 3
+    if object_id == 2 and aff_id == 5:
+        return 4
+    if object_id == 3 and aff_id == 1:          # 003_wooden_spoon
+        return 5
+    if object_id == 3 and aff_id == 3:
+        return 6
+    if object_id == 4 and aff_id == 1:          # 004_screwdriver
+        return 7
+    if object_id == 4 and aff_id == 2:
+        return 8
+    if object_id == 5 and aff_id == 1:          # 005_garden_shovel
+        return 9
+    if object_id == 5 and aff_id == 3:
+        return 10
+    if object_id == 6 and aff_id == 1:          # 019_pitcher_base
+        return 11
+    if object_id == 6 and aff_id == 7:
+        return 12
+    if object_id == 6 and aff_id == 8:
+        return 13
+    if object_id == 7 and aff_id == 7:          # 024_bowl
+        return 14
+    if object_id == 7 and aff_id == 8:
+        return 15
+    if object_id == 8 and aff_id == 1:          # 025_mug
+        return 16
+    if object_id == 8 and aff_id == 7:
+        return 17
+    if object_id == 8 and aff_id == 8:
+        return 18
+    if object_id == 9 and aff_id == 1:          # 035_power_drill
+        return 19
+    if object_id == 9 and aff_id == 2:
+        return 20
+    if object_id == 9 and aff_id == 5:
+        return 21
+    if object_id == 10 and aff_id == 1:         # 037_scissors
+        return 22
+    if object_id == 10 and aff_id == 6:
+        return 23
+    if object_id == 11 and aff_id == 7:         # 051_large_clamp
+        return 24
+    if object_id == 11 and aff_id == 9:
+        return 25
+    else:
+        print(" --- Object ID:{} and Aff ID:{} does not map to Object Part IDs --- ".format(object_id, aff_id))
+        # exit(1)
 
 def map_obj_part_id_to_obj_id(obj_part_id):
 
@@ -368,7 +423,7 @@ def obj_color_map(idx):
     elif idx == 11:
         return (235, 17, 106)       # hot pink
     else:
-        print(f" --- Object ID:{idx} does not map to a colour --- ")
+        print(" --- Object ID:{} does not map to a colour --- ".format(idx))
         exit(1)
 
 ##################################
@@ -426,5 +481,5 @@ def aff_color_map(idx):
     elif idx == 9:
         return (235, 34, 17)      # purple
     else:
-        print(f" --- Affordance ID:{idx} does not map to a colour --- ")
+        print(" --- Affordance ID:{} does not map to a colour --- ".format(idx))
         exit(1)

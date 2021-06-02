@@ -88,6 +88,9 @@ def create_sub_mask_annotation(obj_id, sub_mask, mask, rgb_img):
     # region['shape_attributes']["all_points_y" + str(contour_idx)] = np.array(y_list).tolist()
     region['shape_attributes']["obj_id"] = obj_id
 
+    # region['shape_attributes']["all_points_x" + str(0)] = np.array(contours[-1][:, :, 0].flatten()).tolist()
+    # region['shape_attributes']["all_points_y" + str(0)] = np.array(contours[-1][:, :, 1].flatten()).tolist()
+
     for contour_idx, contour in enumerate(contours):
         region['shape_attributes']["all_points_x" + str(contour_idx)] = np.array(contour[:, :, 0].flatten()).tolist()
         region['shape_attributes']["all_points_y" + str(contour_idx)] = np.array(contour[:, :, 1].flatten()).tolist()

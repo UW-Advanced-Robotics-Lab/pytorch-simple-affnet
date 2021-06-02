@@ -132,7 +132,7 @@ def main():
         height, width = img.shape[:2]
 
         target = target[0]
-        target = {k: v.to(config.CPU_DEVICE) for k, v in target.items()}
+        ### target = {k: v.to(config.CPU_DEVICE) for k, v in target.items()}
         target = helper_utils.format_target_data(img, target)
 
         #######################
@@ -143,8 +143,16 @@ def main():
         scores = np.array(outputs['scores'], dtype=np.float32).flatten()
         labels = np.array(outputs['labels'], dtype=np.int32).flatten()
         boxes = np.array(outputs['boxes'], dtype=np.int32).reshape(-1, 4)
-        binary_masks = np.squeeze(np.array(outputs['masks'] > config.CONFIDENCE_THRESHOLD, dtype=np.uint8))
 
+        # idx = np.argwhere(scores.copy() > config.CONFIDENCE_THRESHOLD)
+        # # print(f'idx:{idx}')
+        # scores = scores[idx]
+        # labels = labels[idx]
+        # # print(f'labels:{labels}')
+        # boxes = boxes[idx].reshape(-1, 4)
+        # # print(f'boxes:{boxes}')
+
+        binary_masks = np.squeeze(np.array(outputs['masks'] > config.CONFIDENCE_THRESHOLD, dtype=np.uint8))
         aff_labels = labels.copy()
         if 'aff_labels' in outputs.keys():
             aff_labels = np.array(outputs['aff_labels'], dtype=np.int32)
@@ -199,6 +207,23 @@ def main():
         cv2.imshow('pred_mask', cv2.cvtColor(pred_color_mask, cv2.COLOR_BGR2RGB))
 
         #######################
+        ### obj_part masks
+        #######################
+        obj_part_mask = helper_utils.get_obj_part_mask(image=img,
+                                                       obj_ids=labels,
+                                                       bboxs=boxes,
+                                                       aff_ids=aff_labels,
+                                                       binary_masks=binary_masks,
+                                                       scores=scores)
+
+        # cv2.imshow('obj_part_mask', obj_part_mask*25)
+        obj_mask = affpose_dataset_utils.convert_obj_part_mask_to_obj_mask(obj_part_mask)
+
+        color_obj_mask = affpose_dataset_utils.colorize_obj_mask(obj_mask)
+        color_obj_mask = cv2.addWeighted(pred_bbox_img, 0.35, color_obj_mask, 0.65, 0)
+        cv2.imshow('obj_mask', cv2.cvtColor(color_obj_mask, cv2.COLOR_BGR2RGB))
+
+        #######################
         #######################
         gt_name = config.EVAL_SAVE_FOLDER + str(image_idx) + config.TEST_GT_EXT
         cv2.imwrite(gt_name, target['gt_mask'])
@@ -208,7 +233,7 @@ def main():
 
         #######################
         #######################
-        cv2.waitKey(1)
+        cv2.waitKey(0)
 
     #######################
     #######################
@@ -216,9 +241,9 @@ def main():
     import matlab.engine
     eng = matlab.engine.start_matlab()
     # TODO
-    # Fwb = eng.evaluate_UMD(config.TEST_SAVE_FOLDER, nargout=1)
-    # Fwb = eng.evaluate_ARLVicon(config.TEST_SAVE_FOLDER, nargout=1)
-    Fwb = eng.evaluate_ARLAffPose(config.TEST_SAVE_FOLDER, nargout=1)
+    # Fwb = eng.evaluate_UMD(config.EVAL_SAVE_FOLDER, nargout=1)
+    # Fwb = eng.evaluate_ARLVicon(config.EVAL_SAVE_FOLDER, nargout=1)
+    Fwb = eng.evaluate_ARLAffPose(config.EVAL_SAVE_FOLDER, nargout=1)
     os.chdir(config.ROOT_DIR_PATH)
 
 if __name__ == "__main__":

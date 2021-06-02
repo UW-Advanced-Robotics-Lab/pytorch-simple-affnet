@@ -229,18 +229,25 @@ class ARLAffPoseDataSet(data.Dataset):
         aff_label = Image.open(aff_mask_file[0])
 
         ##################
-        # DEPTH
+        # TODO: DEPTH
         ##################
-
         depth_file = glob(self.depth_dir + idx + self.depth_suffix + '.*')
         assert len(depth_file) == 1, f'Either no image or multiple images found for the ID {idx}: {depth_file}'
 
-        depth = cv2.imread(depth_file[0], -1)
-        depth = np.array(depth, dtype=np.uint16)
+        depth_16bit = cv2.imread(depth_file[0], -1)
+        depth_16bit = np.array(depth_16bit, dtype=np.float16)
         # helper_utils.print_depth_info(depth)
 
-        depth = helper_utils.convert_16_bit_depth_to_8_bit(depth)
+        depth = helper_utils.convert_16_bit_depth_to_8_bit(depth_16bit)
         # helper_utils.print_depth_info(depth)
+
+        ##################
+        ##################
+
+        # obj_id = np.unique(obj_label)[1:]
+        mask_label = np.ma.getmaskarray(np.ma.masked_not_equal(obj_label, 0)).astype(np.uint8)
+        mask_depth_16bit = mask_label * depth_16bit.copy()
+        mask_depth = mask_label * depth.copy()
 
         ##################
         # RESIZE & CROP
@@ -296,20 +303,11 @@ class ARLAffPoseDataSet(data.Dataset):
             ##################
             # OBJ BBOXS & MASKS
             ##################
+            obj_ids.append(obj_id)
             mask_obj_label = np.ma.getmaskarray(np.ma.masked_equal(obj_label.copy(), obj_id))
-            mask_obj_label = np.array(mask_obj_label, dtype=np.uint8) * obj_id
-
-            # color_mask_obj_label = affpose_dataset_utils.colorize_obj_mask(mask_obj_label)
-            # cv2.imshow('mask_obj_label', cv2.cvtColor(color_mask_obj_label, cv2.COLOR_BGR2RGB))
-            # cv2.waitKey(0)
-
-            ##################
-            ##################
-            _obj_boxes = bbox_utils.get_obj_bbox(mask=mask_obj_label, obj_ids=np.array([obj_id]), img_width=H, img_height=W)
+            obj_binary_masks.append(mask_obj_label)
+            _obj_boxes = bbox_utils.get_obj_bbox(mask=mask_obj_label, obj_ids=np.array([1]), img_width=H, img_height=W)
             obj_boxes.append(_obj_boxes)
-            _binary_masks, _obj_ids = coco_utils.extract_polygon_masks(image_idx=idx, rgb_img=image, label_img=mask_obj_label)
-            obj_ids.append(_obj_ids)
-            obj_binary_masks.append(_binary_masks)
 
             #######################################
             # OBJECT PART
@@ -323,28 +321,14 @@ class ARLAffPoseDataSet(data.Dataset):
                     # print(f"\tAff: {aff_id}")
 
                     ##################
-                    # MASK
-                    ##################
-                    mask_obj_part_label = np.ma.getmaskarray(np.ma.masked_equal(obj_part_label.copy(), obj_part_id))
-                    mask_obj_part_label = np.array(mask_obj_part_label, dtype=np.uint8) * obj_part_id
-
-                    mask_aff_label = np.ma.getmaskarray(np.ma.masked_equal(aff_label.copy(), aff_id))
-                    mask_aff_label = np.array(mask_aff_label, dtype=np.uint8) * aff_id
-
-                    # mask_obj_part_label       = affpose_dataset_utils.convert_obj_part_mask_to_obj_mask(mask_obj_part_label)
-                    # color_mask_obj_part_label = affpose_dataset_utils.colorize_obj_mask(mask_obj_part_label)
-                    # cv2.imshow('mask_obj_part_label', cv2.cvtColor(color_mask_obj_part_label, cv2.COLOR_BGR2RGB))
-                    # cv2.waitKey(0)
-
-                    ##################
                     # AFF BBOXS & MASKS
                     ##################
-                    _aff_boxes = bbox_utils.get_obj_bbox(mask=mask_obj_part_label, obj_ids=np.array([obj_part_id]), img_width=H, img_height=W)
-                    aff_boxes.append(_aff_boxes)
-                    _binary_masks, _ = coco_utils.extract_polygon_masks(image_idx=idx, rgb_img=image, label_img=mask_obj_part_label)
                     aff_ids.append(aff_id)
-                    aff_binary_masks.append(_binary_masks)
                     obj_part_ids_list.append(obj_part_id)
+                    mask_obj_part_label = np.ma.getmaskarray(np.ma.masked_equal(obj_part_label.copy(), obj_part_id))
+                    aff_binary_masks.append(mask_obj_part_label)
+                    _aff_boxes = bbox_utils.get_obj_bbox(mask=mask_obj_part_label, obj_ids=np.array([1]), img_width=H, img_height=W)
+                    aff_boxes.append(_aff_boxes)
 
         obj_ids = np.squeeze(np.array(obj_ids))
         obj_boxes = np.squeeze(np.array(obj_boxes))
@@ -375,6 +359,8 @@ class ARLAffPoseDataSet(data.Dataset):
         # print(f'obj_part_labels:{obj_part_labels}')
 
         target = {}
+        target["depth_16bit"] = mask_depth_16bit
+        target["depth"] = mask_depth
         target["image_id"] = image_id
         target['gt_mask'] = gt_mask
         target["masks"] = masks

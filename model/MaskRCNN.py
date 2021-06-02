@@ -256,7 +256,7 @@ class MaskRCNNPredictor(nn.Sequential):
         # ### output is [56x56] -> [112x112]
         # d['mask_conv7'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
         # d['relu7'] = nn.ReLU(inplace=True)
-        # ## output is [112x112] -> [224x224]
+        ## output is [112x112] -> [224x224]
         # d['mask_conv8'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
         # d['relu8'] = nn.ReLU(inplace=True)
 
@@ -313,36 +313,37 @@ def ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, pretrained_backbone=True,
         print(f'num classes (excluding background): {num_classes - 1} ..')
 
     ##############################################
-    ### todo: ResNet18
+    ### todo: LOCAL COCO PRETRAINED
     ##############################################
 
-    #     checkpoint = torch.load(config.MASKRCNN_PRETRAINED_WEIGHTS, map_location=config.DEVICE)
-    #     pretrained_msd = checkpoint["model"]
-    #     pretrained_msd_values = list(pretrained_msd.values())
-    #     pretrained_msd_names = list(pretrained_msd.keys())
-    #
-    #     # We want to remove the heads
-    #     # 36 - head.box_predictor.cls_score.weight:
-    #     # 37 - head.box_predictor.cls_score.bias:
-    #     # 38 - head.box_predictor.bbox_pred.weight:
-    #     # 39 - head.box_predictor.bbox_pred.bias:
-    #     # 50 - head.mask_predictor.mask_fcn_logits.weight:
-    #     # 51 - head.mask_predictor.mask_fcn_logits.bias:
-    #
-    #     msd = model.state_dict()
-    #     msd_names = list(msd.keys())
-    #     # skip_list = [36, 37, 38, 39, 50, 51]          # VGG16
-    #     # skip_list = [130, 131, 132, 133, 144, 145]    # ResNet18
-    #     skip_list = [114, 115, 116, 117, 128, 129]  # ResNet18
-    #     for i, name in enumerate(msd):
-    #         if i in skip_list:
-    #             continue
-    #         # print(f'\tmsd_names:{msd_names[i]}')
-    #         msd[name].copy_(pretrained_msd_values[i])
-    #     model.load_state_dict(msd)
+        # checkpoint = torch.load(config.MASKRCNN_PRETRAINED_WEIGHTS, map_location=config.DEVICE)
+        # pretrained_msd = checkpoint["model"]
+        # pretrained_msd_values = list(pretrained_msd.values())
+        # pretrained_msd_names = list(pretrained_msd.keys())
+        #
+        # # We want to remove the heads
+        # # 36 - head.box_predictor.cls_score.weight:
+        # # 37 - head.box_predictor.cls_score.bias:
+        # # 38 - head.box_predictor.bbox_pred.weight:
+        # # 39 - head.box_predictor.bbox_pred.bias:
+        # # 50 - head.mask_predictor.mask_fcn_logits.weight:
+        # # 51 - head.mask_predictor.mask_fcn_logits.bias:
+        #
+        # msd = model.state_dict()
+        # msd_names = list(msd.keys())
+        # # skip_list = [36, 37, 38, 39, 50, 51]          # VGG16    Torchvision
+        # # skip_list = [130, 131, 132, 133, 144, 145]    # ResNet18 Torchvision
+        # skip_list = [114, 115, 116, 117, 128, 129]    # ResNet18 COCO
+        # # skip_list = [279, 280, 281, 282, 297, 298]      # ResNet50 COCO
+        # for i, name in enumerate(msd):
+        #     if i in skip_list:
+        #         continue
+        #     # print(f'\tmsd:i:{i}, names:{msd_names[i]}')
+        #     msd[name].copy_(pretrained_msd_values[i])
+        # model.load_state_dict(msd)
 
     ##############################################
-    # todo: ResNet50
+    # todo: TORCHVISION ResNet50
     ##############################################
 
         pretrained_msd = load_url(config.MASKRCNN_PRETRAINED_WEIGHTS)
