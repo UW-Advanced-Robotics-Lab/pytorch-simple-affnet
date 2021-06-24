@@ -109,7 +109,7 @@ def main():
     ######################
     dataset = ARLAffPoseDataSet(
                         ### REAL
-                        dataset_dir=config.SYN_DATA_DIRECTORY_TRAIN,
+                        dataset_dir=config.DATA_DIRECTORY_TEST,
                         mean=config.IMAGE_MEAN,
                         std=config.IMAGE_STD,
                         resize=config.RESIZE,
@@ -124,8 +124,8 @@ def main():
 
     np.random.seed(config.RANDOM_SEED)
     total_idx = np.arange(0, len(dataset), 1)
-    # test_idx = np.random.choice(total_idx, size=int(10), replace=False) # todo
-    test_idx = np.random.choice(total_idx, size=int(len(dataset)/10), replace=False)
+    test_idx = np.random.choice(total_idx, size=int(1000), replace=False) # todo
+    # test_idx = np.random.choice(total_idx, size=int(len(dataset)/10), replace=False)
     dataset = torch.utils.data.Subset(dataset, test_idx)
 
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=1)
@@ -186,8 +186,8 @@ def main():
         #######################
         ### images
         #######################
-        cv2.imshow('rgb', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-        cv2.imshow('heatmap', cv2.applyColorMap(depth, cv2.COLORMAP_JET))
+        # cv2.imshow('rgb', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        # cv2.imshow('heatmap', cv2.applyColorMap(depth, cv2.COLORMAP_JET))
         # cv2.imshow('depth', depth)
 
         # #######################
@@ -240,7 +240,7 @@ def main():
 
         ######################
         ######################
-        cv2.waitKey(1)
+        # cv2.waitKey(1)
 
     #######################
     # todo (stats):
