@@ -95,8 +95,6 @@ class ARLAffPoseDataSet(data.Dataset):
         ################################
         # EXTENDING DATASET
         ################################
-        self.extend_dataset = extend_dataset
-        self.max_iters = max_iters
 
         self.rgb_ids = [splitext(file)[0] for file in listdir(self.rgb_dir) if not file.startswith('.')]
         self.obj_masks_ids = [splitext(file)[0] for file in listdir(self.obj_masks_dir) if not file.startswith('.')]
@@ -104,9 +102,10 @@ class ARLAffPoseDataSet(data.Dataset):
         self.aff_masks_ids = [splitext(file)[0] for file in listdir(self.aff_masks_dir) if not file.startswith('.')]
         self.depth_ids = [splitext(file)[0] for file in listdir(self.depth_dir) if not file.startswith('.')]
         assert(len(self.rgb_ids) == len(self.obj_masks_ids) == len(self.depth_ids))
-        print(f'Dataset has {len(self.rgb_ids)} examples .. {dataset_dir}')
 
         # creating larger dataset
+        self.extend_dataset = extend_dataset
+        self.max_iters = max_iters
         if self.extend_dataset:
             ids = []
             total_idx = np.arange(0, len(self.rgb_ids), 1)
@@ -115,6 +114,16 @@ class ARLAffPoseDataSet(data.Dataset):
                 ids.append(self.rgb_ids[int(idx)])
             self.rgb_ids = ids
             print(f'Extended dataset has {len(self.rgb_ids)} examples')
+
+        # Selecting every ith images
+        total_idx = np.arange(0, len(self.rgb_ids), config.SELECT_EVERY_ITH_FRAME)
+        self.rgb_ids = np.sort(np.array(self.rgb_ids))[total_idx]
+        self.obj_masks_ids = np.sort(np.array(self.obj_masks_ids))[total_idx]
+        self.obj_part_masks_ids = np.sort(np.array(self.obj_part_masks_ids))[total_idx]
+        self.aff_masks_ids = np.sort(np.array(self.aff_masks_ids))[total_idx]
+        self.depth_ids = np.sort(np.array(self.depth_ids))[total_idx]
+
+        print(f'Dataset has {len(self.rgb_ids)} examples .. {dataset_dir}')
 
         ################################
         # IMGAUG
@@ -359,8 +368,8 @@ class ARLAffPoseDataSet(data.Dataset):
         # print(f'obj_part_labels:{obj_part_labels}')
 
         target = {}
-        target["depth_16bit"] = mask_depth_16bit
-        target["depth"] = mask_depth
+        # target["depth_16bit"] = mask_depth_16bit
+        # target["depth"] = mask_depth
         target["image_id"] = image_id
         target['gt_mask'] = gt_mask
         target["masks"] = masks

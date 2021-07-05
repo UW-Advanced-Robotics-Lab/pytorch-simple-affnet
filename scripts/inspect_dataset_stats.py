@@ -109,7 +109,7 @@ def main():
     ######################
     dataset = ARLAffPoseDataSet(
                         ### REAL
-                        dataset_dir=config.DATA_DIRECTORY_TEST,
+                        dataset_dir=config.DATA_DIRECTORY_TRAIN,
                         mean=config.IMAGE_MEAN,
                         std=config.IMAGE_STD,
                         resize=config.RESIZE,
@@ -122,11 +122,11 @@ def main():
     ######################
     ######################
 
-    np.random.seed(config.RANDOM_SEED)
-    total_idx = np.arange(0, len(dataset), 1)
-    test_idx = np.random.choice(total_idx, size=int(1000), replace=False) # todo
-    # test_idx = np.random.choice(total_idx, size=int(len(dataset)/10), replace=False)
-    dataset = torch.utils.data.Subset(dataset, test_idx)
+    # np.random.seed(config.RANDOM_SEED)
+    # total_idx = np.arange(0, len(dataset), 1)
+    # test_idx = np.random.choice(total_idx, size=int(1000), replace=False) # todo
+    # # test_idx = np.random.choice(total_idx, size=int(len(dataset)/10), replace=False)
+    # dataset = torch.utils.data.Subset(dataset, test_idx)
 
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=1)
     print(f'Selecting {len(data_loader)} images ..')
@@ -186,51 +186,51 @@ def main():
         #######################
         ### images
         #######################
-        # cv2.imshow('rgb', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-        # cv2.imshow('heatmap', cv2.applyColorMap(depth, cv2.COLORMAP_JET))
+        cv2.imshow('rgb', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        cv2.imshow('heatmap', cv2.applyColorMap(depth, cv2.COLORMAP_JET))
         # cv2.imshow('depth', depth)
 
-        # #######################
-        # ### bbox
-        # #######################
-        # bbox_img = helper_utils.draw_bbox_on_img(image=image,
-        #                                          labels=target['labels'],
-        #                                          boxes=target['boxes'],
-        #                                          is_gt=True)
-        # cv2.imshow('bbox', cv2.cvtColor(bbox_img, cv2.COLOR_BGR2RGB))
-        #
-        # #######################
-        # ### masks
-        # #######################
-        # mask = helper_utils.get_segmentation_masks(image=image,
-        #                                            # labels=target['labels'],
-        #                                            labels=target['aff_labels'],
-        #                                            binary_masks=target['masks'],
-        #                                            is_gt=True)
-        #
-        # print('')
-        # helper_utils.print_class_labels(mask)
-        # # color_mask = umd_utils.colorize_aff_mask(mask)
-        # # color_mask = arl_vicon_dataset_utils.colorize_obj_mask(mask)
-        # # color_mask = affpose_dataset_utils.colorize_obj_mask(mask)
-        # color_mask = affpose_dataset_utils.colorize_aff_mask(mask)
-        # color_mask = cv2.addWeighted(bbox_img, 0.35, color_mask, 0.65, 0)
-        # cv2.imshow('mask_color', cv2.cvtColor(color_mask, cv2.COLOR_BGR2RGB))
-        #
-        # #######################
-        # ### gt mask (i.e. not using polygons)
-        # #######################
-        #
-        # helper_utils.print_class_labels(target['gt_mask'])
-        # # gt_color_mask = umd_utils.colorize_aff_mask(target['gt_mask'])
-        # # gt_color_mask = arl_vicon_dataset_utils.colorize_obj_mask(target['gt_mask'])
-        # # gt_color_mask = affpose_dataset_utils.colorize_obj_mask(target['gt_mask'])
-        # gt_color_mask = affpose_dataset_utils.colorize_aff_mask(target['gt_mask'])
-        # gt_color_mask = cv2.addWeighted(bbox_img, 0.35, gt_color_mask, 0.65, 0)
-        # cv2.imshow('gt_color', cv2.cvtColor(gt_color_mask, cv2.COLOR_BGR2RGB))
+        #######################
+        ### bbox
+        #######################
+        bbox_img = helper_utils.draw_bbox_on_img(image=image,
+                                                 labels=target['labels'],
+                                                 boxes=target['boxes'],
+                                                 is_gt=True)
+        cv2.imshow('bbox', cv2.cvtColor(bbox_img, cv2.COLOR_BGR2RGB))
 
-        ### helper_utils.print_class_obj_names(target['obj_labels'])
-        ### helper_utils.print_class_aff_names(target['aff_labels'])
+        #######################
+        ### masks
+        #######################
+        mask = helper_utils.get_segmentation_masks(image=image,
+                                                   # labels=target['labels'],
+                                                   labels=target['aff_labels'],
+                                                   binary_masks=target['masks'],
+                                                   is_gt=True)
+
+        print('')
+        helper_utils.print_class_labels(mask)
+        # color_mask = umd_utils.colorize_aff_mask(mask)
+        # color_mask = arl_vicon_dataset_utils.colorize_obj_mask(mask)
+        # color_mask = affpose_dataset_utils.colorize_obj_mask(mask)
+        color_mask = affpose_dataset_utils.colorize_aff_mask(mask)
+        color_mask = cv2.addWeighted(bbox_img, 0.35, color_mask, 0.65, 0)
+        cv2.imshow('mask_color', cv2.cvtColor(color_mask, cv2.COLOR_BGR2RGB))
+
+        #######################
+        ### gt mask (i.e. not using polygons)
+        #######################
+
+        helper_utils.print_class_labels(target['gt_mask'])
+        # gt_color_mask = umd_utils.colorize_aff_mask(target['gt_mask'])
+        # gt_color_mask = arl_vicon_dataset_utils.colorize_obj_mask(target['gt_mask'])
+        # gt_color_mask = affpose_dataset_utils.colorize_obj_mask(target['gt_mask'])
+        gt_color_mask = affpose_dataset_utils.colorize_aff_mask(target['gt_mask'])
+        gt_color_mask = cv2.addWeighted(bbox_img, 0.35, gt_color_mask, 0.65, 0)
+        cv2.imshow('gt_color', cv2.cvtColor(gt_color_mask, cv2.COLOR_BGR2RGB))
+
+        # helper_utils.print_class_obj_names(target['obj_labels'])
+        # helper_utils.print_class_aff_names(target['aff_labels'])
 
         # ######################
         # ## Anchors
@@ -240,7 +240,7 @@ def main():
 
         ######################
         ######################
-        # cv2.waitKey(1)
+        cv2.waitKey(0)
 
     #######################
     # todo (stats):

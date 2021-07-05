@@ -16,8 +16,8 @@ FRAMEWORK Selection:
 
 # TODO: prelim for naming
 FRAMEWORK           = 'AffNet' # MaskRCNN or AffNet
-EXP_DATASET_NAME    = 'ARLAffPose_RealandSyn_RGB'
-EXP_NUM             = 'v2_resnet50'
+EXP_DATASET_NAME    = 'ARLAffPose_Real_RGB'
+EXP_NUM             = 'v0_resnet50'
 
 #######################################
 #######################################
@@ -49,12 +49,12 @@ RANDOM_SEED = 1234
 
 NUM_EPOCHS = 20
 
-NUM_REAL_IMAGES = 63728 # 20000 or 5000
+NUM_REAL_IMAGES = int(31538/5) # 20000 or 5000
 NUM_TRAIN = int(np.floor(0.7*NUM_REAL_IMAGES))
 NUM_VAL   = int(np.floor(0.3*NUM_REAL_IMAGES))
 
-NUM_STEPS      = int(NUM_EPOCHS*NUM_TRAIN) # ~30 epochs at 5000 images/epoch
-NUM_VAL_STEPS  = int(NUM_EPOCHS*NUM_VAL)   # ~30 epochs at 1250 images/epoch
+NUM_STEPS      = int(NUM_EPOCHS*NUM_TRAIN) # ~20 epochs at 5000 images/epoch
+NUM_VAL_STEPS  = int(NUM_EPOCHS*NUM_VAL)   # ~20 epochs at 1250 images/epoch
 
 BATCH_SIZE  = 1
 NUM_WORKERS = 4
@@ -212,12 +212,14 @@ BOX_NUM_DETECTIONS = 100             # todo: change from default
 
 ROOT_DATA_PATH = '/data/Akeaveny/Datasets/ARLAffPose/'
 
+SELECT_EVERY_ITH_FRAME = 5 # similar to YCB-Video Dat
+
 NUM_CLASSES = 11 + 1
 NUM_OBJECT_CLASSES = 11 + 1     # 1 is for the background
 NUM_AFF_CLASSES = 9 + 1         # 1 is for the background
 
-IMAGE_MEAN   = [114.56952669/255, 94.64837922/255, 84.55035708/255]
-IMAGE_STD    = [56.73802969/255, 57.59622507/255, 37.48271254/255]
+IMAGE_MEAN   = [115.16123185/255, 94.20813919/255, 84.34889709/255]
+IMAGE_STD    = [56.62171952/255, 56.86680141/255, 36.95978531/255]
 RESIZE       = (int(1280/1), int(720/1))
 CROP_SIZE   = (int(640), int(640))
 MIN_SIZE, MAX_SIZE = 640, 640
@@ -227,11 +229,11 @@ DATA_DIRECTORY_TRAIN = DATA_DIRECTORY + 'train/'
 DATA_DIRECTORY_VAL = DATA_DIRECTORY + 'val/'
 DATA_DIRECTORY_TEST = DATA_DIRECTORY + 'test/'
 
-# SYN_DATA_DIRECTORY = ROOT_DATA_PATH + 'Syn/'
-SYN_DATA_DIRECTORY = ROOT_DATA_PATH + 'RealandSynthetic/'
-SYN_DATA_DIRECTORY_TRAIN = SYN_DATA_DIRECTORY + 'train/'
-SYN_DATA_DIRECTORY_VAL = SYN_DATA_DIRECTORY + 'val/'
-SYN_DATA_DIRECTORY_TEST = SYN_DATA_DIRECTORY + 'test/'
+# SYN_DATA_DIRECTORY = ROOT_DATA_PATH + 'RealandSynthetic/'
+# SYN_DATA_DIRECTORY = ROOT_DATA_PATH + 'RealandSynthetic/'
+# SYN_DATA_DIRECTORY_TRAIN = SYN_DATA_DIRECTORY + 'train/'
+# SYN_DATA_DIRECTORY_VAL = SYN_DATA_DIRECTORY + 'val/'
+# SYN_DATA_DIRECTORY_TEST = SYN_DATA_DIRECTORY + 'test/'
 
 IMG_SIZE = str(CROP_SIZE[0]) + 'x' + str(CROP_SIZE[1])
 

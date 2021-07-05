@@ -125,10 +125,6 @@ def val_one_epoch(model, optimizer, data_loader, device, epoch, writer):
                 print(loss_dict_reduced)
                 sys.exit(1)
 
-            # optimizer.zero_grad()
-            # losses.backward()
-            # optimizer.step()
-
             ## TENSORBOARD
             writer.add_scalar('Learning_rate/val',       optimizer.param_groups[0]['lr'],           int(epoch * config.NUM_VAL + i))
             writer.add_scalar('Loss/val',                loss_value,                                int(epoch * config.NUM_VAL + i))

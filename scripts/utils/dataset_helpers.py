@@ -425,7 +425,7 @@ def load_arl_affpose_train_datasets():
 
     dataset = ARLAffPoseDataSet(
         ### REAL
-        dataset_dir=config.SYN_DATA_DIRECTORY_TRAIN,
+        dataset_dir=config.DATA_DIRECTORY_TRAIN,
         mean=config.IMAGE_MEAN,
         std=config.IMAGE_STD,
         resize=config.RESIZE,
