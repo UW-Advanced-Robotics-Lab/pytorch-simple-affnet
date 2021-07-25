@@ -203,7 +203,7 @@ class RoIHeads(nn.Module):
                 aff_labels = torch.as_tensor(_aff_labels).to(config.DEVICE)
                 # object_part_labels = torch.as_tensor(object_part_labels).to(config.DEVICE)
                 mask_proposal = torch.as_tensor(_mask_proposals).to(config.DEVICE)
-                # result['aff_boxes'] = mask_proposal
+                result['aff_boxes'] = mask_proposal
                 # idxs = torch.as_tensor(_idxs, dtype=torch.long).to(config.DEVICE)
                 idxs = torch.arange(aff_labels.shape[0], device=aff_labels.device)
 
