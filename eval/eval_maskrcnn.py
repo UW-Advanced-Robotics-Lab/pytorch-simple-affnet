@@ -22,12 +22,12 @@ from dataset.arl_affpose import arl_affpose_dataset_utils
 def main():
 
     # Init folders
-    print('\neval in .. {}'.format(config.EVAL_SAVE_FOLDER))
+    print('\neval in .. {}'.format(config.OBJ_EVAL_SAVE_FOLDER))
 
-    if not os.path.exists(config.EVAL_SAVE_FOLDER):
+    if not os.path.exists(config.OBJ_EVAL_SAVE_FOLDER):
         os.makedirs(config.TEST_SAVE_FOLDER)
 
-    gt_pred_images = glob.glob(config.EVAL_SAVE_FOLDER + '*')
+    gt_pred_images = glob.glob(config.OBJ_EVAL_SAVE_FOLDER + '*')
     for images in gt_pred_images:
         os.remove(images)
 
@@ -113,19 +113,20 @@ def main():
         _image_idx = target["image_id"].detach().numpy()[0]
         _image_idx = str(1000000 + _image_idx)[1:]
 
-        gt_name = config.EVAL_SAVE_FOLDER + _image_idx + config.TEST_GT_EXT
-        pred_name = config.EVAL_SAVE_FOLDER + _image_idx + config.TEST_PRED_EXT
+        gt_name = config.OBJ_EVAL_SAVE_FOLDER + _image_idx + config.TEST_GT_EXT
+        pred_name = config.OBJ_EVAL_SAVE_FOLDER + _image_idx + config.TEST_PRED_EXT
 
         cv2.imwrite(gt_name, target['obj_mask'])
         cv2.imwrite(pred_name, pred_obj_mask)
 
         cv2.waitKey(1)
 
+    print()
     # getting FwB.
     os.chdir(config.MATLAB_SCRIPTS_DIR)
     import matlab.engine
     eng = matlab.engine.start_matlab()
-    Fwb = eng.evaluate_ARLAffPose(config.EVAL_SAVE_FOLDER, nargout=1)
+    Fwb = eng.evaluate_ARLAffPose(config.OBJ_EVAL_SAVE_FOLDER, nargout=1)
     os.chdir(config.ROOT_DIR_PATH)
 
 if __name__ == "__main__":

@@ -103,7 +103,7 @@ def load_arl_affpose_eval_datasets():
 
     test_loader = torch.utils.data.DataLoader(test_dataset,
                                               batch_size=config.BATCH_SIZE,
-                                              shuffle=True,
+                                              shuffle=False,
                                               num_workers=config.NUM_WORKERS,
                                               pin_memory=True,
                                               collate_fn=dataset_utils.collate_fn

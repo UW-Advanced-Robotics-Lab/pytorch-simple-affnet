@@ -85,7 +85,7 @@ ARL AffPose Configs.
 '''
 
 ROOT_DATA_PATH = '/data/Akeaveny/Datasets/ARLAffPose/'
-SELECT_EVERY_ITH_FRAME = 50  # similar to YCB-Video Dat
+SELECT_EVERY_ITH_FRAME = 3  # similar to YCB-Video Dat
 
 NUM_CLASSES = 11 + 1
 NUM_OBJECT_CLASSES = 11 + 1  # 1 is for the background
@@ -140,9 +140,11 @@ BEST_MODEL_SAVE_PATH = MODEL_SAVE_PATH + 'BEST_MODEL.pth'
 
 # Eval.
 MATLAB_SCRIPTS_DIR = np.str(ROOT_DIR_PATH +'matlab/')
-EVAL_SAVE_FOLDER = DATA_DIRECTORY_TEST + 'pred/'
+OBJ_EVAL_SAVE_FOLDER = DATA_DIRECTORY_TEST + 'pred_obj/'
+AFF_EVAL_SAVE_FOLDER = DATA_DIRECTORY_TEST + 'pred_aff/'
 
-NUM_TEST = 50  # 250
-NUM_EVAL = 50  # 250
+NUM_TEST = 250
+NUM_EVAL = 250
 TEST_GT_EXT = "_gt.png"
 TEST_PRED_EXT = "_pred.png"
+TEST_OBJ_PART_EXT = "_obj_part.png"

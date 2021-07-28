@@ -22,12 +22,12 @@ from dataset.arl_affpose import arl_affpose_dataset_utils
 def main():
 
     # Init folders
-    print('\neval in .. {}'.format(config.EVAL_SAVE_FOLDER))
+    print('\neval in .. {}'.format(config.AFF_EVAL_SAVE_FOLDER))
 
-    if not os.path.exists(config.EVAL_SAVE_FOLDER):
-        os.makedirs(config.TEST_SAVE_FOLDER)
+    if not os.path.exists(config.AFF_EVAL_SAVE_FOLDER):
+        os.makedirs(config.AFF_EVAL_SAVE_FOLDER)
 
-    gt_pred_images = glob.glob(config.EVAL_SAVE_FOLDER + '*')
+    gt_pred_images = glob.glob(config.AFF_EVAL_SAVE_FOLDER + '*')
     for images in gt_pred_images:
         os.remove(images)
 
@@ -105,24 +105,34 @@ def main():
         color_mask = cv2.addWeighted(pred_bbox_img, 0.35, color_mask, 0.65, 0)
         cv2.imshow('pred_mask', cv2.cvtColor(color_mask, cv2.COLOR_BGR2RGB))
 
+        pred_obj_part_mask = arl_affpose_dataset_utils.get_obj_part_mask(image=image,
+                                                                    obj_ids=target['obj_ids'],
+                                                                    aff_ids=target['aff_ids'],
+                                                                    bboxs=target['obj_boxes'],
+                                                                    binary_masks=target['aff_binary_masks'],
+                                                                    )
+
         # saving predictions.
         _image_idx = target["image_id"].detach().numpy()[0]
         _image_idx = str(1000000 + _image_idx)[1:]
 
-        gt_name = config.EVAL_SAVE_FOLDER + _image_idx + config.TEST_GT_EXT
-        pred_name = config.EVAL_SAVE_FOLDER + _image_idx + config.TEST_PRED_EXT
+        gt_name = config.AFF_EVAL_SAVE_FOLDER + _image_idx + config.TEST_GT_EXT
+        pred_name = config.AFF_EVAL_SAVE_FOLDER + _image_idx + config.TEST_PRED_EXT
+        obj_part_name = config.AFF_EVAL_SAVE_FOLDER + _image_idx + config.TEST_OBJ_PART_EXT
 
         cv2.imwrite(gt_name, target['aff_mask'])
         cv2.imwrite(pred_name, pred_aff_mask)
+        cv2.imwrite(obj_part_name, pred_obj_part_mask)
 
         # show plot.
         cv2.waitKey(1)
 
+    print()
     # getting FwB.
     os.chdir(config.MATLAB_SCRIPTS_DIR)
     import matlab.engine
     eng = matlab.engine.start_matlab()
-    Fwb = eng.evaluate_ARLAffPose(config.EVAL_SAVE_FOLDER, nargout=1)
+    Fwb = eng.evaluate_ARLAffPose(config.AFF_EVAL_SAVE_FOLDER, nargout=1)
     os.chdir(config.ROOT_DIR_PATH)
 
 if __name__ == "__main__":

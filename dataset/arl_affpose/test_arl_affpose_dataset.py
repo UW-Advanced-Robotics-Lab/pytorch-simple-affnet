@@ -28,17 +28,28 @@ class ARLAffPoseDatasetTest(unittest.TestCase):
             std=config.IMAGE_STD,
             resize=config.RESIZE,
             crop_size=config.CROP_SIZE,
-            apply_imgaug=True,
+            apply_imgaug=False,
+            is_train=True,
         )
 
         # create dataloader.
-        self.data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=True)
+        self.data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False)
         print(f'Selecting {len(self.data_loader)} images ..')
 
     # TODO: get dataset stats.
     def test_dataset_statistics(self):
-        # print('\nPrinting Key Statistics for ARL AffPose Dataset ..')
-        pass
+        print('\nVisualizing Ground Truth Data for MaskRCNN ..')
+        # loop over dataset.
+        for i, (image, target) in enumerate(self.data_loader):
+            print(f'\n{i}/{len(self.data_loader)} ..')
+
+            # format data.
+            image = np.squeeze(np.array(image)).transpose(1, 2, 0)
+            image = np.array(image * (2 ** 8 - 1), dtype=np.uint8).reshape(config.CROP_SIZE[0], config.CROP_SIZE[1], -1)
+            # RGB.
+            cv2.imshow('rgb', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+            # show plots.
+            cv2.waitKey(1)
 
     def test_maskrcnn_dataloader(self):
         print('\nVisualizing Ground Truth Data for MaskRCNN ..')
@@ -47,7 +58,8 @@ class ARLAffPoseDatasetTest(unittest.TestCase):
             print(f'\n{i}/{len(self.data_loader)} ..')
 
             # format data.
-            image = np.squeeze(np.array(image, dtype=np.uint8))
+            image = np.squeeze(np.array(image)).transpose(1, 2, 0)
+            image = np.array(image * (2 ** 8 - 1), dtype=np.uint8).reshape(config.CROP_SIZE[0], config.CROP_SIZE[1], -1)
             image, target = arl_affpose_dataset_utils.format_target_data(image, target)
 
             # RGB.
@@ -78,7 +90,7 @@ class ARLAffPoseDatasetTest(unittest.TestCase):
             arl_affpose_dataset_utils.print_class_obj_names(target['obj_ids'])
 
             # show plots.
-            cv2.waitKey(0)
+            cv2.waitKey(1)
 
     def test_affnet_dataloader(self):
         print('\nVisualizing Ground Truth Data for AffNet ..')
@@ -129,14 +141,14 @@ class ARLAffPoseDatasetTest(unittest.TestCase):
             cv2.imshow('obj_mask', cv2.cvtColor(color_obj_mask, cv2.COLOR_BGR2RGB))
 
             # show plots.
-            cv2.waitKey(1)
+            cv2.waitKey(0)
 
 if __name__ == '__main__':
     # unittest.main()
 
     # run desired test.
     suite = unittest.TestSuite()
-    suite.addTest(ARLAffPoseDatasetTest("test_affnet_dataloader"))
+    suite.addTest(ARLAffPoseDatasetTest("test_dataset_statistics"))
     runner = unittest.TextTestRunner()
     runner.run(suite)
 
