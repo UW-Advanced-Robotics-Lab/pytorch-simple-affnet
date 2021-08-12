@@ -353,30 +353,6 @@ def aff_color_map(idx):
         print(" --- Affordance ID:{} does not map to a colour --- ".format(idx))
         exit(1)
 
-def format_target_data(image, target):
-    height, width = image.shape[0], image.shape[1]
-
-    # original mask and binary masks.
-    target['obj_mask'] = np.array(target['obj_mask'], dtype=np.uint8).reshape(height, width)
-    target['obj_binary_masks'] = np.array(target['obj_binary_masks'], dtype=np.uint8).reshape(-1, height, width)
-    target['aff_mask'] = np.array(target['aff_mask'], dtype=np.uint8).reshape(height, width)
-    target['aff_binary_masks'] = np.array(target['aff_binary_masks'], dtype=np.uint8).reshape(-1, height, width)
-    target['obj_part_mask'] = np.array(target['obj_part_mask'], dtype=np.uint8).reshape(height, width)
-
-    # ids and bboxs.
-    target['obj_ids'] = np.array(target['obj_ids'], dtype=np.int32).flatten()
-    target['obj_boxes'] = np.array(target['obj_boxes'], dtype=np.int32).reshape(-1, 4)
-    target['aff_ids'] = np.array(target['aff_ids'], dtype=np.int32).flatten()
-    target['aff_boxes'] = np.array(target['aff_boxes'], dtype=np.int32).reshape(-1, 4)
-    target['obj_part_ids'] = np.array(target['obj_part_ids'], dtype=np.int32).flatten()
-
-    # depth images.
-    target['depth_8bit'] = np.squeeze(np.array(target['depth_8bit'], dtype=np.uint8))
-    target['depth_16bit'] = np.squeeze(np.array(target['depth_16bit'], dtype=np.uint16))
-    # target['masked_depth_16bit'] = np.squeeze(np.array(target['masked_depth_16bit'], dtype=np.uint16))
-
-    return image, target
-
 def format_obj_ids_to_aff_ids_list(object_ids, gt_object_part_ids):
     '''Function used to map predicted object ids to aff ids in Affordnace Net.
 
@@ -406,6 +382,68 @@ def map_obj_ids_to_aff_ids_list(object_ids):
         obj_part_ids.append(object_part_ids)
         aff_ids.append(_obj_part)
     return obj_part_ids, aff_ids
+
+def get_obj_part_mask(image, obj_ids, aff_ids, bboxs, binary_masks):
+
+    height, width = image.shape[:2]
+    instance_masks = np.zeros((height, width), dtype=np.uint8)
+    instance_mask_one = np.ones((height, width), dtype=np.uint8)
+
+    if len(binary_masks.shape) == 2:
+        binary_masks = binary_masks[np.newaxis, :, :]
+
+    for idx, aff_id in enumerate(aff_ids):
+        binary_mask = np.array(binary_masks[idx, :, :], dtype=np.uint8)
+        # we wrap the below in a try-except for the case we have bad predictions.
+        try:
+            obj_part_bbox = dataset_utils.get_bbox(mask=binary_mask,
+                                                   obj_ids=np.array([1]),
+                                                   img_width=height,
+                                                   img_height=width)
+            obj_part_bbox = obj_part_bbox.reshape(-1)
+
+            best_iou, best_idx = -np.inf, None
+            for bbox_idx, bbox in enumerate(bboxs):
+                iou = dataset_utils.get_iou(pred_box=obj_part_bbox, gt_box=bbox)
+                if iou > best_iou:
+                    best_iou = iou
+                    best_idx = bbox_idx
+
+            obj_id = obj_ids[best_idx]
+            obj_part_id = map_obj_id_and_aff_id_to_obj_part_ids(obj_id, aff_id)
+            # print(f"Obj Id:{obj_id}, Object: {map_obj_id_to_name(obj_id)}, "
+            #       f" Obj_part_id:{obj_part_id}, Aff: {aff_id}")
+
+            instance_mask = instance_mask_one * obj_part_id
+            instance_masks = np.where(binary_mask, instance_mask, instance_masks).astype(np.uint8)
+        except:
+            pass
+
+    return instance_masks
+
+def format_target_data(image, target):
+    height, width = image.shape[0], image.shape[1]
+
+    # original mask and binary masks.
+    target['obj_mask'] = np.array(target['obj_mask'], dtype=np.uint8).reshape(height, width)
+    target['obj_binary_masks'] = np.array(target['obj_binary_masks'], dtype=np.uint8).reshape(-1, height, width)
+    target['aff_mask'] = np.array(target['aff_mask'], dtype=np.uint8).reshape(height, width)
+    target['aff_binary_masks'] = np.array(target['aff_binary_masks'], dtype=np.uint8).reshape(-1, height, width)
+    target['obj_part_mask'] = np.array(target['obj_part_mask'], dtype=np.uint8).reshape(height, width)
+
+    # ids and bboxs.
+    target['obj_ids'] = np.array(target['obj_ids'], dtype=np.int32).flatten()
+    target['obj_boxes'] = np.array(target['obj_boxes'], dtype=np.int32).reshape(-1, 4)
+    target['aff_ids'] = np.array(target['aff_ids'], dtype=np.int32).flatten()
+    target['aff_boxes'] = np.array(target['aff_boxes'], dtype=np.int32).reshape(-1, 4)
+    target['obj_part_ids'] = np.array(target['obj_part_ids'], dtype=np.int32).flatten()
+
+    # depth images.
+    target['depth_8bit'] = np.squeeze(np.array(target['depth_8bit'], dtype=np.uint8))
+    target['depth_16bit'] = np.squeeze(np.array(target['depth_16bit'], dtype=np.uint16))
+    # target['masked_depth_16bit'] = np.squeeze(np.array(target['masked_depth_16bit'], dtype=np.uint16))
+
+    return image, target
 
 def draw_bbox_on_img(image, obj_ids, boxes, color=(255, 255, 255)):
     bbox_img = image.copy()
@@ -443,43 +481,5 @@ def get_segmentation_masks(image, obj_ids, binary_masks):
 
         instance_mask = instance_mask_one * obj_id
         instance_masks = np.where(binary_mask, instance_mask, instance_masks).astype(np.uint8)
-
-    return instance_masks
-
-def get_obj_part_mask(image, obj_ids, aff_ids, bboxs, binary_masks):
-
-    height, width = image.shape[:2]
-    instance_masks = np.zeros((height, width), dtype=np.uint8)
-    instance_mask_one = np.ones((height, width), dtype=np.uint8)
-
-    if len(binary_masks.shape) == 2:
-        binary_masks = binary_masks[np.newaxis, :, :]
-
-    for idx, aff_id in enumerate(aff_ids):
-        binary_mask = np.array(binary_masks[idx, :, :], dtype=np.uint8)
-        # we wrap the below in a try-except for the case we have bad predictions.
-        try:
-            obj_part_bbox = dataset_utils.get_bbox(mask=binary_mask,
-                                                   obj_ids=np.array([1]),
-                                                   img_width=height,
-                                                   img_height=width)
-            obj_part_bbox = obj_part_bbox.reshape(-1)
-
-            best_iou, best_idx = -np.inf, None
-            for bbox_idx, bbox in enumerate(bboxs):
-                iou = dataset_utils.get_iou(pred_box=obj_part_bbox, gt_box=bbox)
-                if iou > best_iou:
-                    best_iou = iou
-                    best_idx = bbox_idx
-
-            obj_id = obj_ids[best_idx]
-            obj_part_id = map_obj_id_and_aff_id_to_obj_part_ids(obj_id, aff_id)
-            # print(f"Obj Id:{obj_id}, Object: {map_obj_id_to_name(obj_id)}, "
-            #       f" Obj_part_id:{obj_part_id}, Aff: {aff_id}")
-
-            instance_mask = instance_mask_one * obj_part_id
-            instance_masks = np.where(binary_mask, instance_mask, instance_masks).astype(np.uint8)
-        except:
-            pass
 
     return instance_masks

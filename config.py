@@ -13,8 +13,10 @@ Framework Selection:
 
 # Prelim for naming experiment.
 FRAMEWORK = 'MaskRCNN'
-EXP_DATASET_NAME = 'ARLAffPose_Real_RGB'
-EXP_NUM = 'v0'
+EXP_DATASET = 'ARL'
+EXP_DOMAIN = 'Real'
+EXP_IMAGES = 'RGB'
+EXP_NUM = 'v1'
 
 '''
 Backbone Selection:
@@ -22,7 +24,7 @@ Backbone Selection:
 'resnet18'
 '''
 
-# TODO: add VGG-16.
+# TODO: add VGG-16 for AffordanceNet.
 BACKBONE_FEAT_EXTRACTOR = 'resnet50'
 
 IS_PRETRAINED = True
@@ -31,7 +33,7 @@ MASKRCNN_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/maskrcnn_resn
 # MASKRCNN_PRETRAINED_WEIGHTS = ROOT_DIR_PATH + 'pretrained_coco_weights_ResNet18.pth' # resnet18
 # MASKRCNN_PRETRAINED_WEIGHTS = ROOT_DIR_PATH + 'pretrained_coco_weights_ResNet50.pth' # resnet50
 
-RESTORE_MASKRCNN_WEIGHTS = ROOT_DIR_PATH + 'trained_models/ARLAffPose_Real_RGB/MaskRCNN_ARLAffPose_Real_RGB_640x640_v0/BEST_MODEL.pth'
+RESTORE_MASKRCNN_WEIGHTS = ROOT_DIR_PATH + 'trained_models/ARLAffPose_Real_RGB/MaskRCNN_ARLAffPose_Real_RGB_640x640_v1/BEST_MODEL.pth'
 RESTORE_AFFNET_WEIGHTS = ROOT_DIR_PATH + 'trained_models/ARLAffPose_Real_RGB/AffNet_ARLAffPose_Real_RGB_640x640_v0/BEST_MODEL.pth'
 
 ''' 
@@ -43,8 +45,8 @@ see reference here https://www.telesens.co/2018/03/11/object-detection-and-class
 CONFIDENCE_THRESHOLD = 0.7
 
 # Anchor Generator
-ANCHOR_SIZES = (16, 32, 64)
-ANCHOR_RATIOS = (0.5, 1, 1.5)
+ANCHOR_SIZES = (128, 256, 512)
+ANCHOR_RATIOS = (0.5, 1, 2)
 
 # transform parameters
 MIN_SIZE = 800
@@ -79,40 +81,93 @@ BOX_SCORE_THRESH = 0.1
 BOX_NMS_THRESH = 0.6
 BOX_NUM_DETECTIONS = 100
 
+'''
+COCO Configs.
+'''
+
+COCO_ROOT_DATA_PATH = '/data/Akeaveny/Datasets/COCO/'
+COCO_TRAIN_SPLIT = 'train2017'
+COCO_VAL_SPLIT = 'val2017'
+
+COCO_NUM_CLASSES = 79 + 1
+
+'''
+UMD Configs.
+'''
+
+UMD_ROOT_DATA_PATH = '/data/Akeaveny/Datasets/UMD/'
+
+UMD_NUM_CLASSES = 11 + 1
+UMD_NUM_OBJECT_CLASSES = 11 + 1  # 1 is for the background
+UMD_NUM_AFF_CLASSES = 9 + 1  # 1 is for the background
+
+UMD_IMAGE_MEAN = [115.16123185/255, 94.20813919/255, 84.34889709/255]
+UMD_IMAGE_STD = [56.62171952/255, 56.86680141/255, 36.95978531/255]
+UMD_RESIZE = (int(640), int(640))
+UMD_CROP_SIZE = (int(640), int(640))
+
+UMD_DATA_DIRECTORY = UMD_ROOT_DATA_PATH + 'Real/'
+UMD_DATA_DIRECTORY_TRAIN = UMD_DATA_DIRECTORY + 'train/'
+UMD_DATA_DIRECTORY_VAL = UMD_DATA_DIRECTORY + 'val/'
+UMD_DATA_DIRECTORY_TEST = UMD_ROOT_DATA_PATH + 'Real/' + 'test/'
+
+UMD_SYN_DATA_DIRECTORY = UMD_ROOT_DATA_PATH + 'Syn/'
+UMD_SYN_DATA_DIRECTORY_TRAIN = UMD_SYN_DATA_DIRECTORY + 'train/'
+UMD_SYN_DATA_DIRECTORY_VAL = UMD_SYN_DATA_DIRECTORY + 'val/'
+UMD_SYN_DATA_DIRECTORY_TEST = UMD_SYN_DATA_DIRECTORY + 'test/'
+
+IMG_SIZE = str(UMD_CROP_SIZE[0]) + 'x' + str(UMD_CROP_SIZE[1])
 
 '''
 ARL AffPose Configs.
 '''
 
-ROOT_DATA_PATH = '/data/Akeaveny/Datasets/ARLAffPose/'
+ARL_ROOT_DATA_PATH = '/data/Akeaveny/Datasets/ARLAffPose/'
 
-CLASSES_FILE = ROOT_DATA_PATH + 'object_meshes/classes.txt'
-CLASS_IDS_FILE = ROOT_DATA_PATH + 'object_meshes/classes_ids.txt'
-OBJ_PART_CLASSES_FILE = ROOT_DATA_PATH + 'object_meshes/obj_part_classes.txt'
-OBJ_PART_CLASS_IDS_FILE = ROOT_DATA_PATH + 'object_meshes/obj_part_classes_ids.txt'
+ARL_CLASSES_FILE = ARL_ROOT_DATA_PATH + 'object_meshes/classes.txt'
+ARL_CLASS_IDS_FILE = ARL_ROOT_DATA_PATH + 'object_meshes/classes_ids.txt'
+ARL_OBJ_PART_CLASSES_FILE = ARL_ROOT_DATA_PATH + 'object_meshes/obj_part_classes.txt'
+ARL_OBJ_PART_CLASS_IDS_FILE = ARL_ROOT_DATA_PATH + 'object_meshes/obj_part_classes_ids.txt'
 
-SELECT_EVERY_ITH_FRAME = 3  # similar to YCB-Video Dat
+ARL_NUM_CLASSES = 11 + 1
+ARL_NUM_OBJECT_CLASSES = 11 + 1  # 1 is for the background
+ARL_NUM_AFF_CLASSES = 9 + 1  # 1 is for the background
 
-NUM_CLASSES = 11 + 1
-NUM_OBJECT_CLASSES = 11 + 1  # 1 is for the background
-NUM_AFF_CLASSES = 9 + 1  # 1 is for the background
+ARL_IMAGE_MEAN = [115.16123185/255, 94.20813919/255, 84.34889709/255]
+ARL_IMAGE_STD = [56.62171952/255, 56.86680141/255, 36.95978531/255]
+ARL_RESIZE = (int(1280/1), int(720/1))
+ARL_CROP_SIZE = (int(640), int(640))
 
-IMAGE_MEAN = [115.16123185/255, 94.20813919/255, 84.34889709/255]
-IMAGE_STD = [56.62171952/255, 56.86680141/255, 36.95978531/255]
-RESIZE = (int(1280/1), int(720/1))
-CROP_SIZE = (int(640), int(640))
+ARL_DATA_DIRECTORY = ARL_ROOT_DATA_PATH + 'Real/'
+ARL_DATA_DIRECTORY_TRAIN = ARL_DATA_DIRECTORY + 'train/'
+ARL_DATA_DIRECTORY_VAL = ARL_DATA_DIRECTORY + 'val/'
+ARL_DATA_DIRECTORY_TEST = ARL_ROOT_DATA_PATH + 'Real/' + 'test/'
 
-DATA_DIRECTORY = ROOT_DATA_PATH + 'Real/'
-DATA_DIRECTORY_TRAIN = DATA_DIRECTORY + 'train/'
-DATA_DIRECTORY_VAL = DATA_DIRECTORY + 'val/'
-DATA_DIRECTORY_TEST = ROOT_DATA_PATH + 'Real/' + 'test/'
+ARL_SYN_DATA_DIRECTORY = ARL_ROOT_DATA_PATH + 'Syn/'
+ARL_SYN_DATA_DIRECTORY_TRAIN = ARL_SYN_DATA_DIRECTORY + 'train/'
+ARL_SYN_DATA_DIRECTORY_VAL = ARL_SYN_DATA_DIRECTORY + 'val/'
+ARL_SYN_DATA_DIRECTORY_TEST = ARL_SYN_DATA_DIRECTORY + 'test/'
 
-SYN_DATA_DIRECTORY = ROOT_DATA_PATH + 'Syn/'
-SYN_DATA_DIRECTORY_TRAIN = SYN_DATA_DIRECTORY + 'train/'
-SYN_DATA_DIRECTORY_VAL = SYN_DATA_DIRECTORY + 'val/'
-SYN_DATA_DIRECTORY_TEST = SYN_DATA_DIRECTORY + 'test/'
+ARL_IMG_SIZE = str(ARL_CROP_SIZE[0]) + 'x' + str(ARL_CROP_SIZE[1])
 
-IMG_SIZE = str(CROP_SIZE[0]) + 'x' + str(CROP_SIZE[1])
+'''
+YCB Video Configs.
+'''
+
+YCB_DATASET_ROOT_PATH = '/data/Akeaveny/Datasets/YCB_Affordance_Dataset'
+YCB_IMAGE_DOMAIN = 'Real'
+
+YCB_TRAIN_FILE = 'dataset_config/train_data_list.txt'
+YCB_TEST_FILE = 'dataset_config/test_data_list.txt'
+
+YCB_NUM_CLASSES = 21 + 1
+YCB_NUM_OBJECT_CLASSES = 21 + 1  # 1 is for the background
+YCB_NUM_AFF_CLASSES = 7 + 1  # 1 is for the background
+
+YCB_IMAGE_MEAN = [115.16123185/255, 94.20813919/255, 84.34889709/255]
+YCB_IMAGE_STD = [56.62171952/255, 56.86680141/255, 36.95978531/255]
+YCB_RESIZE = (int(640), int(640))
+YCB_CROP_SIZE = (int(640), int(640))
 
 '''
 Hyperparams.
@@ -129,6 +184,11 @@ NUM_EPOCHS = 10
 BATCH_SIZE  = 1
 NUM_WORKERS = 1
 
+NUM_TRAIN = 5000
+NUM_VAL = 1250
+NUM_TEST = 250
+NUM_EVAL = 250
+
 LEARNING_RATE = 1e-03
 WEIGHT_DECAY = 1e-04
 MOMENTUM = 0.9
@@ -138,19 +198,20 @@ Configs for logging & eval.
 '''
 
 # Logging.
+EXP_DATASET_NAME = f'{EXP_DATASET}_{EXP_DOMAIN}_{EXP_IMAGES}'
 EXP_NAME = FRAMEWORK + '_' + EXP_DATASET_NAME + '_' + IMG_SIZE + '_' + EXP_NUM
 TRAINED_MODELS_DIR = str(ROOT_DIR_PATH) + 'trained_models/' + EXP_DATASET_NAME + '/' + EXP_NAME
-TEST_SAVE_FOLDER = DATA_DIRECTORY_TEST + 'pred_' + EXP_NAME + '/'
 MODEL_SAVE_PATH = str(TRAINED_MODELS_DIR) + '/'
 BEST_MODEL_SAVE_PATH = MODEL_SAVE_PATH + 'BEST_MODEL.pth'
 
 # Eval.
 MATLAB_SCRIPTS_DIR = np.str(ROOT_DIR_PATH +'matlab/')
-OBJ_EVAL_SAVE_FOLDER = DATA_DIRECTORY_TEST + 'pred_obj/'
-AFF_EVAL_SAVE_FOLDER = DATA_DIRECTORY_TEST + 'pred_aff/'
 
-NUM_TEST = 250
-NUM_EVAL = 250
+# TODO: Change folder for dataset.
+TEST_SAVE_FOLDER = ARL_DATA_DIRECTORY_TEST + 'pred_' + EXP_NAME + '/'
+OBJ_EVAL_SAVE_FOLDER = ARL_DATA_DIRECTORY_TEST + 'pred_obj/'
+AFF_EVAL_SAVE_FOLDER = ARL_DATA_DIRECTORY_TEST + 'pred_aff/'
+
 TEST_GT_EXT = "_gt.png"
 TEST_PRED_EXT = "_pred.png"
 TEST_OBJ_PART_EXT = "_obj_part.png"

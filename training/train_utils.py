@@ -10,6 +10,8 @@ import numpy as np
 from tqdm import tqdm
 
 import torch
+from torch.utils import data
+from torch.utils.data.sampler import SubsetRandomSampler
 
 import torchvision
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
@@ -53,9 +55,20 @@ def save_checkpoint(model, optimizer, epochs, checkpoint_path):
     print(f'saved model to {checkpoint_path} ..')
 
 def train_one_epoch(model, optimizer, data_loader, device, epoch, writer):
+    # set the model to train to enable batchnorm.
     model.train()
-    with tqdm(total=len(data_loader.dataset), desc=f'Train Epoch:{epoch}', unit='iterations') as pbar:
-        for idx, batch in enumerate(data_loader):
+
+    train_loader = data_loader
+    # generate a random subsampler.
+    random_idx = np.sort(np.random.choice(len(data_loader.dataset), size=config.NUM_TRAIN, replace=False))
+    # Check to see if Subsampler changes every epoch.
+    # print(f'\nSubsampler: First 5 Idxs: {random_idx[0:5]}')
+    sampler = SubsetRandomSampler(list(random_idx))
+    # generate a new dataset with the SubsetRandomSampler..
+    train_loader = data.DataLoader(data_loader.dataset, sampler=sampler)
+
+    with tqdm(total=len(train_loader.dataset), desc=f'Train Epoch:{epoch}', unit='iterations') as pbar:
+        for idx, batch in enumerate(train_loader):
 
             images, targets = batch
             images = list(image.to(device) for image in images)
@@ -98,9 +111,20 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, writer):
     return model, optimizer
 
 def val_one_epoch(model, optimizer, data_loader, device, epoch, writer):
+    # set the model to train to continue outputting loss.
     model.train()
-    with tqdm(total=len(data_loader.dataset), desc=f'Val Epoch:{epoch}', unit='iterations') as pbar:
-        for idx, batch in enumerate(data_loader):
+
+    val_loader = data_loader
+    # generate a random subsampler.
+    random_idx = np.sort(np.random.choice(len(data_loader.dataset), size=config.NUM_TRAIN, replace=False))
+    # Check to see if Subsampler changes every epoch.
+    # print(f'\nSubsampler: First 5 Idxs: {random_idx[0:5]}')
+    sampler = SubsetRandomSampler(list(random_idx))
+    # generate a new dataset with the SubsetRandomSampler..
+    val_loader = data.DataLoader(data_loader.dataset, sampler=sampler)
+
+    with tqdm(total=len(val_loader.dataset), desc=f'Val Epoch:{epoch}', unit='iterations') as pbar:
+        for idx, batch in enumerate(val_loader):
 
             images, targets = batch
             images = list(image.to(device) for image in images)
@@ -140,6 +164,8 @@ def val_one_epoch(model, optimizer, data_loader, device, epoch, writer):
 
 def eval_maskrcnn_arl_affpose(model, test_loader):
     print('\nevaluating MaskRCNN ..')
+
+    # set the model to eval to disable batchnorm.
     model.eval()
 
     # Init folders.
@@ -202,7 +228,9 @@ def eval_maskrcnn_arl_affpose(model, test_loader):
     return model
 
 def eval_affnet_arl_affpose(model, test_loader):
-    print('\nevaluating MaskRCNN ..')
+    print('\nevaluating AffNet ..')
+
+    # set the model to eval to disable batchnorm.
     model.eval()
 
     # Init folders.
