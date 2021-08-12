@@ -152,8 +152,10 @@ class MaskRCNN(nn.Module):
         self.head.mask_roi_pool = roi_align.RoIAlign(output_size=config.ROIALIGN_MASK_OUTPUT_SIZE,
                                                      sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
         
-        layers = (256, 256, 256, 256)
-        dim_reduced = 256
+        # layers = (256, 256, 256, 256)
+        # dim_reduced = 256
+        layers = (config.RPN_NUM_SAMPLES, config.RPN_NUM_SAMPLES, config.RPN_NUM_SAMPLES, config.RPN_NUM_SAMPLES)
+        dim_reduced = config.RPN_NUM_SAMPLES
         self.head.mask_predictor = MaskRCNNPredictor(out_channels, layers, dim_reduced, num_classes)
         
     def forward(self, image, target=None):
@@ -221,14 +223,14 @@ class MaskRCNNPredictor(nn.Sequential):
         d['mask_conv5'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
         d['relu5'] = nn.ReLU(inplace=True)
         ### output is [28x28] -> [56x56]
-        # d['mask_conv6'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
-        # d['relu6'] = nn.ReLU(inplace=True)
+        d['mask_conv6'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
+        d['relu6'] = nn.ReLU(inplace=True)
         # ### output is [56x56] -> [112x112]
-        # d['mask_conv7'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
-        # d['relu7'] = nn.ReLU(inplace=True)
+        d['mask_conv7'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
+        d['relu7'] = nn.ReLU(inplace=True)
         ## output is [112x112] -> [224x224]
-        # d['mask_conv8'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
-        # d['relu8'] = nn.ReLU(inplace=True)
+        d['mask_conv8'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
+        d['relu8'] = nn.ReLU(inplace=True)
 
         d['mask_fcn_logits'] = nn.Conv2d(dim_reduced, num_classes, 1, 1, 0)
         super().__init__(d)
@@ -301,7 +303,9 @@ def ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, pretrained_backbone=True,
         msd = model.state_dict()
         msd_values = list(msd.values())
         msd_names = list(msd.keys())
-        skip_list = [271, 272, 273, 274, 279, 280, 281, 282, 293, 294]
+        # skip_list = [271, 272, 273, 274, 279, 280, 281, 282, 293, 294]
+        skip_list = [271, 272, 273, 274, 279, 280, 281, 282,
+                     283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 300]
         if num_classes == 91:
             skip_list = [271, 272, 273, 274]
         for i, name in enumerate(msd):

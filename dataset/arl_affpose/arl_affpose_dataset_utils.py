@@ -361,6 +361,7 @@ def format_target_data(image, target):
     target['obj_binary_masks'] = np.array(target['obj_binary_masks'], dtype=np.uint8).reshape(-1, height, width)
     target['aff_mask'] = np.array(target['aff_mask'], dtype=np.uint8).reshape(height, width)
     target['aff_binary_masks'] = np.array(target['aff_binary_masks'], dtype=np.uint8).reshape(-1, height, width)
+    target['obj_part_mask'] = np.array(target['obj_part_mask'], dtype=np.uint8).reshape(height, width)
 
     # ids and bboxs.
     target['obj_ids'] = np.array(target['obj_ids'], dtype=np.int32).flatten()
@@ -370,8 +371,9 @@ def format_target_data(image, target):
     target['obj_part_ids'] = np.array(target['obj_part_ids'], dtype=np.int32).flatten()
 
     # depth images.
-    target['depth_8bit'] = np.array(target['depth_8bit'], dtype=np.uint8).flatten()
-    target['depth_16bit'] = np.array(target['depth_16bit'], dtype=np.uint8).flatten()
+    target['depth_8bit'] = np.squeeze(np.array(target['depth_8bit'], dtype=np.uint8))
+    target['depth_16bit'] = np.squeeze(np.array(target['depth_16bit'], dtype=np.uint16))
+    # target['masked_depth_16bit'] = np.squeeze(np.array(target['masked_depth_16bit'], dtype=np.uint16))
 
     return image, target
 
@@ -405,7 +407,7 @@ def map_obj_ids_to_aff_ids_list(object_ids):
         aff_ids.append(_obj_part)
     return obj_part_ids, aff_ids
 
-def draw_bbox_on_img(image, obj_ids, boxes):
+def draw_bbox_on_img(image, obj_ids, boxes, color=(255, 255, 255)):
     bbox_img = image.copy()
 
     for obj_id, bbox in zip(obj_ids, boxes):
@@ -423,7 +425,7 @@ def draw_bbox_on_img(image, obj_ids, boxes):
                     (bbox[0], bbox[1] - 5),
                     cv2.FONT_ITALIC,
                     0.4,
-                    (255, 255, 255))
+                    color)
 
     return bbox_img
 

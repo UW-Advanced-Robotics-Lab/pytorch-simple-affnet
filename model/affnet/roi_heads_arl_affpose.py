@@ -161,6 +161,12 @@ class RoIHeads(nn.Module):
                 ####################################################
                 ### convert obj labels in a bbox to aff label
                 ####################################################
+                # Thresholding predictions based on object confidence score.
+                idx = torch.where(result['scores'] > config.CONFIDENCE_THRESHOLD)
+                result['scores'] = result['scores'][idx]
+                result['obj_boxes'] = result['obj_boxes'][idx]
+                result['obj_ids'] = result['obj_ids'][idx]
+
                 mask_proposal = result['obj_boxes']
                 num_pos = mask_proposal.shape[0]
                 # print(f'\nnum_pos:{num_pos}')

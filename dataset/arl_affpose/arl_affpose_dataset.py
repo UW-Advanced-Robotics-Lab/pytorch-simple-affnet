@@ -169,24 +169,23 @@ class ARLAffPoseDataset(data.Dataset):
 
         image = Image.open(img_file[0]).convert('RGB')
         depth_16bit = cv2.imread(depth_file[0], -1)
-        depth_16bit = np.array(depth_16bit, dtype=np.float16)
+        depth_16bit = np.array(depth_16bit, dtype=np.uint16)
         depth_8bit = dataset_utils.convert_16_bit_depth_to_8_bit(depth_16bit)
         obj_mask = Image.open(obj_mask_file[0])
         obj_part_mask = Image.open(obj_part_mask_file[0])
         aff_mask = Image.open(aff_mask_file[0])
 
-        # Viewing how far objects are from the camera using depth images and object masks.
-        obj_ids = np.unique(obj_mask)[1:]
-        mask_label = np.ma.getmaskarray(np.ma.masked_not_equal(obj_mask, 0)).astype(np.uint8)
-        mask_depth_16bit = mask_label * depth_16bit.copy()
-        mask_depth_8bit = mask_label * depth_8bit.copy()
-
         # resize and crop images.
         image = np.array(image, dtype=np.uint8)
+        depth_16bit = np.array(depth_16bit, dtype=np.float16)
         depth_8bit = np.array(depth_8bit, dtype=np.uint8)
         obj_mask = np.array(obj_mask, dtype=np.uint8)
         obj_part_mask = np.array(obj_part_mask, dtype=np.uint8)
         aff_mask = np.array(aff_mask, dtype=np.uint8)
+
+        # masked depth for stats.
+        # masked_label = np.ma.getmaskarray(np.ma.masked_not_equal(obj_mask, 0)).astype(np.uint8)
+       # masked_depth_16bit = masked_label * depth_16bit.copy()
 
         image = cv2.resize(image, self.RESIZE, interpolation=cv2.INTER_CUBIC)
         depth_8bit = cv2.resize(depth_8bit, self.RESIZE, interpolation=cv2.INTER_CUBIC)
@@ -195,10 +194,10 @@ class ARLAffPoseDataset(data.Dataset):
         aff_mask = cv2.resize(aff_mask, self.RESIZE, interpolation=cv2.INTER_NEAREST)
 
         image = dataset_utils.crop(image, self.CROP_SIZE, is_img=True)
+        depth_8bit = dataset_utils.crop(depth_8bit, self.CROP_SIZE)
         obj_mask = dataset_utils.crop(obj_mask, self.CROP_SIZE)
         obj_part_mask = dataset_utils.crop(obj_part_mask, self.CROP_SIZE)
         aff_mask = dataset_utils.crop(aff_mask, self.CROP_SIZE)
-        depth_8bit = dataset_utils.crop(depth_8bit, self.CROP_SIZE)
 
         # applying image augmentation.
         if self.apply_imgaug:
@@ -285,8 +284,9 @@ class ARLAffPoseDataset(data.Dataset):
         target["aff_boxes"] = torch.as_tensor(aff_boxes, dtype=torch.float32)
         target["obj_part_ids"] = torch.as_tensor(obj_part_ids, dtype=torch.int64)
         # viewing how far objects are from the camera using depth images and object masks.
-        target["depth_8bit"] = torch.as_tensor(mask_depth_8bit, dtype=torch.float32)
-        target["depth_16bit"] = torch.as_tensor(mask_depth_16bit, dtype=torch.float32)
+        target["depth_8bit"] = torch.as_tensor(depth_8bit, dtype=torch.float32)
+        target["depth_16bit"] = torch.as_tensor(depth_16bit, dtype=torch.float32)
+        # target["masked_depth_16bit"] = torch.as_tensor(masked_depth_16bit, dtype=torch.float32)
 
         # sent to transform.
         if self.is_train or self.is_eval:

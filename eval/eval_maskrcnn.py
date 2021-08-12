@@ -25,7 +25,7 @@ def main():
     print('\neval in .. {}'.format(config.OBJ_EVAL_SAVE_FOLDER))
 
     if not os.path.exists(config.OBJ_EVAL_SAVE_FOLDER):
-        os.makedirs(config.TEST_SAVE_FOLDER)
+        os.makedirs(config.OBJ_EVAL_SAVE_FOLDER)
 
     gt_pred_images = glob.glob(config.OBJ_EVAL_SAVE_FOLDER + '*')
     for images in gt_pred_images:

@@ -12,9 +12,9 @@ Framework Selection:
 '''
 
 # Prelim for naming experiment.
-FRAMEWORK           = 'AffNet'
-EXP_DATASET_NAME    = 'ARLAffPose_Real_RGB'
-EXP_NUM             = 'v0'
+FRAMEWORK = 'MaskRCNN'
+EXP_DATASET_NAME = 'ARLAffPose_Real_RGB'
+EXP_NUM = 'v0'
 
 '''
 Backbone Selection:
@@ -55,7 +55,7 @@ IMAGE_STD = [0.229, 0.224, 0.225]
 # RPN parameters
 RPN_FG_IOU_THRESH = 0.7
 RPN_BG_IOU_THRESH = 0.3
-RPN_NUM_SAMPLES = 256
+RPN_NUM_SAMPLES = 50  # 256
 RPN_POSITIVE_FRACTION = 0.5
 RPN_REG_WEIGHTS = (1., 1., 1., 1.)
 RPN_PRE_NMS_TOP_N_TRAIN = 2000
@@ -85,6 +85,12 @@ ARL AffPose Configs.
 '''
 
 ROOT_DATA_PATH = '/data/Akeaveny/Datasets/ARLAffPose/'
+
+CLASSES_FILE = ROOT_DATA_PATH + 'object_meshes/classes.txt'
+CLASS_IDS_FILE = ROOT_DATA_PATH + 'object_meshes/classes_ids.txt'
+OBJ_PART_CLASSES_FILE = ROOT_DATA_PATH + 'object_meshes/obj_part_classes.txt'
+OBJ_PART_CLASS_IDS_FILE = ROOT_DATA_PATH + 'object_meshes/obj_part_classes_ids.txt'
+
 SELECT_EVERY_ITH_FRAME = 3  # similar to YCB-Video Dat
 
 NUM_CLASSES = 11 + 1

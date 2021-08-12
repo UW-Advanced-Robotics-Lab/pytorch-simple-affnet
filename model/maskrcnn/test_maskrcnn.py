@@ -104,7 +104,7 @@ if __name__ == '__main__':
 
     # run desired test.
     suite = unittest.TestSuite()
-    suite.addTest(MaskRCNNTest("test_maskrcnn_eval"))
+    suite.addTest(MaskRCNNTest("test_random_input"))
     runner = unittest.TextTestRunner()
     runner.run(suite)
 

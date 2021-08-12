@@ -15,26 +15,3 @@ I use AffNet with the following repos:
 
 In the sample below we see the differences between traditional Object Instance Segmentation (left) and Object-based Affordance Detection (right).
 ![Alt text](samples/AffPose.png?raw=true "Title")
-
-## Requirements
-   ```
-   conda env create -f environment.yml --name MaskRCNNTorch
-   ```
-
-## AffNet
-1. To inspect dataset statistics run (first look at relative paths for root folder of dataset in cfg.py):
-   ```
-   python scripts/inspect_dataset_stats.py
-   ```
-2. To test a forward pass of my model:
-   ```
-   python scripts/test_model_forward_pass.py
-   ```
-3. To run training:
-   ```
-   python scripts/train.py
-   ```
-4. To get predicted Object-Based Affordance-Detection Masks run (preformance is evaluated with the weighted F-b measure in MATLAB):
-   ```
-   python scripts/eval.py
-   ```

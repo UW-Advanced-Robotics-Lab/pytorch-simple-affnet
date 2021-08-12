@@ -54,7 +54,7 @@ def save_checkpoint(model, optimizer, epochs, checkpoint_path):
 
 def train_one_epoch(model, optimizer, data_loader, device, epoch, writer):
     model.train()
-    with tqdm(total=len(data_loader.dataset), desc=f'Epoch:{epoch}', unit='iterations') as pbar:
+    with tqdm(total=len(data_loader.dataset), desc=f'Train Epoch:{epoch}', unit='iterations') as pbar:
         for idx, batch in enumerate(data_loader):
 
             images, targets = batch
@@ -99,7 +99,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, writer):
 
 def val_one_epoch(model, optimizer, data_loader, device, epoch, writer):
     model.train()
-    with tqdm(total=len(data_loader.dataset), desc=f'Epoch:{epoch}', unit='iterations') as pbar:
+    with tqdm(total=len(data_loader.dataset), desc=f'Val Epoch:{epoch}', unit='iterations') as pbar:
         for idx, batch in enumerate(data_loader):
 
             images, targets = batch
