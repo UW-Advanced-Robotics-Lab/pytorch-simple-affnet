@@ -13,37 +13,11 @@ import torch
 from torch.utils import data
 from torch.utils.data.sampler import SubsetRandomSampler
 
-import torchvision
-from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
-from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
-
 import torch.distributed as dist
 
 import config
 from dataset import dataset_utils
-from dataset.arl_affpose import arl_affpose_dataset_utils
 
-
-def get_model_instance_segmentation(pretrained, num_classes):
-    print('loading torchvision maskrcnn ..')
-    print(f'num classes:{num_classes} ..')
-    # load an instance segmentation model pre-trained pre-trained on COCO
-    model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=pretrained)
-
-    # get number of input features for the classifier
-    in_features = model.roi_heads.box_predictor.cls_score.in_features
-    # replace the pre-trained head with a new one
-    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
-
-    # now get the number of input features for the mask classifier
-    in_features_mask = model.roi_heads.mask_predictor.conv5_mask.in_channels
-    hidden_layer = 256
-    # and replace the mask predictor with a new one
-    model.roi_heads.mask_predictor = MaskRCNNPredictor(in_features_mask,
-                                                       hidden_layer,
-                                                       num_classes)
-
-    return model
 
 def save_checkpoint(model, optimizer, epochs, checkpoint_path):
     checkpoint = {}
@@ -52,22 +26,30 @@ def save_checkpoint(model, optimizer, epochs, checkpoint_path):
     checkpoint["epochs"] = epochs
 
     torch.save(checkpoint, checkpoint_path)
-    print(f'saved model to {checkpoint_path} ..')
 
-def train_one_epoch(model, optimizer, data_loader, device, epoch, writer):
+def train_one_epoch(model, optimizer, data_loader, device, epoch, writer, is_subsample=True):
     # set the model to train to enable batchnorm.
     model.train()
 
     train_loader = data_loader
-    # generate a random subsampler.
-    random_idx = np.sort(np.random.choice(len(data_loader.dataset), size=config.NUM_TRAIN, replace=False))
-    # Check to see if Subsampler changes every epoch.
-    # print(f'\nSubsampler: First 5 Idxs: {random_idx[0:5]}')
-    sampler = SubsetRandomSampler(list(random_idx))
-    # generate a new dataset with the SubsetRandomSampler..
-    train_loader = data.DataLoader(data_loader.dataset, sampler=sampler)
+    num_train = len(data_loader.dataset)
+    if is_subsample:
+        # generate a random subsampler.
+        random_idx = np.sort(np.random.choice(len(data_loader.dataset), size=config.NUM_TRAIN, replace=False))
+        # Check to see if Subsampler changes every epoch.
+        # print(f'\nSubsampler: First 5 Idxs: {random_idx[0:5]}')
+        sampler = SubsetRandomSampler(list(random_idx))
+        # generate a new dataset with the SubsetRandomSampler..
+        train_loader = data.DataLoader(data_loader.dataset,
+                                       batch_size=config.BATCH_SIZE,
+                                       sampler=sampler,
+                                       num_workers=config.NUM_WORKERS,
+                                       pin_memory=True,
+                                       collate_fn=dataset_utils.collate_fn
+                                       )
+        num_train = config.NUM_TRAIN
 
-    with tqdm(total=len(train_loader.dataset), desc=f'Train Epoch:{epoch}', unit='iterations') as pbar:
+    with tqdm(total=num_train, desc=f'Train Epoch:{epoch}', unit='iterations') as pbar:
         for idx, batch in enumerate(train_loader):
 
             images, targets = batch
@@ -99,7 +81,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, writer):
             pbar.update(config.BATCH_SIZE)
 
             # Tensorboard.
-            _global_idx = int(epoch * len(data_loader.dataset) + idx)
+            _global_idx = int(epoch * num_train + idx)
             writer.add_scalar('Learning_rate/train',        optimizer.param_groups[0]['lr'],       _global_idx)
             writer.add_scalar('Loss/train',                 loss_value,                            _global_idx)
             writer.add_scalar('RPN/train_objectness_loss',  loss_dict_reduced['loss_objectness'],  _global_idx)
@@ -110,20 +92,29 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, writer):
 
     return model, optimizer
 
-def val_one_epoch(model, optimizer, data_loader, device, epoch, writer):
+def val_one_epoch(model, optimizer, data_loader, device, epoch, writer, is_subsample=True):
     # set the model to train to continue outputting loss.
     model.train()
 
     val_loader = data_loader
-    # generate a random subsampler.
-    random_idx = np.sort(np.random.choice(len(data_loader.dataset), size=config.NUM_TRAIN, replace=False))
-    # Check to see if Subsampler changes every epoch.
-    # print(f'\nSubsampler: First 5 Idxs: {random_idx[0:5]}')
-    sampler = SubsetRandomSampler(list(random_idx))
-    # generate a new dataset with the SubsetRandomSampler..
-    val_loader = data.DataLoader(data_loader.dataset, sampler=sampler)
+    num_val = len(data_loader.dataset)
+    if is_subsample:
+        # generate a random subsampler.
+        random_idx = np.sort(np.random.choice(len(data_loader.dataset), size=config.NUM_VAL, replace=False))
+        # Check to see if Subsampler changes every epoch.
+        # print(f'\nSubsampler: First 5 Idxs: {random_idx[0:5]}')
+        sampler = SubsetRandomSampler(list(random_idx))
+        # generate a new dataset with the SubsetRandomSampler..
+        val_loader = data.DataLoader(data_loader.dataset,
+                                     batch_size=config.BATCH_SIZE,
+                                     sampler=sampler,
+                                     num_workers=config.NUM_WORKERS,
+                                     pin_memory=True,
+                                     collate_fn=dataset_utils.collate_fn
+                                     )
+        num_val = config.NUM_VAL
 
-    with tqdm(total=len(val_loader.dataset), desc=f'Val Epoch:{epoch}', unit='iterations') as pbar:
+    with tqdm(total=num_val, desc=f'Val Epoch:{epoch}', unit='iterations') as pbar:
         for idx, batch in enumerate(val_loader):
 
             images, targets = batch
@@ -151,7 +142,7 @@ def val_one_epoch(model, optimizer, data_loader, device, epoch, writer):
             pbar.update(config.BATCH_SIZE)
 
             # Tensorboard.
-            _global_idx = int(epoch * len(data_loader.dataset) + idx)
+            _global_idx = int(epoch * num_val + idx)
             writer.add_scalar('Learning_rate/val',       optimizer.param_groups[0]['lr'],       _global_idx)
             writer.add_scalar('Loss/val',                loss_value,                            _global_idx)
             writer.add_scalar('RPN/val_objectness_loss', loss_dict_reduced['loss_objectness'],  _global_idx)
@@ -161,154 +152,6 @@ def val_one_epoch(model, optimizer, data_loader, device, epoch, writer):
             writer.add_scalar('RoI/val_mask_loss',       loss_dict_reduced['loss_mask'],        _global_idx)
 
     return model, optimizer
-
-def eval_maskrcnn_arl_affpose(model, test_loader):
-    print('\nevaluating MaskRCNN ..')
-
-    # set the model to eval to disable batchnorm.
-    model.eval()
-
-    # Init folders.
-    if not os.path.exists(config.TEST_SAVE_FOLDER):
-        os.makedirs(config.TEST_SAVE_FOLDER)
-
-    gt_pred_images = glob.glob(config.TEST_SAVE_FOLDER + '*')
-    for images in gt_pred_images:
-        os.remove(images)
-
-    for image_idx, (images, targets) in enumerate(test_loader):
-        image, target = copy.deepcopy(images), copy.deepcopy(targets)
-        images = list(image.to(config.DEVICE) for image in images)
-
-        with torch.no_grad():
-            outputs = model(images)
-            outputs = [{k: v.to(config.CPU_DEVICE) for k, v in t.items()} for t in outputs]
-
-        # Formatting input.
-        image = image[0]
-        image = image.to(config.CPU_DEVICE)
-        image = np.squeeze(np.array(image)).transpose(1, 2, 0)
-
-        target = target[0]
-        target = {k: v.to(config.CPU_DEVICE) for k, v in target.items()}
-        image, target = arl_affpose_dataset_utils.format_target_data(image, target)
-
-        # Formatting Output.
-        outputs = outputs.pop()
-        scores = np.array(outputs['scores'], dtype=np.float32).flatten()
-        obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
-        obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
-
-        # Thresholding Binary Masks.
-        obj_binary_masks = np.squeeze(np.array(outputs['obj_binary_masks'] > 0.5, dtype=np.uint8))
-
-        # Thresholding predictions based on object confidence score.
-        idx = np.argwhere(scores.copy() > config.CONFIDENCE_THRESHOLD)
-        scores = scores[idx].reshape(-1)
-        obj_ids = obj_ids[idx]
-        obj_boxes = obj_boxes[idx].reshape(-1, 4)
-        # exception where idx == 1 and binary masks becomes H X W.
-        obj_binary_masks = obj_binary_masks[idx, :, :]
-        if len(obj_binary_masks.shape) == 2:
-            obj_binary_masks = obj_binary_masks[np.newaxis, :]
-        obj_binary_masks = obj_binary_masks.reshape(-1, config.CROP_SIZE[0], config.CROP_SIZE[1])
-
-        # getting predicted object mask.
-        obj_mask = arl_affpose_dataset_utils.get_segmentation_masks(image=image,
-                                                                    obj_ids=obj_ids,
-                                                                    binary_masks=obj_binary_masks,
-                                                                    )
-
-        gt_name = config.TEST_SAVE_FOLDER + str(image_idx) + config.TEST_GT_EXT
-        cv2.imwrite(gt_name, target['obj_mask'])
-
-        pred_name = config.TEST_SAVE_FOLDER + str(image_idx) + config.TEST_PRED_EXT
-        cv2.imwrite(pred_name, obj_mask)
-    model.train()
-    return model
-
-def eval_affnet_arl_affpose(model, test_loader):
-    print('\nevaluating AffNet ..')
-
-    # set the model to eval to disable batchnorm.
-    model.eval()
-
-    # Init folders.
-    if not os.path.exists(config.TEST_SAVE_FOLDER):
-        os.makedirs(config.TEST_SAVE_FOLDER)
-
-    gt_pred_images = glob.glob(config.TEST_SAVE_FOLDER + '*')
-    for images in gt_pred_images:
-        os.remove(images)
-
-    for image_idx, (images, targets) in enumerate(test_loader):
-        image, target = copy.deepcopy(images), copy.deepcopy(targets)
-        images = list(image.to(config.DEVICE) for image in images)
-
-        with torch.no_grad():
-            outputs = model(images)
-            outputs = [{k: v.to(config.CPU_DEVICE) for k, v in t.items()} for t in outputs]
-
-        # Formatting input.
-        image = image[0]
-        image = image.to(config.CPU_DEVICE)
-        image = np.squeeze(np.array(image)).transpose(1, 2, 0)
-
-        target = target[0]
-        target = {k: v.to(config.CPU_DEVICE) for k, v in target.items()}
-        image, target = arl_affpose_dataset_utils.format_target_data(image, target)
-
-        # Formatting Output.
-        outputs = outputs.pop()
-        # TODO: threshold aff ids using objectiveness.
-        aff_ids = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
-
-        # Thresholding Binary Masks.
-        aff_binary_masks = np.squeeze(np.array(outputs['aff_binary_masks'] > 0.5, dtype=np.uint8))
-
-        # getting predicted object mask.
-        aff_mask = arl_affpose_dataset_utils.get_segmentation_masks(image=image,
-                                                                    obj_ids=aff_ids,
-                                                                    binary_masks=aff_binary_masks,
-                                                                    )
-
-        gt_name = config.TEST_SAVE_FOLDER + str(image_idx) + config.TEST_GT_EXT
-        cv2.imwrite(gt_name, target['aff_mask'])
-
-        pred_name = config.TEST_SAVE_FOLDER + str(image_idx) + config.TEST_PRED_EXT
-        cv2.imwrite(pred_name, aff_mask)
-    model.train()
-    return model
-
-def eval_Fwb_arl_affpose(model, optimizer, best_Fwb, epoch, writer, matlab_scrips_dir=config.MATLAB_SCRIPTS_DIR):
-    print()
-
-    os.chdir(matlab_scrips_dir)
-    import matlab.engine
-    eng = matlab.engine.start_matlab()
-    Fwb = eng.evaluate_ARLAffPose(config.TEST_SAVE_FOLDER, nargout=1)
-    writer.add_scalar('eval/Fwb', Fwb, int(epoch))
-    os.chdir(config.ROOT_DIR_PATH)
-
-    if Fwb > best_Fwb:
-        best_Fwb = Fwb
-        writer.add_scalar('eval/Best Fwb', best_Fwb, int(epoch))
-        print("Saving best model .. best Fwb={:.5} ..".format(best_Fwb))
-
-        CHECKPOINT_PATH = config.BEST_MODEL_SAVE_PATH
-        save_checkpoint(model, optimizer, epoch, CHECKPOINT_PATH)
-
-    return best_Fwb
-
-def warmup_lr_scheduler(optimizer, warmup_iters, warmup_factor):
-
-    def f(x):
-        if x >= warmup_iters:
-            return 1
-        alpha = float(x) / warmup_iters
-        return warmup_factor * (1 - alpha) + alpha
-
-    return torch.optim.lr_scheduler.LambdaLR(optimizer, f)
 
 def is_dist_avail_and_initialized():
     if not dist.is_available():

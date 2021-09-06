@@ -2,6 +2,7 @@ import math
 
 from collections import Counter
 
+import cv2
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -108,6 +109,7 @@ def paste_masks_in_image(mask, box, padding, image_shape):
     mask, box = expand_detection(mask, box, padding)
 
     N = mask.shape[0]
+    # print(f'mask.shape: {mask.shape}')
     size = (N,) + tuple(image_shape)
     im_mask = torch.zeros(size, dtype=mask.dtype, device=mask.device)
     for m, b, im in zip(mask, box, im_mask):
@@ -115,7 +117,15 @@ def paste_masks_in_image(mask, box, padding, image_shape):
         w = max(b[2] - b[0], 1)
         h = max(b[3] - b[1], 1)
 
+        # print(f'\nBefore: mask.shape: {m.shape}')
+        # cv2.imshow("before", m.detach().clone().cpu().numpy())
+
         m = F.interpolate(m[None, None], size=(h, w), mode='bilinear', align_corners=False)[0][0]
+        # m = F.upsample(m[None, None], size=(h, w), mode='bilinear', align_corners=False)[0][0]
+
+        # print(f'After: mask.shape: {m.shape}')
+        # cv2.imshow("after", m.detach().clone().cpu().numpy())
+        # cv2.waitKey(0)
 
         x1 = max(b[0], 0)
         y1 = max(b[1], 0)
@@ -123,4 +133,5 @@ def paste_masks_in_image(mask, box, padding, image_shape):
         y2 = min(b[3], image_shape[0])
 
         im[y1:y2, x1:x2] = m[(y1 - b[1]):(y2 - b[1]), (x1 - b[0]):(x2 - b[0])]
+    # print(f'im_mask.shape: {im_mask.shape}')
     return im_mask

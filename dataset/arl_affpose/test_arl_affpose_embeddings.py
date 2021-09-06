@@ -23,9 +23,10 @@ import config
 from training import train_utils
 from dataset.arl_affpose import arl_affpose_dataset
 from dataset.arl_affpose import arl_affpose_dataset_utils
-from dataset.arl_affpose import load_arl_affpose_obj_ply_files
 
-_NUM_IMAGES = 10
+
+NUM_IMAGES = 100
+
 
 class DatasetStatisticsTest(unittest.TestCase):
 
@@ -34,18 +35,18 @@ class DatasetStatisticsTest(unittest.TestCase):
 
         # Load ARL AffPose dataset.
         dataset = arl_affpose_dataset.ARLAffPoseDataset(
-            dataset_dir=config.DATA_DIRECTORY_TEST,
-            mean=config.IMAGE_MEAN,
-            std=config.IMAGE_STD,
-            resize=config.RESIZE,
-            crop_size=config.CROP_SIZE,
+            dataset_dir=config.ARL_DATA_DIRECTORY_TEST,
+            mean=config.ARL_IMAGE_MEAN,
+            std=config.ARL_IMAGE_STD,
+            resize=config.ARL_RESIZE,
+            crop_size=config.ARL_CROP_SIZE,
             apply_imgaug=False,
         )
 
         # creating subset.
         np.random.seed(0)
         total_idx = np.arange(0, len(dataset), 1)
-        test_idx = np.random.choice(total_idx, size=int(_NUM_IMAGES), replace=True)
+        test_idx = np.random.choice(total_idx, size=int(NUM_IMAGES), replace=True)
         dataset = torch.utils.data.Subset(dataset, test_idx)
 
         # create dataloader.

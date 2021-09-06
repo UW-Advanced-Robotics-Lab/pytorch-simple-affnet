@@ -7,8 +7,9 @@ sys.path.append('../../')
 
 import config
 from model.maskrcnn import maskrcnn
-from dataset import dataset_loaders
 from training import train_utils
+
+from dataset.arl_affpose import arl_affpose_dataset_loaders
 
 class MaskRCNNTest(unittest.TestCase):
 
@@ -21,9 +22,9 @@ class MaskRCNNTest(unittest.TestCase):
         self.model.to(config.DEVICE)
 
         # Load the dataset.
-        train_loader, val_loader, test_loader = dataset_loaders.load_arl_affpose_train_datasets()
+        train_loader, val_loader, test_loader = arl_affpose_dataset_loaders.load_arl_affpose_train_datasets()
         # create dataloader.
-        self.data_loader = test_loader
+        self.data_loader = train_loader
 
     def test_freeze_backbone(self):
         # freeze backbone layers
@@ -64,26 +65,29 @@ class MaskRCNNTest(unittest.TestCase):
     def test_maskrcnn_train(self):
         # get one item from dataloader.
         batch = iter(self.data_loader).__next__()
-        images, targets = batch
-        images = list(image.to(config.DEVICE) for image in images)
-        targets = [{k: v.to(config.DEVICE) for k, v in t.items()} for t in targets]
+        for idx, batch in enumerate(self.data_loader):
+            print(f'\n{idx}/{len(self.data_loader)} ..')
 
-        self.model.train()
-        loss_dict = self.model(images, targets)
+            images, targets = batch
+            images = list(image.to(config.DEVICE) for image in images)
+            targets = [{k: v.to(config.DEVICE) for k, v in t.items()} for t in targets]
 
-        losses = sum(loss for loss in loss_dict.values())
-        # reduce losses over all GPUs for logging purposes
-        loss_dict_reduced = train_utils.reduce_dict(loss_dict)
-        losses_reduced = sum(loss for loss in loss_dict_reduced.values())
-        # getting summed loss.
-        loss_value = losses_reduced.item()
+            self.model.train()
+            loss_dict = self.model(images, targets)
 
-        print(f'\nloss_value: {loss_value}')
-        print(f'\nloss_objectness: {loss_dict_reduced["loss_objectness"]}')
-        print(f'loss_rpn_box_reg: {loss_dict_reduced["loss_rpn_box_reg"]}')
-        print(f'loss_classifier: {loss_dict_reduced["loss_classifier"]}')
-        print(f'loss_box_reg: {loss_dict_reduced["loss_box_reg"]}')
-        print(f'loss_mask: {loss_dict_reduced["loss_mask"]}')
+            # losses = sum(loss for loss in loss_dict.values())
+            # # reduce losses over all GPUs for logging purposes
+            # loss_dict_reduced = train_utils.reduce_dict(loss_dict)
+            # losses_reduced = sum(loss for loss in loss_dict_reduced.values())
+            # # getting summed loss.
+            # loss_value = losses_reduced.item()
+            #
+            # print(f'\nloss_value: {loss_value}')
+            # print(f'\nloss_objectness: {loss_dict_reduced["loss_objectness"]}')
+            # print(f'loss_rpn_box_reg: {loss_dict_reduced["loss_rpn_box_reg"]}')
+            # print(f'loss_classifier: {loss_dict_reduced["loss_classifier"]}')
+            # print(f'loss_box_reg: {loss_dict_reduced["loss_box_reg"]}')
+            # print(f'loss_mask: {loss_dict_reduced["loss_mask"]}')
 
     def test_maskrcnn_eval(self):
         # get one item from dataloader.

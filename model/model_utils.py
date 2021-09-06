@@ -1,10 +1,73 @@
 import math
 
+import cv2
+
 import torch
 import torch.nn.functional as F
 
+import torchvision
+from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
+from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
+
 from model import roi_align
 
+
+def get_model_instance_segmentation(pretrained, num_classes):
+    """Function to load torchvision MaskRCNN."""
+    print('loading torchvision maskrcnn ..')
+    print(f'num classes:{num_classes} ..')
+    # load an instance segmentation model pre-trained pre-trained on COCO
+    model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=pretrained)
+
+    # get number of input features for the classifier
+    in_features = model.roi_heads.box_predictor.cls_score.in_features
+    # replace the pre-trained head with a new one
+    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
+
+    # now get the number of input features for the mask classifier
+    in_features_mask = model.roi_heads.mask_predictor.conv5_mask.in_channels
+    hidden_layer = 256
+    # and replace the mask predictor with a new one
+    model.roi_heads.mask_predictor = MaskRCNNPredictor(in_features_mask,
+                                                       hidden_layer,
+                                                       num_classes)
+
+    return model
+
+def freeze_backbone(model, verbose=False):
+    """Function to Freeze Backbone."""
+    # print(f'\nFreezing backbone ..')
+    for name, parameter in model.named_parameters():
+        if 'backbone' in name:
+            parameter.requires_grad_(False)
+            if verbose:
+                print(f'Frozen: {name}')
+        else:
+            parameter.requires_grad_(True)
+            if verbose:
+                print(f'Requires Grad: {name}')
+    return model
+
+def freeze_heads(model, verbose=False):
+    """Function to Freeze Network Heads."""
+    # print(f'\nFreezing backbone ..')
+    for name, parameter in model.named_parameters():
+        if 'backbone' in name:
+            parameter.requires_grad_(True)
+            if verbose:
+                print(f'Frozen: {name}')
+        else:
+            parameter.requires_grad_(False)
+            if verbose:
+                print(f'Requires Grad: {name}')
+    return model
+
+def unfreeze_all_layers(model):
+    """Function to Un-freeze Backbone."""
+    # print(f'\nUn-freezing backbone ..')
+    for name, parameter in model.named_parameters():
+        parameter.requires_grad_(True)
+    return model
 
 def rpn_loss(idx, pos_idx, objectness, label, pred_bbox_delta, regression_target):
     objectness_loss = F.binary_cross_entropy_with_logits(objectness[idx], label[idx])
@@ -34,19 +97,33 @@ def maskrcnn_loss(mask_logit, proposal, matched_idx, label, gt_mask):
 
     idx = torch.arange(label.shape[0], device=label.device)
 
-    # print(f"matched_idx:{matched_idx}")
-    # print(f"idx:{idx}")
-    # print(f"label:{label}")
-    # print(f"mask_logit:{mask_logit[idx, label].size()}, mask_target:{mask_target.size()}")
+    # # TODO: upsample masks for better predictions.
+    # size = (640, 640)  # (224, 224)
+    # # print(f"\n[before upsample] mask_logit: {mask_logit.size()}")
+    # # print(f"[before upsample] mask_target: {mask_target.size()}")
+    # mask_logit = F.interpolate(mask_logit, size=size, mode='bilinear', align_corners=False)
+    # mask_target = F.interpolate(mask_target[None], size=size, mode='bilinear', align_corners=False)[0]
+    # # print(f"[after upsample] mask_logit: {mask_logit.size()}")
+    # # print(f""[after upsample] mask_target: {mask_target.size()}")
 
-    # for i in range(len(idx)):
-    #     _label = label[i]
-    #     _gt_mask = mask_target[i, :, :].detach().cpu().numpy()
-    #     print(f"\tlabel:{_label}, obj:{affpose_dataset_utils.map_obj_id_to_name(_label)} gt_mask:{_gt_mask.shape}")
-    #     cv2.imshow('gt', _gt_mask)
-    #     _mask_logit = mask_logit[idx, label][i, :, :].detach().cpu().numpy()
-    #     cv2.imshow('mask_logit', _mask_logit)
-    #     cv2.waitKey(0)
+    # # check size of gt mask.
+    # print(f'\ngt mask: {gt_mask.size()}')
+    # # check size of mask after ROI pooling.
+    # print(f"pred mask: {mask_logit[idx, label].size()}")
+
+    # check gt masks after ROI cropping.
+    for i in range(len(idx)):
+        current_obj_id = label[i]
+        current_gt_mask = mask_target[i, :, :].detach().cpu().numpy()
+        current_pred_mask = mask_logit[idx, label][i, :, :].detach().cpu().numpy()
+
+        # print output.
+        # print(f"obj id:{current_obj_id}, gt mask: {current_gt_mask.shape}, pred mask: {current_pred_mask.shape}")
+
+        # visualize.
+        cv2.imshow('gt', current_gt_mask)
+        cv2.imshow('pred', current_pred_mask)
+        cv2.waitKey(1)
 
     mask_loss = F.binary_cross_entropy_with_logits(mask_logit[idx, label], mask_target)
     return mask_loss

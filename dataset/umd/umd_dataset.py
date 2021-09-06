@@ -30,10 +30,10 @@ class UMDDataset(data.Dataset):
                  depth_folder='depth/',
                  depth_suffix='_depth',
                  # configs for pre-processing our dataset.
-                 mean=config.IMAGE_MEAN,
-                 std=config.IMAGE_STD,
-                 resize=config.RESIZE,
-                 crop_size=config.CROP_SIZE,
+                 mean=config.UMD_IMAGE_MEAN,
+                 std=config.UMD_IMAGE_STD,
+                 resize=config.UMD_RESIZE,
+                 crop_size=config.UMD_CROP_SIZE,
                  apply_imgaug=False,
                  # TRAIN OR EVAL
                  is_train=False,
@@ -105,11 +105,11 @@ class UMDDataset(data.Dataset):
         mask = np.array(mask, dtype=np.uint8)
 
         # Uncomment to check resulting images with augmentation.
-        dataset_utils.print_class_labels(mask)
-        cv2.imshow('rgb', cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB))
-        color_mask = umd_dataset_utils.colorize_aff_mask(mask)
-        cv2.imshow('color_mask', cv2.cvtColor(color_mask, cv2.COLOR_BGR2RGB))
-        cv2.waitKey(0)
+        # dataset_utils.print_class_labels(mask)
+        # cv2.imshow('rgb', cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB))
+        # color_mask = umd_dataset_utils.colorize_aff_mask(mask)
+        # cv2.imshow('color_mask', cv2.cvtColor(color_mask, cv2.COLOR_BGR2RGB))
+        # cv2.waitKey(0)
 
         return rgb, depth, mask
 
@@ -195,10 +195,10 @@ class UMDDataset(data.Dataset):
             # cv2.waitKey(0)
 
         # formatting above.
-        obj_ids = np.squeeze(np.array(obj_id))
-        obj_boxes = np.squeeze(np.array(obj_boxes))
-        aff_ids = np.squeeze(np.array(aff_ids))
-        aff_binary_masks = np.squeeze(np.array(aff_binary_masks))
+        obj_ids = np.array([obj_id])
+        obj_boxes = np.array(obj_boxes)
+        aff_ids = np.array(aff_ids)
+        aff_binary_masks = np.array(aff_binary_masks)
 
         target = {}
         target["image_id"] = torch.tensor([index])

@@ -12,16 +12,16 @@ sys.path.append('../../')
 
 import config
 
-from dataset import dataset_loaders
 from dataset.coco import coco_dataset
 from dataset.coco import coco_dataset_utils
+
 
 class COCODatasetTest(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         super(COCODatasetTest, self).__init__(*args, **kwargs)
 
-        # Load ARL AffPose dataset.
+        # Load COCO dataset.
         dataset = coco_dataset.COCODataSet(
             dataset_dir=config.COCO_ROOT_DATA_PATH,
             split=config.COCO_VAL_SPLIT,

@@ -12,7 +12,6 @@ sys.path.append('../../')
 
 import config
 
-from dataset import dataset_loaders
 from dataset.umd import umd_dataset
 from dataset.umd import umd_dataset_utils
 
@@ -23,12 +22,12 @@ class UMDDatasetTest(unittest.TestCase):
 
         # Load ARL AffPose dataset.
         dataset = umd_dataset.UMDDataset(
-            dataset_dir=config.DATA_DIRECTORY_TRAIN,
-            mean=config.IMAGE_MEAN,
-            std=config.IMAGE_STD,
-            resize=config.RESIZE,
-            crop_size=config.CROP_SIZE,
-            apply_imgaug=False,
+            dataset_dir=config.UMD_DATA_DIRECTORY_TRAIN,
+            mean=config.UMD_IMAGE_MEAN,
+            std=config.UMD_IMAGE_STD,
+            resize=config.UMD_RESIZE,
+            crop_size=config.UMD_CROP_SIZE,
+            apply_imgaug=True,
             is_train=True,
         )
 
@@ -45,7 +44,7 @@ class UMDDatasetTest(unittest.TestCase):
 
             # format data.
             image = np.squeeze(np.array(image)).transpose(1, 2, 0)
-            image = np.array(image * (2 ** 8 - 1), dtype=np.uint8).reshape(config.CROP_SIZE[0], config.CROP_SIZE[1], -1)
+            image = np.array(image * (2 ** 8 - 1), dtype=np.uint8)
             image, target = umd_dataset_utils.format_target_data(image, target)
 
             # RGB.

@@ -23,6 +23,7 @@ class RPNHead(nn.Module):
         bbox_reg = self.bbox_pred(x)
         return logits, bbox_reg
 
+
 class RegionProposalNetwork(nn.Module):
     def __init__(self, anchor_generator, head, 
                  fg_iou_thresh, bg_iou_thresh,

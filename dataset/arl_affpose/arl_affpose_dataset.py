@@ -34,10 +34,10 @@ class ARLAffPoseDataset(data.Dataset):
                  depth_folder='depth/',
                  depth_suffix='_depth',
                  # configs for pre-processing our dataset.
-                 mean=config.IMAGE_MEAN,
-                 std=config.IMAGE_STD,
-                 resize=config.RESIZE,
-                 crop_size=config.CROP_SIZE,
+                 mean=config.ARL_IMAGE_MEAN,
+                 std=config.ARL_IMAGE_STD,
+                 resize=config.ARL_RESIZE,
+                 crop_size=config.ARL_CROP_SIZE,
                  apply_imgaug=False,
                  # TRAIN OR EVAL
                  is_train=False,
@@ -81,15 +81,6 @@ class ARLAffPoseDataset(data.Dataset):
         self.obj_part_masks_ids = np.sort(np.array(self.obj_part_masks_ids))
         self.aff_masks_ids = np.sort(np.array(self.aff_masks_ids))
         self.depth_ids = np.sort(np.array(self.depth_ids))
-
-        # Selecting every ith image for training.
-        if self.is_train:
-            total_idx = np.arange(0, len(self.rgb_ids), config.SELECT_EVERY_ITH_FRAME)
-            self.rgb_ids = self.rgb_ids[total_idx]
-            self.obj_masks_ids = self.obj_masks_ids[total_idx]
-            self.obj_part_masks_ids = self.obj_part_masks_ids[total_idx]
-            self.aff_masks_ids = self.aff_masks_ids[total_idx]
-            self.depth_ids = self.depth_ids[total_idx]
 
         # Augmenting images.
         self.apply_imgaug = apply_imgaug
@@ -261,16 +252,20 @@ class ARLAffPoseDataset(data.Dataset):
             # cv2.waitKey(0)
 
         # formatting above.
-        obj_ids = np.squeeze(np.array(obj_ids))
-        obj_boxes = np.squeeze(np.array(obj_boxes))
-        obj_binary_masks = np.squeeze(np.array(obj_binary_masks))
-        aff_ids = np.squeeze(np.array(aff_ids))
-        aff_boxes = np.squeeze(np.array(aff_boxes))
-        aff_binary_masks = np.squeeze(np.array(aff_binary_masks))
-        obj_part_ids = np.squeeze(np.array(obj_part_ids_list))
+        obj_ids = np.array(obj_ids).reshape(-1)
+        obj_boxes = np.array(obj_boxes).reshape(-1, 4)
+        obj_binary_masks = np.array(obj_binary_masks).reshape(-1, H, W)
+        aff_ids = np.array(aff_ids).reshape(-1)
+        aff_boxes = np.array(aff_boxes).reshape(-1, 4)
+        aff_binary_masks = np.array(aff_binary_masks).reshape(-1, H, W)
+        obj_part_ids = np.array(obj_part_ids_list).reshape(-1)
 
         target = {}
         target["image_id"] = torch.tensor([index])
+        # torch maskrcnn
+        target["labels"] = torch.as_tensor(obj_ids, dtype=torch.int64)
+        target["boxes"] = torch.as_tensor(obj_boxes, dtype=torch.float32)
+        target["masks"] = torch.as_tensor(obj_binary_masks, dtype=torch.uint8)
         # original mask and binary masks.
         target['obj_mask'] = torch.as_tensor(np.array(obj_mask, dtype=np.uint8), dtype=torch.uint8)
         target["obj_binary_masks"] = torch.as_tensor(obj_binary_masks, dtype=torch.uint8)
@@ -287,6 +282,11 @@ class ARLAffPoseDataset(data.Dataset):
         target["depth_8bit"] = torch.as_tensor(depth_8bit, dtype=torch.float32)
         target["depth_16bit"] = torch.as_tensor(depth_16bit, dtype=torch.float32)
         # target["masked_depth_16bit"] = torch.as_tensor(masked_depth_16bit, dtype=torch.float32)
+
+        # print()
+        # print(f'{target["obj_binary_masks"].size()}')
+        # print(f'{target["obj_ids"].size()}')
+        # print(f'{target["obj_boxes"].size()}')
 
         # sent to transform.
         if self.is_train or self.is_eval:

@@ -7,33 +7,33 @@ sys.path.append('../../')
 
 import config
 from model.affnet import affnet
-from dataset import dataset_loaders
+from model import model_utils
 from training import train_utils
+from dataset.arl_affpose import arl_affpose_dataset_loaders
+from dataset.umd import umd_dataset_loaders
+
 
 class AffNetTest(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Load model.
-        self.model = affnet.ResNetAffNet(pretrained=config.IS_PRETRAINED,
-                                         num_classes=config.NUM_CLASSES,
-                                         )
+        self.model = affnet.ResNetAffNet(pretrained=config.IS_PRETRAINED, num_classes=config.NUM_CLASSES)
         self.model.to(config.DEVICE)
 
         # Load the dataset.
-        train_loader, val_loader, test_loader = dataset_loaders.load_arl_affpose_train_datasets()
+        test_loader = arl_affpose_dataset_loaders.load_arl_affpose_eval_datasets()
         # create dataloader.
         self.data_loader = test_loader
 
     def test_freeze_backbone(self):
+        self.model = model_utils.freeze_backbone(self.model)
         # freeze backbone layers
         for name, parameter in self.model.named_parameters():
-            if 'backbone' in name:
-                print(f'Frozen: {name}')
-                parameter.requires_grad_(False)
-            else:
+            if parameter.requires_grad:
                 print(f'Requires Grad: {name}')
-                parameter.requires_grad_(True)
+            else:
+                print(f'Frozen: {name}')
 
     def test_random_input(self):
 
@@ -49,6 +49,7 @@ class AffNetTest(unittest.TestCase):
         target["image_id"] = torch.tensor([img_id])
         target["obj_boxes"] = bbox
         target["obj_ids"] = labels
+        target["aff_ids"] = labels
         target["aff_binary_masks"] = mask
 
         image = image.to(config.DEVICE)

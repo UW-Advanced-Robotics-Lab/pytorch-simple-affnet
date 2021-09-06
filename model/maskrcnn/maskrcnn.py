@@ -133,8 +133,13 @@ class MaskRCNN(nn.Module):
              rpn_pre_nms_top_n, rpn_post_nms_top_n, rpn_nms_thresh)
 
         # init RoIHeads.
-        box_roi_pool = roi_align.RoIAlign(output_size=config.ROIALIGN_BOX_OUTPUT_SIZE,
-                                          sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
+        # box_roi_pool = roi_align.RoIAlign(output_size=config.ROIALIGN_BOX_OUTPUT_SIZE,
+        #                                   sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
+
+        box_roi_pool = roi_align.MultiScaleRoIAlign(
+                                    featmap_names=['0', '1', '2', '3'],
+                                    output_size=config.ROIALIGN_BOX_OUTPUT_SIZE,
+                                    sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
         
         resolution = box_roi_pool.output_size[0]
         in_channels = out_channels * resolution ** 2
@@ -148,15 +153,22 @@ class MaskRCNN(nn.Module):
             box_reg_weights,
             box_score_thresh, box_nms_thresh, box_num_detections,
         )
-        
-        self.head.mask_roi_pool = roi_align.RoIAlign(output_size=config.ROIALIGN_MASK_OUTPUT_SIZE,
-                                                     sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
-        
-        # layers = (256, 256, 256, 256)
-        # dim_reduced = 256
-        layers = (config.RPN_NUM_SAMPLES, config.RPN_NUM_SAMPLES, config.RPN_NUM_SAMPLES, config.RPN_NUM_SAMPLES)
-        dim_reduced = config.RPN_NUM_SAMPLES
-        self.head.mask_predictor = MaskRCNNPredictor(out_channels, layers, dim_reduced, num_classes)
+
+        # self.head.mask_roi_pool = roi_align.RoIAlign(output_size=config.ROIALIGN_MASK_OUTPUT_SIZE,
+        #                                   sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
+
+        self.head.mask_roi_pool = roi_align.MultiScaleRoIAlign(
+                                    featmap_names=['0', '1', '2', '3'],
+                                    output_size=config.ROIALIGN_MASK_OUTPUT_SIZE,
+                                    sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
+
+        # layers = (rpn_num_samples, rpn_num_samples, rpn_num_samples, rpn_num_samples)
+        # dim_reduced = rpn_num_samples
+        # self.head.mask_predictor = MaskRCNNPredictor(out_channels, layers, dim_reduced, num_classes)
+
+        mask_predictor_in_channels = rpn_num_samples
+        mask_dim_reduced = rpn_num_samples
+        self.head.mask_predictor = MaskRCNNPredictor(mask_predictor_in_channels, mask_dim_reduced, num_classes)
         
     def forward(self, image, target=None):
         if isinstance(image, list):
@@ -199,48 +211,88 @@ class FastRCNNPredictor(nn.Module):
         return score, bbox_delta
 
 
+# class MaskRCNNPredictor(nn.Sequential):
+#     def __init__(self, in_channels, layers, dim_reduced, num_classes):
+#         """
+#         Arguments:
+#             in_channels (int)
+#             layers (Tuple[int])
+#             dim_reduced (int)
+#             num_classes (int)
+#         """
+#
+#         d = OrderedDict()
+#         next_feature = in_channels
+#         for layer_idx, layer_features in enumerate(layers, 1):
+#             d['mask_fcn{}'.format(layer_idx)] = nn.Conv2d(next_feature, layer_features, 3, 1, 1)
+#             d['relu{}'.format(layer_idx)] = nn.ReLU(inplace=True)
+#             next_feature = layer_features
+#
+#         # TODO: look at Deconvolutional layers.
+#         ### output is [14x14] -> [28x28]
+#         ### nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding)
+#         d['mask_conv5'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
+#         d['relu5'] = nn.ReLU(inplace=True)
+#         # ### output is [28x28] -> [56x56]
+#         # d['mask_conv6'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
+#         # d['relu6'] = nn.ReLU(inplace=True)
+#         # # ### output is [56x56] -> [112x112]
+#         # d['mask_conv7'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
+#         # d['relu7'] = nn.ReLU(inplace=True)
+#         # ## output is [112x112] -> [224x224]
+#         # d['mask_conv8'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
+#         # d['relu8'] = nn.ReLU(inplace=True)
+#
+#         d['mask_fcn_logits'] = nn.Conv2d(dim_reduced, num_classes, 1, 1, 0)
+#         super().__init__(d)
+#
+#         for name, param in self.named_parameters():
+#             if 'weight' in name:
+#                 nn.init.kaiming_normal_(param, mode='fan_out', nonlinearity='relu')
+
+
 class MaskRCNNPredictor(nn.Sequential):
-    def __init__(self, in_channels, layers, dim_reduced, num_classes):
-        """
-        Arguments:
-            in_channels (int)
-            layers (Tuple[int])
-            dim_reduced (int)
-            num_classes (int)
+    def __init__(self, in_channels, dim_reduced, num_classes):
+        super(MaskRCNNPredictor, self).__init__(
+            OrderedDict([
+            # TODO: torchvision.
+            ("conv5_mask", nn.ConvTranspose2d(in_channels, dim_reduced, 2, 2, 0)),
+            ("relu", nn.ReLU(inplace=True)),
 
-        """
+            # TODO: Simple transpose_conv
+            ### output mask: [14x14] -> [28x28]
+            # ("conv5_mask", nn.Conv2d(256, dim_reduced, 3, 1, 1)),
+            # ("relu5", nn.ReLU(inplace=True)),
+            # ("transpose_conv5", nn.ConvTranspose2d(in_channels, dim_reduced, padding=0, stride=2, kernel_size=2)),
+            ### output mask: [28x28] -> [56x56]
+            # ("conv6_mask", nn.Conv2d(256, dim_reduced, 3, 1, 1)),
+            # ("relu6", nn.ReLU(inplace=True)),
+            # ("transpose_conv6", nn.ConvTranspose2d(in_channels, dim_reduced, padding=0, stride=2, kernel_size=2)),
 
-        d = OrderedDict()
-        next_feature = in_channels
-        for layer_idx, layer_features in enumerate(layers, 1):
-            d['mask_fcn{}'.format(layer_idx)] = nn.Conv2d(next_feature, layer_features, 3, 1, 1)
-            d['relu{}'.format(layer_idx)] = nn.ReLU(inplace=True)
-            next_feature = layer_features
-
-        # TODO: look at Deconvolutional layers.
-        ### output is [14x14] -> [28x28]
-        ### nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding)
-        d['mask_conv5'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
-        d['relu5'] = nn.ReLU(inplace=True)
-        ### output is [28x28] -> [56x56]
-        d['mask_conv6'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
-        d['relu6'] = nn.ReLU(inplace=True)
-        # ### output is [56x56] -> [112x112]
-        d['mask_conv7'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
-        d['relu7'] = nn.ReLU(inplace=True)
-        ## output is [112x112] -> [224x224]
-        d['mask_conv8'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
-        d['relu8'] = nn.ReLU(inplace=True)
-
-        d['mask_fcn_logits'] = nn.Conv2d(dim_reduced, num_classes, 1, 1, 0)
-        super().__init__(d)
+            # TODO: AffNet
+            ### output mask: [7x7] -> [30x30]
+            # ("conv5_mask", nn.Conv2d(256, dim_reduced, 3, 1, 1)),
+            # ("relu5", nn.ReLU(inplace=True)),
+            # ("transpose_conv5", nn.ConvTranspose2d(in_channels, dim_reduced, padding=1, stride=4, kernel_size=8)),
+            ### output mask: [30x30] -> [122x122]
+            # ("conv6_mask", nn.Conv2d(in_channels, dim_reduced, 3, 1, 1)),
+            # ("relu6", nn.ReLU(inplace=True)),
+            # ("transpose_conv6", nn.ConvTranspose2d(in_channels, dim_reduced, padding=1, stride=4, kernel_size=8)),
+            # ### output mask: [56x56] -> [128x128]
+            # ("conv7_mask", nn.Conv2d(in_channels, dim_reduced, 3, 1, 1)),
+            # ("relu7", nn.ReLU(inplace=True)),
+            # ("transpose_conv7", nn.ConvTranspose2d(in_channels, dim_reduced, padding=1, stride=2, kernel_size=4)),
+            # sigmoid
+            ("mask_fcn_logits", nn.Conv2d(dim_reduced, num_classes, 1, 1, 0)),
+        ])
+        )
 
         for name, param in self.named_parameters():
-            if 'weight' in name:
-                nn.init.kaiming_normal_(param, mode='fan_out', nonlinearity='relu')
+            if "weight" in name:
+                nn.init.kaiming_normal_(param, mode="fan_out", nonlinearity="relu")
 
     
-def ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, pretrained_backbone=True,
+def ResNetMaskRCNN(pretrained=config.IS_PRETRAINED,
                    backbone_feat_extractor=config.BACKBONE_FEAT_EXTRACTOR,
                    num_classes=config.NUM_CLASSES):
     """
@@ -251,26 +303,14 @@ def ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, pretrained_backbone=True,
         num_classes (int): number of classes (including the background).
     """
 
-    # TODO: load backbone.
-    # import torchvision.models as models
-    # print('using pretrained ResNet18 weights ..')
-    # backbone = models.resnet18(pretrained=True)
-    # print(backbone)
-    # backbone = list(backbone.children())[:-2]
-    # backbone = nn.Sequential(*backbone)
-    # print(backbone)
-
-    if pretrained:
-        pretrained_backbone = False
-    backbone = feature_extractor.ResNetBackbone(backbone_name=backbone_feat_extractor, pretrained=pretrained)
+    # backbone = feature_extractor.resnet_backbone(backbone_name=backbone_feat_extractor, pretrained=pretrained)
+    backbone = feature_extractor.resnet_fpn_backbone('resnet50', pretrained)
 
     # load MaskRCNN.
     model = MaskRCNN(backbone, num_classes)
 
     if pretrained:
-        if pretrained_backbone:
-            print(f"loading pre-trained ResNet weights ..")
-        print(f"loading pre-trained MaskRCNN weights: {config.MASKRCNN_PRETRAINED_WEIGHTS} .. ")
+        print(f"loading pre-trained COCO weights: {config.MASKRCNN_PRETRAINED_WEIGHTS} .. ")
         print(f'num classes (excluding background): {num_classes - 1} ..')
 
         # loading torchvision pre-trained weights.
@@ -283,10 +323,10 @@ def ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, pretrained_backbone=True,
         273 to 279: backbone.fpn weights
         '''
 
-        del_list = [i for i in range(265, 271)] + [i for i in range(273, 279)]
-        for i, del_idx in enumerate(del_list):
-            pretrained_msd_names.pop(del_idx - i)
-            pretrained_msd_values.pop(del_idx - i)
+        # del_list = [i for i in range(265, 271)] + [i for i in range(273, 279)]
+        # for i, del_idx in enumerate(del_list):
+        #     pretrained_msd_names.pop(del_idx - i)
+        #     pretrained_msd_values.pop(del_idx - i)
 
         '''
         271: 'rpn.head.cls_logits.weight'
@@ -303,46 +343,25 @@ def ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, pretrained_backbone=True,
         msd = model.state_dict()
         msd_values = list(msd.values())
         msd_names = list(msd.keys())
+        # Simple.
         # skip_list = [271, 272, 273, 274, 279, 280, 281, 282, 293, 294]
-        skip_list = [271, 272, 273, 274, 279, 280, 281, 282,
-                     283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 300]
+        # Mask Head
+        # skip_list = [271, 272, 273, 274, 279, 280, 281, 282,
+        #              # transpose_conv
+        #              283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296]
+        # FPN
+        skip_list = [
+                    # 271, 272, 273, 274, 279, 280,
+                     281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292,
+                     293, 294, 295, 296, 297, 298, 299, 300]
         if num_classes == 91:
             skip_list = [271, 272, 273, 274]
         for i, name in enumerate(msd):
             if i in skip_list:
                 # print(f'i:{i},\tmsd_names:{msd_names[i]},\tpretrained_msd_names:{pretrained_msd_names[i]}')
                 continue
+            # print(f'i:{i},\tmsd_names:{msd_names[i]:<50} i:{i},\tname:{name}')
             msd[name].copy_(pretrained_msd_values[i])
         model.load_state_dict(msd)
 
-        # TODO: loading local pre-trained weights.
-        # checkpoint = torch.load(config.MASKRCNN_PRETRAINED_WEIGHTS, map_location=config.DEVICE)
-        # pretrained_msd = checkpoint["model"]
-        # pretrained_msd_values = list(pretrained_msd.values())
-        # pretrained_msd_names = list(pretrained_msd.keys())
-        #
-        # # We want to remove the heads
-        # # msd: i:271, names: rpn.head.cls_logits.weight
-        # # msd: i:272, names: rpn.head.cls_logits.bias
-        # # msd: i:273, names: rpn.head.bbox_pred.weight
-        # # msd: i:274, names: rpn.head.bbox_pred.bias
-        # # msd: i:279, names: head.box_predictor.cls_score.weight
-        # # msd: i:280, names: head.box_predictor.cls_score.bias
-        # # msd: i:281, names: head.box_predictor.bbox_pred.weight
-        # # msd: i:282, names: head.box_predictor.bbox_pred.bias
-        # # msd: i:293, names: head.mask_predictor.mask_fcn_logits.weight
-        # # msd: i:294, names: head.mask_predictor.mask_fcn_logits.bias
-        # msd = model.state_dict()
-        # msd_names = list(msd.keys())
-        # # skip_list = [36, 37, 38, 39, 50, 51]          # VGG16    Torchvision
-        # # skip_list = [130, 131, 132, 133, 144, 145]    # ResNet18 Torchvision
-        # # skip_list = [114, 115, 116, 117, 128, 129]    # ResNet18 COCO
-        # skip_list = [271, 272, 273, 274, 279, 280, 281, 282, 293, 294]      # ResNet50 COCO
-        # for i, name in enumerate(msd):
-        #     if i in skip_list:
-        #         # print(f'\tmsd:i:{i}, names:{msd_names[i]}')
-        #         continue
-        #     msd[name].copy_(pretrained_msd_values[i])
-        # model.load_state_dict(msd)
-    
     return model

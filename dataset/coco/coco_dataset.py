@@ -51,7 +51,6 @@ class COCODataSet(data.Dataset):
     def __len__(self):
         return len(self.ids)
 
-
     def check_dataset(self, checked_id_file):
         """
         use multithreads to accelerate the process.
@@ -147,11 +146,14 @@ class COCODataSet(data.Dataset):
 
         target = {}
         target["image_id"] = torch.tensor([img_id])
-        # original mask and binary masks.
-        target["obj_binary_masks"] = torch.as_tensor(masks, dtype=torch.uint8)
-        # ids and bboxs.
+        # torch maskrcnn
+        target["labels"] = torch.as_tensor(labels, dtype=torch.int64)
+        target["boxes"] = torch.as_tensor(boxes, dtype=torch.float32)
+        target["masks"] = torch.as_tensor(masks, dtype=torch.uint8)
+        # ids and bboxs and binary masks.
         target["obj_ids"] = torch.as_tensor(labels, dtype=torch.int64)
         target["obj_boxes"] = torch.as_tensor(boxes, dtype=torch.float32)
+        target["obj_binary_masks"] = torch.as_tensor(masks, dtype=torch.uint8)
 
         return target
 

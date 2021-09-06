@@ -16,11 +16,11 @@ def load_arl_affpose_train_datasets():
     # Train dataset.
     print("\nloading train ..")
     train_dataset = arl_affpose_dataset.ARLAffPoseDataset(
-        dataset_dir=config.DATA_DIRECTORY_TRAIN,
-        mean=config.IMAGE_MEAN,
-        std=config.IMAGE_STD,
-        resize=config.RESIZE,
-        crop_size=config.CROP_SIZE,
+        dataset_dir=config.ARL_SYN_DATA_DIRECTORY_TRAIN,
+        mean=config.ARL_IMAGE_MEAN,
+        std=config.ARL_IMAGE_STD,
+        resize=config.ARL_RESIZE,
+        crop_size=config.ARL_CROP_SIZE,
         apply_imgaug=True,
         is_train=True,
         )
@@ -38,11 +38,11 @@ def load_arl_affpose_train_datasets():
     # Val dataset.
     print("\nloading val ..")
     val_dataset = arl_affpose_dataset.ARLAffPoseDataset(
-        dataset_dir=config.DATA_DIRECTORY_VAL,
-        mean=config.IMAGE_MEAN,
-        std=config.IMAGE_STD,
-        resize=config.RESIZE,
-        crop_size=config.CROP_SIZE,
+        dataset_dir=config.ARL_SYN_DATA_DIRECTORY_VAL,
+        mean=config.ARL_IMAGE_MEAN,
+        std=config.ARL_IMAGE_STD,
+        resize=config.ARL_RESIZE,
+        crop_size=config.ARL_CROP_SIZE,
         apply_imgaug=False,
         is_train=True,
     )
@@ -61,11 +61,11 @@ def load_arl_affpose_train_datasets():
     print("\nloading test ..")
 
     test_dataset = arl_affpose_dataset.ARLAffPoseDataset(
-        dataset_dir=config.DATA_DIRECTORY_TEST,
-        mean=config.IMAGE_MEAN,
-        std=config.IMAGE_STD,
-        resize=config.RESIZE,
-        crop_size=config.CROP_SIZE,
+        dataset_dir=config.ARL_DATA_DIRECTORY_TEST,
+        mean=config.ARL_IMAGE_MEAN,
+        std=config.ARL_IMAGE_STD,
+        resize=config.ARL_RESIZE,
+        crop_size=config.ARL_CROP_SIZE,
         apply_imgaug=False,
         is_train=True,
     )
@@ -84,26 +84,34 @@ def load_arl_affpose_train_datasets():
                                               collate_fn=dataset_utils.collate_fn
                                               )
 
-    print(f"Selecting {len(test_loader)} test images and evaluating in {config.TEST_SAVE_FOLDER} ..")
+    print(f"Selecting {len(test_loader)} test images and evaluating in {config.ARL_TEST_SAVE_FOLDER} ..")
 
     return train_loader, val_loader, test_loader
 
-def load_arl_affpose_eval_datasets():
+def load_arl_affpose_eval_datasets(random_images=False, num_random=config.NUM_TEST, shuffle_images=False):
+
     # Test dataset.
     print("\nloading test ..")
     test_dataset = arl_affpose_dataset.ARLAffPoseDataset(
-        dataset_dir=config.DATA_DIRECTORY_TEST,
-        mean=config.IMAGE_MEAN,
-        std=config.IMAGE_STD,
-        resize=config.RESIZE,
-        crop_size=config.CROP_SIZE,
+        dataset_dir=config.ARL_DATA_DIRECTORY_TEST,
+        mean=config.ARL_IMAGE_MEAN,
+        std=config.ARL_IMAGE_STD,
+        resize=config.ARL_RESIZE,
+        crop_size=config.ARL_CROP_SIZE,
         apply_imgaug=False,
         is_eval=True,
     )
 
+    if random_images:
+        # Selecting a subset of test images.
+        np.random.seed(config.RANDOM_SEED)
+        total_idx = np.arange(0, len(test_dataset), 1)
+        test_idx = np.random.choice(total_idx, size=int(num_random), replace=False)
+        test_dataset = Subset(test_dataset, test_idx)
+
     test_loader = torch.utils.data.DataLoader(test_dataset,
                                               batch_size=config.BATCH_SIZE,
-                                              shuffle=False,
+                                              shuffle=shuffle_images,
                                               num_workers=config.NUM_WORKERS,
                                               pin_memory=True,
                                               collate_fn=dataset_utils.collate_fn
