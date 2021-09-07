@@ -83,7 +83,7 @@ def main():
 
         # Formatting Output.
         outputs = outputs.pop()
-        image, outputs = arl_affpose_dataset_utils.format_affnet_outputs(image, outputs)
+        image, outputs = arl_affpose_dataset_utils.format_affnaff_boxeset_outputs(image, outputs)
         scores = np.array(outputs['scores'], dtype=np.float32).flatten()
         obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
         obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)

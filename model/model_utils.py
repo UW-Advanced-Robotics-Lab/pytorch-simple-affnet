@@ -111,19 +111,19 @@ def maskrcnn_loss(mask_logit, proposal, matched_idx, label, gt_mask):
     # # check size of mask after ROI pooling.
     # print(f"pred mask: {mask_logit[idx, label].size()}")
 
-    # check gt masks after ROI cropping.
-    for i in range(len(idx)):
-        current_obj_id = label[i]
-        current_gt_mask = mask_target[i, :, :].detach().cpu().numpy()
-        current_pred_mask = mask_logit[idx, label][i, :, :].detach().cpu().numpy()
-
-        # print output.
-        # print(f"obj id:{current_obj_id}, gt mask: {current_gt_mask.shape}, pred mask: {current_pred_mask.shape}")
-
-        # visualize.
-        cv2.imshow('gt', current_gt_mask)
-        cv2.imshow('pred', current_pred_mask)
-        cv2.waitKey(1)
+    # # check gt masks after ROI cropping.
+    # for i in range(len(idx)):
+    #     current_obj_id = label[i]
+    #     current_gt_mask = mask_target[i, :, :].detach().cpu().numpy()
+    #     current_pred_mask = mask_logit[idx, label][i, :, :].detach().cpu().numpy()
+    #
+    #     # print output.
+    #     # print(f"obj id:{current_obj_id}, gt mask: {current_gt_mask.shape}, pred mask: {current_pred_mask.shape}")
+    #
+    #     # visualize.
+    #     cv2.imshow('gt', current_gt_mask)
+    #     cv2.imshow('pred', current_pred_mask)
+    #     cv2.waitKey(1)
 
     mask_loss = F.binary_cross_entropy_with_logits(mask_logit[idx, label], mask_target)
     return mask_loss

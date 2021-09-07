@@ -425,7 +425,6 @@ def format_target_data(image, target):
     target['obj_ids'] = np.array(target['obj_ids'], dtype=np.int32).flatten()
     target['obj_boxes'] = np.array(target['obj_boxes'], dtype=np.int32).reshape(-1, 4)
     target['aff_ids'] = np.array(target['aff_ids'], dtype=np.int32).flatten()
-    target['aff_boxes'] = np.array(target['aff_boxes'], dtype=np.int32).reshape(-1, 4)
     target['obj_part_ids'] = np.array(target['obj_part_ids'], dtype=np.int32).flatten()
 
     # depth images.
@@ -469,7 +468,6 @@ def format_affnet_outputs(image, outputs):
     outputs['obj_part_ids'] = np.array(outputs['obj_part_ids'], dtype=np.int32).flatten()
     outputs['aff_scores'] = np.array(outputs['aff_scores'], dtype=np.float32).flatten()
     outputs['aff_ids'] = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
-    outputs['aff_boxes'] = np.array(outputs['aff_boxes'], dtype=np.int32).reshape(-1, 4)
     outputs['aff_binary_masks'] = np.array(outputs['aff_binary_masks'] > config.MASK_THRESHOLD, dtype=np.uint8).reshape(-1, height, width)
 
     # print(f"obj: {outputs['scores']}")
@@ -513,14 +511,12 @@ def threshold_affnet_outputs(image, outputs):
     aff_scores = np.array(outputs['aff_scores'], dtype=np.float32).flatten()
     obj_part_ids = np.array(outputs['obj_part_ids'], dtype=np.int32).flatten()
     aff_ids = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
-    aff_boxes = np.array(outputs['aff_boxes'], dtype=np.int32).reshape(-1, 4)
     aff_binary_masks = np.array(outputs['aff_binary_masks'], dtype=np.uint8).reshape(-1, height, width)
 
     idx = np.argwhere(aff_scores > config.OBJ_CONFIDENCE_THRESHOLD)
     outputs['aff_scores'] = aff_scores[idx]
     outputs['obj_part_ids'] = obj_part_ids[idx]
     outputs['aff_ids'] = aff_ids[idx]
-    outputs['aff_boxes'] = aff_boxes[idx, :]
     outputs['aff_binary_masks'] = aff_binary_masks[idx, :, :]
 
     return image, outputs

@@ -71,7 +71,7 @@ class Transformer:
         box[:, [1, 3]] = box[:, [1, 3]] * ori_image_shape[0] / image_shape[0]
         result['obj_boxes'] = box
 
-        if 'aff_boxes' in result.keys():
+        if 'aff_scores' in result.keys():
             aff_box = result['aff_boxes']
             aff_box[:, [0, 2]] = aff_box[:, [0, 2]] * ori_image_shape[1] / image_shape[1]
             aff_box[:, [1, 3]] = aff_box[:, [1, 3]] * ori_image_shape[0] / image_shape[0]
@@ -83,7 +83,6 @@ class Transformer:
                 result['aff_binary_masks'] = mask
 
         return result
-
 
 def expand_detection(mask, box, padding):
     M = mask.shape[-1]

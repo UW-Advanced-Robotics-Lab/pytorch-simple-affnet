@@ -80,12 +80,12 @@ def main():
             writer.add_scalar('eval/mAP', mAP, int(epoch))
             print(f'mAP: {mAP:.5f}')
             # eval FwB
-            Fwb = eval_utils.eval_fwb_arl_affpose_maskrcnn()
-            writer.add_scalar('eval/Fwb', Fwb, int(epoch))
+            # Fwb = eval_utils.eval_fwb_arl_affpose_maskrcnn()
+            # writer.add_scalar('eval/Fwb', Fwb, int(epoch))
             # save best model.
-            if Fwb > best_Fwb:
-                best_Fwb = Fwb
-                writer.add_scalar('eval/Best_Fwb', best_Fwb, int(epoch))
+            # if Fwb > best_Fwb:
+            #     best_Fwb = Fwb
+            #     writer.add_scalar('eval/Best_Fwb', best_Fwb, int(epoch))
             if mAP > best_mAP:
                 best_mAP = mAP
                 writer.add_scalar('eval/Best_mAP', best_mAP, int(epoch))
