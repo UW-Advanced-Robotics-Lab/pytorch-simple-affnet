@@ -12,11 +12,11 @@ Framework Selection:
 '''
 
 # Prelim for naming experiment.
-FRAMEWORK = 'MaskRCNN'
+FRAMEWORK = 'AffNet'
 EXP_DATASET = 'ARLAffPose'
 EXP_DOMAIN = 'Real'
 EXP_IMAGES = 'RGB'
-EXP_NUM = 'v5_fpn'
+EXP_NUM = 'v7_rpn_focal_loss'
 
 '''
 Backbone Selection:
@@ -33,12 +33,12 @@ MASKRCNN_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/maskrcnn_resn
 # MASKRCNN_PRETRAINED_WEIGHTS = ROOT_DIR_PATH + 'pretrained_coco_weights_ResNet50.pth' # resnet50
 
 RESTORE_COCO_MASKRCNN_WEIGHTS = ROOT_DIR_PATH + 'trained_models/COCO_Real_RGB/Torchvision_MaskRCNN_COCO_Real_RGB_640x480_v0/maskrcnn_epoch_3.pth'
+
 RESTORE_UMD_AFFNET_WEIGHTS = ROOT_DIR_PATH + 'trained_models/UMD_Real_RGB/AffNet_UMD_Real_RGB_640x480_v7_affnet_transpose_conv_114/BEST_MODEL.pth'
 
-RESTORE_ARL_TORCHVISION_MASKRCNN_WEIGHTS = ROOT_DIR_PATH + 'trained_models/ARLAffPose_Real_RGB/MaskRCNN_ARLAffPose_Real_RGB_640x480_v1_torchvision/maskrcnn_epoch_2.pth'
-RESTORE_ARL_MASKRCNN_WEIGHTS = ROOT_DIR_PATH + 'trained_models/ARLAffPose_Real_RGB/MaskRCNN_ARLAffPose_Real_RGB_640x480_v2_affnet_transpose_conv_114/BEST_MODEL.pth'
-
-RESTORE_ARL_AFFNET_WEIGHTS = '/data/Akeaveny/weights/AffNet/ARLAffPose/AffNet_ARLAffPose_Real_RGB_640x640_v0/BEST_MODEL.pth'
+RESTORE_ARL_TORCHVISION_MASKRCNN_WEIGHTS = ROOT_DIR_PATH + 'trained_models/ARLAffPose_Real_RGB/MaskRCNN_ARLAffPose_Real_RGB_640x480_v1_torchvision/maskrcnn_epoch_4.pth'
+RESTORE_ARL_MASKRCNN_WEIGHTS = ROOT_DIR_PATH + 'trained_models/ARLAffPose_Real_RGB/MaskRCNN_ARLAffPose_Real_RGB_640x480_v5_fpn/BEST_MODEL.pth'
+RESTORE_ARL_AFFNET_WEIGHTS = ROOT_DIR_PATH + 'trained_models/ARLAffPose_Real_RGB/AffNet_ARLAffPose_Real_RGB_640x480_v5_fpn/BEST_MODEL.pth'
 
 ''' 
 MaskRCNN configs. 
@@ -50,7 +50,7 @@ OBJ_CONFIDENCE_THRESHOLD = 0.7
 MASK_THRESHOLD = 0.4
 
 # Anchor Generator
-ANCHOR_SIZES = (128, 256, 512)
+ANCHOR_SIZES = (32, 64, 128, 256, 512)
 ANCHOR_RATIOS = (0.5, 1, 2)
 
 # transform parameters
@@ -67,7 +67,7 @@ RPN_POSITIVE_FRACTION = 0.5
 RPN_REG_WEIGHTS = (1., 1., 1., 1.)
 RPN_PRE_NMS_TOP_N_TRAIN = 2000
 RPN_PRE_NMS_TOP_N_TEST = 1000
-RPN_POST_NMS_TOP_N_TRAIN = 2000
+RPN_POST_NMS_TOP_N_TRAIN = 2000 * 2  # to try to reduce false positives.
 RPN_POST_NMS_TOP_N_TEST = 1000
 RPN_NMS_THRESH = 0.7
 
@@ -75,7 +75,6 @@ RPN_NMS_THRESH = 0.7
 ROIALIGN_BOX_OUTPUT_SIZE = (7, 7)
 ROIALIGN_MASK_OUTPUT_SIZE = (14, 14)
 ROIALIGN_SAMPLING_RATIO = 2
-ROIALIGN_SPATIAL_SCALE = 1  # 25/800
 
 # RoIHeads parameters
 BOX_FG_IOU_THRESH = 0.5
@@ -194,8 +193,7 @@ print("using device: {} ..".format(DEVICE))
 
 RANDOM_SEED = 1234
 
-NUM_EPOCHS_HEADS = 0
-NUM_EPOCHS_TRAIN_FULL_DATASET = 0
+EPOCH_TO_TRAIN_FULL_DATASET = 0
 NUM_EPOCHS = 10
 BATCH_SIZE = 1
 NUM_WORKERS = 1

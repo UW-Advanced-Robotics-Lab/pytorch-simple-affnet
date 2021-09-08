@@ -20,18 +20,18 @@ from dataset.arl_affpose import arl_affpose_dataset_utils
 from dataset.arl_affpose import arl_affpose_dataset_loaders
 from eval import eval_utils
 
-SHOW_IMAGES = False
+SHOW_IMAGES = True
 
 SHUFFLE_IMAGES = True
 RANDOM_IMAGES = True
 NUM_RANDOM = 100
 
-SAVE_PRED = True
+SAVE_AND_EVAL_PRED = True
 
 
 def main():
 
-    if SAVE_PRED:
+    if SAVE_AND_EVAL_PRED:
         # Init folders
         print('\neval in .. {}'.format(config.ARL_AFF_EVAL_SAVE_FOLDER))
 
@@ -83,13 +83,10 @@ def main():
 
         # Formatting Output.
         outputs = outputs.pop()
-        image, outputs = arl_affpose_dataset_utils.format_affnaff_boxeset_outputs(image, outputs)
+        image, outputs = arl_affpose_dataset_utils.format_affnet_outputs(image, outputs)
         scores = np.array(outputs['scores'], dtype=np.float32).flatten()
         obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
         obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
-        obj_part_ids = np.array(outputs['obj_part_ids'], dtype=np.int32).flatten()
-        aff_scores = np.array(outputs['aff_scores'], dtype=np.float32).flatten()
-        aff_ids = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
         aff_binary_masks = np.array(outputs['aff_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
         outputs['obj_binary_masks'] = arl_affpose_dataset_utils.get_obj_binary_masks(image, obj_ids, aff_binary_masks)
         obj_binary_masks = np.array(outputs['obj_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
@@ -148,10 +145,15 @@ def main():
 
         # threshold outputs for mask.
         image, outputs = arl_affpose_dataset_utils.threshold_affnet_outputs(image, outputs)
-        aff_scores = np.array(outputs['aff_scores'], dtype=np.float32).flatten()
+        scores = np.array(outputs['scores'], dtype=np.float32).flatten()
+        obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
+        obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
         obj_part_ids = np.array(outputs['obj_part_ids'], dtype=np.int32).flatten()
         aff_ids = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
         aff_binary_masks = np.array(outputs['aff_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
+
+        # visualize "good" bbox predictions.
+        bbox_img = arl_affpose_dataset_utils.draw_bbox_on_img(image=image, scores=scores, obj_ids=obj_ids, boxes=obj_boxes)
 
         # only visualize "good" affordance masks.
         pred_aff_mask = arl_affpose_dataset_utils.get_segmentation_masks(image=image,
@@ -159,9 +161,9 @@ def main():
                                                                          binary_masks=aff_binary_masks,
                                                                          )
         color_aff_mask = arl_affpose_dataset_utils.colorize_aff_mask(pred_aff_mask)
-        color_aff_mask = cv2.addWeighted(pred_bbox_img, 0.35, color_aff_mask, 0.65, 0)
+        color_aff_mask = cv2.addWeighted(bbox_img, 0.5, color_aff_mask, 0.5, 0)
 
-        # TODO: Pred obj part mask.
+        # get pred obj part mask.
         pred_obj_part_mask = arl_affpose_dataset_utils.get_obj_part_mask(image=image,
                                                                     obj_part_ids=obj_part_ids,
                                                                     aff_binary_masks=aff_binary_masks,
@@ -169,9 +171,9 @@ def main():
         # Original Segmentation Mask.
         pred_obj_mask = arl_affpose_dataset_utils.convert_obj_part_mask_to_obj_mask(pred_obj_part_mask)
         color_obj_mask = arl_affpose_dataset_utils.colorize_obj_mask(pred_obj_mask)
-        color_obj_mask = cv2.addWeighted(pred_bbox_img, 0.35, color_obj_mask, 0.65, 0)
+        color_obj_mask = cv2.addWeighted(bbox_img, 0.5, color_obj_mask, 0.5, 0)
 
-        if SAVE_PRED:
+        if SAVE_AND_EVAL_PRED:
             # saving predictions.
             _image_idx = target["image_id"].detach().numpy()[0]
             _image_idx = str(1000000 + _image_idx)[1:]
@@ -191,9 +193,10 @@ def main():
             cv2.imshow('pred_obj_part_mask', cv2.cvtColor(color_obj_mask, cv2.COLOR_BGR2RGB))
             cv2.waitKey(0)
 
+    print()
     print("mAP @0.5-0.95: over {} test images is {:.3f}".format(len(APs), np.mean(APs)))
 
-    if SAVE_PRED:
+    if SAVE_AND_EVAL_PRED:
         print()
         # getting FwB.
         os.chdir(config.MATLAB_SCRIPTS_DIR)

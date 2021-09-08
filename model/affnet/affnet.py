@@ -135,8 +135,13 @@ class AffNet(nn.Module):
              rpn_reg_weights,
              rpn_pre_nms_top_n, rpn_post_nms_top_n, rpn_nms_thresh)
 
-        box_roi_pool = roi_align.RoIAlign(output_size=config.ROIALIGN_BOX_OUTPUT_SIZE,
-                                          sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
+        # box_roi_pool = roi_align.RoIAlign(output_size=config.ROIALIGN_BOX_OUTPUT_SIZE,
+        #                                   sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
+
+        box_roi_pool = roi_align.MultiScaleRoIAlign(
+            featmap_names=['0', '1', '2', '3'],
+            output_size=config.ROIALIGN_BOX_OUTPUT_SIZE,
+            sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
         
         resolution = box_roi_pool.output_size[0]
         in_channels = out_channels * resolution ** 2
@@ -150,8 +155,13 @@ class AffNet(nn.Module):
              box_reg_weights,
              box_score_thresh, box_nms_thresh, box_num_detections)
         
-        self.head.mask_roi_pool = roi_align.RoIAlign(output_size=config.ROIALIGN_MASK_OUTPUT_SIZE,
-                                                     sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
+        # self.head.mask_roi_pool = roi_align.RoIAlign(output_size=config.ROIALIGN_MASK_OUTPUT_SIZE,
+        #                                              sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
+
+        self.head.mask_roi_pool = roi_align.MultiScaleRoIAlign(
+                                    featmap_names=['0', '1', '2', '3'],
+                                    output_size=config.ROIALIGN_MASK_OUTPUT_SIZE,
+                                    sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
 
         # layers = (rpn_num_samples, rpn_num_samples, rpn_num_samples, rpn_num_samples)
         # dim_reduced = rpn_num_samples
@@ -295,7 +305,8 @@ def ResNetAffNet(pretrained=config.IS_PRETRAINED, pretrained_backbone=True,
         num_classes (int): number of classes (including the background).
     """
 
-    backbone = feature_extractor.resnet_backbone(backbone_name=backbone_feat_extractor, pretrained=pretrained_backbone)
+    # backbone = feature_extractor.resnet_backbone(backbone_name=backbone_feat_extractor, pretrained=pretrained)
+    backbone = feature_extractor.resnet_fpn_backbone(backbone_feat_extractor, pretrained)
 
     # load AffNet.
     model = AffNet(backbone, num_classes)
@@ -314,10 +325,10 @@ def ResNetAffNet(pretrained=config.IS_PRETRAINED, pretrained_backbone=True,
         273 to 279: backbone.fpn weights
         '''
 
-        del_list = [i for i in range(265, 271)] + [i for i in range(273, 279)]
-        for i, del_idx in enumerate(del_list):
-            pretrained_msd_names.pop(del_idx - i)
-            pretrained_msd_values.pop(del_idx - i)
+        # del_list = [i for i in range(265, 271)] + [i for i in range(273, 279)]
+        # for i, del_idx in enumerate(del_list):
+        #     pretrained_msd_names.pop(del_idx - i)
+        #     pretrained_msd_values.pop(del_idx - i)
 
         '''
         271: 'rpn.head.cls_logits.weight'
@@ -334,14 +345,17 @@ def ResNetAffNet(pretrained=config.IS_PRETRAINED, pretrained_backbone=True,
         msd = model.state_dict()
         msd_values = list(msd.values())
         msd_names = list(msd.keys())
+        # Simple.
         # skip_list = [271, 272, 273, 274, 279, 280, 281, 282, 293, 294]
-        # skip_list = [271, 272, 273, 274, 279, 280, 281, 282,
-        #              283, 284, 285, 286, 287, 288, 289, 290, 291, 292,
-        #              293, 294, 295, 296, 297, 298, 299, 300]
         # Mask Head
-        skip_list = [271, 272, 273, 274, 279, 280, 281, 282,
-                     # transpose_conv
-                     283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296]
+        # skip_list = [271, 272, 273, 274, 279, 280, 281, 282,
+        #              # transpose_conv
+        #              283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296]
+        # FPN
+        skip_list = [
+            # 271, 272, 273, 274, 279, 280,
+            281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292,
+            293, 294, 295, 296, 297, 298, 299, 300]
         if num_classes == 91:
             skip_list = [271, 272, 273, 274]
         for i, name in enumerate(msd):

@@ -304,7 +304,7 @@ def ResNetMaskRCNN(pretrained=config.IS_PRETRAINED,
     """
 
     # backbone = feature_extractor.resnet_backbone(backbone_name=backbone_feat_extractor, pretrained=pretrained)
-    backbone = feature_extractor.resnet_fpn_backbone('resnet50', pretrained)
+    backbone = feature_extractor.resnet_fpn_backbone(backbone_feat_extractor, pretrained)
 
     # load MaskRCNN.
     model = MaskRCNN(backbone, num_classes)

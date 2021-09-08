@@ -82,6 +82,15 @@ class ARLAffPoseDataset(data.Dataset):
         self.aff_masks_ids = np.sort(np.array(self.aff_masks_ids))
         self.depth_ids = np.sort(np.array(self.depth_ids))
 
+        SELECT_EVERY_ITH_FRAME = 5
+        total_idx = np.arange(0, len(self.rgb_ids), SELECT_EVERY_ITH_FRAME)
+        self.rgb_ids = self.rgb_ids[total_idx]
+        self.obj_masks_ids = self.obj_masks_ids[total_idx]
+        self.obj_part_masks_ids = self.obj_part_masks_ids[total_idx]
+        self.aff_masks_ids = self.aff_masks_ids[total_idx]
+        self.depth_ids = self.depth_ids[total_idx]
+        print(f'Dataset has {len(self.rgb_ids)} examples .. {dataset_dir}')
+
         # Augmenting images.
         self.apply_imgaug = apply_imgaug
         self.affine, self.colour_aug, self.depth_aug = dataset_utils.get_image_augmentations()

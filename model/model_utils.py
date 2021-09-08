@@ -3,6 +3,7 @@ import math
 import cv2
 
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
 import torchvision
@@ -10,6 +11,7 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 
 from model import roi_align
+from dataset.arl_affpose import arl_affpose_dataset_utils
 
 
 def get_model_instance_segmentation(pretrained, num_classes):
@@ -69,8 +71,54 @@ def unfreeze_all_layers(model):
         parameter.requires_grad_(True)
     return model
 
+
+def sigmoid_focal_loss(
+    inputs: torch.Tensor,
+    targets: torch.Tensor,
+    alpha: float = 0.25,
+    gamma: float = 2,
+    reduction: str = "none",
+):
+    """
+    Original implementation from https://github.com/facebookresearch/fvcore/blob/master/fvcore/nn/focal_loss.py .
+    Loss used in RetinaNet for dense detection: https://arxiv.org/abs/1708.02002.
+    Args:
+        inputs: A float tensor of arbitrary shape.
+                The predictions for each example.
+        targets: A float tensor with the same shape as inputs. Stores the binary
+                classification label for each element in inputs
+                (0 for the negative class and 1 for the positive class).
+        alpha: (optional) Weighting factor in range (0,1) to balance
+                positive vs negative examples or -1 for ignore. Default = 0.25
+        gamma: Exponent of the modulating factor (1 - p_t) to
+               balance easy vs hard examples.
+        reduction: 'none' | 'mean' | 'sum'
+                 'none': No reduction will be applied to the output.
+                 'mean': The output will be averaged.
+                 'sum': The output will be summed.
+    Returns:
+        Loss tensor with the reduction option applied.
+    """
+    p = torch.sigmoid(inputs)
+    ce_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction="none")
+    p_t = p * targets + (1 - p) * (1 - targets)
+    loss = ce_loss * ((1 - p_t) ** gamma)
+
+    if alpha >= 0:
+        alpha_t = alpha * targets + (1 - alpha) * (1 - targets)
+        loss = alpha_t * loss
+
+    if reduction == "mean":
+        loss = loss.mean()
+    elif reduction == "sum":
+        loss = loss.sum()
+
+    return loss
+
 def rpn_loss(idx, pos_idx, objectness, label, pred_bbox_delta, regression_target):
-    objectness_loss = F.binary_cross_entropy_with_logits(objectness[idx], label[idx])
+    # objectness_loss = F.binary_cross_entropy_with_logits(objectness[idx], label[idx])
+    # TODO: try focal loss.
+    objectness_loss = sigmoid_focal_loss(objectness[idx], label[idx], reduction='mean')
     box_loss = F.l1_loss(pred_bbox_delta[pos_idx], regression_target, reduction='sum') / idx.numel()
 
     return objectness_loss, box_loss
@@ -88,6 +136,7 @@ def fastrcnn_loss(class_logit, box_regression, label, regression_target):
     return classifier_loss, box_reg_loss
 
 def maskrcnn_loss(mask_logit, proposal, matched_idx, label, gt_mask):
+
     matched_idx = matched_idx[:, None].to(proposal)
     roi = torch.cat((matched_idx, proposal), dim=1)
 
@@ -111,21 +160,27 @@ def maskrcnn_loss(mask_logit, proposal, matched_idx, label, gt_mask):
     # # check size of mask after ROI pooling.
     # print(f"pred mask: {mask_logit[idx, label].size()}")
 
-    # # check gt masks after ROI cropping.
+    # check gt masks after ROI cropping.
     # for i in range(len(idx)):
     #     current_obj_id = label[i]
     #     current_gt_mask = mask_target[i, :, :].detach().cpu().numpy()
     #     current_pred_mask = mask_logit[idx, label][i, :, :].detach().cpu().numpy()
     #
     #     # print output.
-    #     # print(f"obj id:{current_obj_id}, gt mask: {current_gt_mask.shape}, pred mask: {current_pred_mask.shape}")
+    #     print(f"\nidx: {i}, num idxs {len(idx)}")
+    #     print(f"obj id:{current_obj_id}")
+    #     print(f"gt mask: {mask_target.shape}")
+    #     print(f"gt mask: {mask_logit.shape}")
     #
     #     # visualize.
     #     cv2.imshow('gt', current_gt_mask)
     #     cv2.imshow('pred', current_pred_mask)
-    #     cv2.waitKey(1)
+    #     cv2.waitKey(0)
 
-    mask_loss = F.binary_cross_entropy_with_logits(mask_logit[idx, label], mask_target)
+    # mask_loss = F.binary_cross_entropy_with_logits(mask_logit[idx, label], mask_target)
+    # TODO: try focal loss.
+    mask_loss = sigmoid_focal_loss(mask_logit[idx, label], mask_target, reduction='mean')
+
     return mask_loss
 
 class AnchorGenerator:

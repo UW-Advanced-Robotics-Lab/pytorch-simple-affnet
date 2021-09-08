@@ -16,6 +16,19 @@ from dataset import dataset_utils
 DRAW_OBJ_PART_POSE = np.array([1, 3, 5, 7, 9, 11, 14, 16, 19, 22, 24])
 # We modify the object's pose for visualization.
 MODIFY_OBJECT_POSE = np.array([6, 7, 8, 9, 10, 11])
+# Class distributions.
+OBJ_IDS_DISTRIBUTION = np.array([132/1253, 113/1253, 129/1253, 100/1253, 101/1253, 99/1253, 145/1253, 109/1253, 120/1253, 93/1253, 112/1253])
+# Affordance distributions.
+AFF_IDS_DISTRIBUTION = np.array([985/2812, 220/2812, 224/2812, 130/2812, 232/2812, 93/2812, 463/2812, 353/2812, 112/2812])
+
+
+def get_class_weights(obj_ids=None, aff_ids=None):
+
+    if aff_ids is not None:
+        class_weights = torch.zeros(len(aff_ids))
+        for idx, aff_id in enumerate(aff_ids):
+            class_weights[idx] = AFF_IDS_DISTRIBUTION[aff_id.item()-1]
+        return class_weights
 
 def print_class_obj_names(obj_labels):
     for obj_label in obj_labels:
@@ -392,7 +405,7 @@ def get_obj_binary_masks(image, obj_ids, aff_binary_masks):
     for idx, obj_id in enumerate(obj_ids):
         obj_part_ids = map_obj_id_to_obj_part_ids(obj_id)
         for obj_part_id in obj_part_ids:
-            obj_binary_masks[idx, :, :] = np.array(aff_binary_masks[aff_idx, :, :], dtype=np.uint8)
+            obj_binary_masks[idx, :, :] += np.array(aff_binary_masks[aff_idx, :, :], dtype=np.uint8)
             aff_idx += 1
 
     return obj_binary_masks
@@ -465,10 +478,17 @@ def format_affnet_outputs(image, outputs):
     outputs['scores'] = np.array(outputs['scores'], dtype=np.float32).flatten()
     outputs['obj_ids'] = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
     outputs['obj_boxes'] = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
-    outputs['obj_part_ids'] = np.array(outputs['obj_part_ids'], dtype=np.int32).flatten()
-    outputs['aff_scores'] = np.array(outputs['aff_scores'], dtype=np.float32).flatten()
-    outputs['aff_ids'] = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
-    outputs['aff_binary_masks'] = np.array(outputs['aff_binary_masks'] > config.MASK_THRESHOLD, dtype=np.uint8).reshape(-1, height, width)
+
+    if 'aff_scores' in outputs:
+        outputs['aff_scores'] = np.array(outputs['aff_scores'], dtype=np.float32).flatten()
+        outputs['obj_part_ids'] = np.array(outputs['obj_part_ids'], dtype=np.int32).flatten()
+        outputs['aff_ids'] = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
+        outputs['aff_binary_masks'] = np.array(outputs['aff_binary_masks'] > config.MASK_THRESHOLD, dtype=np.uint8).reshape(-1, height, width)
+    else:
+        outputs['aff_scores'] = np.zeros_like(outputs['scores'])
+        outputs['obj_part_ids'] = np.zeros_like(outputs['obj_ids'])
+        outputs['aff_ids'] = np.zeros_like(outputs['obj_ids'])
+        outputs['aff_binary_masks'] = np.zeros(shape=(len(outputs['obj_ids']), height, width))
 
     # print(f"obj: {outputs['scores']}")
     # print(f"aff: {outputs['aff_scores']}")

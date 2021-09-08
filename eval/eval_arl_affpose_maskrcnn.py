@@ -26,12 +26,12 @@ SHUFFLE_IMAGES = True
 RANDOM_IMAGES = True
 NUM_RANDOM = 100
 
-SAVE_PRED = True
+SAVE_AND_EVAL_PRED = True
 
 
 def main():
 
-    if SAVE_PRED:
+    if SAVE_AND_EVAL_PRED:
         # Init folders
         print('\neval in .. {}'.format(config.ARL_OBJ_EVAL_SAVE_FOLDER))
 
@@ -148,7 +148,6 @@ def main():
                   )
 
         # get average precision.
-        print()
         AP = eval_utils.compute_ap_range(gt_class_id=gt_obj_ids,
                                          gt_box=gt_obj_boxes,
                                          gt_mask=gt_obj_binary_masks.reshape(H, W, -1),
@@ -159,21 +158,27 @@ def main():
                                          verbose=False,
                                          )
         APs.append(AP)
+        print("AP @0.5-0.95: {:.5f}".format(AP))
 
         # visualize all bbox predictions.
         pred_bbox_img = arl_affpose_dataset_utils.draw_bbox_on_img(image=image, scores=scores, obj_ids=obj_ids, boxes=obj_boxes)
 
         # threshold outputs for mask.
         image, outputs = arl_affpose_dataset_utils.threshold_outputs(image, outputs)
+        scores = np.array(outputs['scores'], dtype=np.float32).flatten()
         obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
+        obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
         obj_binary_masks = np.array(outputs['obj_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
+
+        # visualize "good" bbox predictions.
+        bbox_img = arl_affpose_dataset_utils.draw_bbox_on_img(image=image, scores=scores, obj_ids=obj_ids, boxes=obj_boxes)
 
         # only visualize "good" masks.
         pred_obj_mask = arl_affpose_dataset_utils.get_segmentation_masks(image=image, obj_ids=obj_ids, binary_masks=obj_binary_masks)
         color_mask = arl_affpose_dataset_utils.colorize_obj_mask(pred_obj_mask)
-        color_mask = cv2.addWeighted(pred_bbox_img, 0.5, color_mask, 0.5, 0)
+        color_mask = cv2.addWeighted(bbox_img, 0.5, color_mask, 0.5, 0)
 
-        if SAVE_PRED:
+        if SAVE_AND_EVAL_PRED:
             # saving predictions.
             _image_idx = target["image_id"].detach().numpy()[0]
             _image_idx = str(1000000 + _image_idx)[1:]
@@ -200,9 +205,11 @@ def main():
         print(f'Precision: {TPs / (TPs + FPs):.2f},\t'
               f'Recall: {TPs / (TPs + FNs):.2f}'
               )
+
+    print()
     print("mAP @0.5-0.95: over {} test images is {:.3f}".format(len(APs), np.mean(APs)))
 
-    if SAVE_PRED:
+    if SAVE_AND_EVAL_PRED:
         print()
         # getting FwB.
         os.chdir(config.MATLAB_SCRIPTS_DIR)

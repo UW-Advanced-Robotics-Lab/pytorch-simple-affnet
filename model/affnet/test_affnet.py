@@ -105,7 +105,7 @@ if __name__ == '__main__':
 
     # run desired test.
     suite = unittest.TestSuite()
-    suite.addTest(AffNetTest("test_affnet_eval"))
+    suite.addTest(AffNetTest("test_affnet_train"))
     runner = unittest.TextTestRunner()
     runner.run(suite)
 

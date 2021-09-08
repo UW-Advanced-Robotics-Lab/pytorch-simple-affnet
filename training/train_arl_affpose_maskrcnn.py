@@ -49,32 +49,32 @@ def main():
         print()
 
         if epoch < config.NUM_EPOCHS_HEADS:
-            print(f'Epoch {epoch}: Freezing Network Heads ..')
+            print(f'Epoch {epoch+1}: Freezing Network Heads ..')
             model = model_utils.freeze_heads(model)
             # Construct an optimizer.
             params = [p for p in model.parameters() if p.requires_grad]
             optimizer = torch.optim.SGD(params, lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY, momentum=config.MOMENTUM)
             lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=config.MILESTONES, gamma=config.GAMMA)
         else:
-            print(f'Epoch {epoch}: Training all layers ..')
+            print(f'Epoch {epoch+1}: Training all layers ..')
             model = model_utils.unfreeze_all_layers(model)
             # Construct an optimizer.
             params = [p for p in model.parameters() if p.requires_grad]
             optimizer = torch.optim.SGD(params, lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY, momentum=config.MOMENTUM)
             lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=config.MILESTONES, gamma=config.GAMMA)
 
-        if epoch < config.NUM_EPOCHS_TRAIN_FULL_DATASET:
+        if epoch < config.EPOCH_TO_TRAIN_FULL_DATASET:
             is_subsample = True
         else:
             is_subsample = False
 
         # train & val for one epoch
-        model, optimizer = train_utils.train_one_epoch(model, optimizer, train_loader, config.DEVICE, epoch, writer, is_subsample=True)
+        model, optimizer = train_utils.train_one_epoch(model, optimizer, train_loader, config.DEVICE, epoch, writer, is_subsample=is_subsample)
         model, optimizer = train_utils.val_one_epoch(model, optimizer, val_loader, config.DEVICE, epoch, writer, is_subsample=True)
         # update learning rate.
         lr_scheduler.step()
 
-        if epoch >= config.NUM_EPOCHS_TRAIN_FULL_DATASET:
+        if epoch >= config.EPOCH_TO_TRAIN_FULL_DATASET:
             # eval mAP
             model, mAP = eval_utils.eval_maskrcnn_arl_affpose(model, test_loader)
             writer.add_scalar('eval/mAP', mAP, int(epoch))

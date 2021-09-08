@@ -62,7 +62,7 @@ def main():
             optimizer = torch.optim.SGD(params, lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY, momentum=config.MOMENTUM)
             lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=config.MILESTONES, gamma=config.GAMMA)
 
-        if epoch < config.NUM_EPOCHS_TRAIN_FULL_DATASET:
+        if epoch < config.EPOCH_TO_TRAIN_FULL_DATASET:
             is_subsample = True
         else:
             is_subsample = False
@@ -73,7 +73,7 @@ def main():
         # update learning rate.
         lr_scheduler.step()
 
-        if epoch >= config.NUM_EPOCHS_TRAIN_FULL_DATASET:
+        if epoch >= config.EPOCH_TO_TRAIN_FULL_DATASET:
             # eval model
             model = eval_utils.eval_affnet_umd(model, test_loader)
             Fwb = eval_utils.eval_fwb_umd_affnet()

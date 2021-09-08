@@ -49,7 +49,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, writer, is_sub
                                        )
         num_train = config.NUM_TRAIN
 
-    with tqdm(total=num_train, desc=f'Train Epoch:{epoch}', unit='iterations') as pbar:
+    with tqdm(total=num_train, desc=f'Train Epoch:{epoch+1}', unit='iterations') as pbar:
         for idx, batch in enumerate(train_loader):
 
             images, targets = batch
@@ -114,7 +114,7 @@ def val_one_epoch(model, optimizer, data_loader, device, epoch, writer, is_subsa
                                      )
         num_val = config.NUM_VAL
 
-    with tqdm(total=num_val, desc=f'Val Epoch:{epoch}', unit='iterations') as pbar:
+    with tqdm(total=num_val, desc=f'Val Epoch:{epoch+1}', unit='iterations') as pbar:
         for idx, batch in enumerate(val_loader):
 
             images, targets = batch

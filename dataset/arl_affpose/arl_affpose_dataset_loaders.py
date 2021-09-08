@@ -16,7 +16,7 @@ def load_arl_affpose_train_datasets():
     # Train dataset.
     print("\nloading train ..")
     train_dataset = arl_affpose_dataset.ARLAffPoseDataset(
-        dataset_dir=config.ARL_SYN_DATA_DIRECTORY_TRAIN,
+        dataset_dir=config.ARL_DATA_DIRECTORY_TRAIN,
         mean=config.ARL_IMAGE_MEAN,
         std=config.ARL_IMAGE_STD,
         resize=config.ARL_RESIZE,
@@ -38,7 +38,7 @@ def load_arl_affpose_train_datasets():
     # Val dataset.
     print("\nloading val ..")
     val_dataset = arl_affpose_dataset.ARLAffPoseDataset(
-        dataset_dir=config.ARL_SYN_DATA_DIRECTORY_VAL,
+        dataset_dir=config.ARL_DATA_DIRECTORY_VAL,
         mean=config.ARL_IMAGE_MEAN,
         std=config.ARL_IMAGE_STD,
         resize=config.ARL_RESIZE,

@@ -30,19 +30,20 @@ class DatasetStatisticsTest(unittest.TestCase):
 
         # Load ARL AffPose dataset.
         dataset = arl_affpose_dataset.ARLAffPoseDataset(
-            dataset_dir=config.ARL_DATA_DIRECTORY_TEST,
+            dataset_dir=config.ARL_DATA_DIRECTORY_TRAIN,
             mean=config.ARL_IMAGE_MEAN,
             std=config.ARL_IMAGE_STD,
             resize=config.ARL_RESIZE,
             crop_size=config.ARL_CROP_SIZE,
             apply_imgaug=False,
+            is_train=True,
         )
 
-        # creating subset.
-        np.random.seed(0)
-        total_idx = np.arange(0, len(dataset), 1)
-        test_idx = np.random.choice(total_idx, size=int(NUM_IMAGES), replace=True)
-        dataset = torch.utils.data.Subset(dataset, test_idx)
+        # # creating subset.
+        # np.random.seed(0)
+        # total_idx = np.arange(0, len(dataset), 1)
+        # test_idx = np.random.choice(total_idx, size=int(NUM_IMAGES), replace=True)
+        # dataset = torch.utils.data.Subset(dataset, test_idx)
 
         # create dataloader.
         self.data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False)
@@ -64,9 +65,9 @@ class DatasetStatisticsTest(unittest.TestCase):
             if i % 10 == 0:
                 print(f'{i}/{len(self.data_loader)} ..')
 
-            # format rgb.
+            # format data.
             image = np.squeeze(np.array(image)).transpose(1, 2, 0)
-            image = np.array(image * (2 ** 8 - 1), dtype=np.uint8).reshape(config.CROP_SIZE[0], config.CROP_SIZE[1], -1)
+            image = np.array(image * (2 ** 8 - 1), dtype=np.uint8).reshape(config.ARL_CROP_SIZE[0], config.ARL_CROP_SIZE[1], -1)
             image, target = arl_affpose_dataset_utils.format_target_data(image, target)
 
             # get depth.
@@ -139,13 +140,42 @@ class DatasetStatisticsTest(unittest.TestCase):
         plt.legend(bbox_to_anchor=(1.0, 1), loc='upper left')
         plt.show()
 
+    def test_class_distributions(self):
+
+        num_obj_ids = np.zeros(shape=(11+1))
+        num_aff_ids = np.zeros(shape=(9+1))
+
+        # loop over dataset.
+        for i, (image, target) in enumerate(self.data_loader):
+            if i % 10 == 0:
+                print(f'{i}/{len(self.data_loader)} ..')
+
+            # format data.
+            image = np.squeeze(np.array(image)).transpose(1, 2, 0)
+            image = np.array(image * (2 ** 8 - 1), dtype=np.uint8).reshape(config.ARL_CROP_SIZE[0], config.ARL_CROP_SIZE[1], -1)
+            image, target = arl_affpose_dataset_utils.format_target_data(image, target)
+
+            # obj_ids.
+            obj_ids = target['obj_ids']
+            for obj_id in obj_ids:
+                num_obj_ids[0] += 1
+                num_obj_ids[obj_id] += 1
+
+            # aff_ids.
+            aff_ids = target['aff_ids']
+            for aff_id in aff_ids:
+                num_aff_ids[0] += 1
+                num_aff_ids[aff_id] += 1
+
+        print(f'num_obj_ids: {num_obj_ids}')
+        print(f'num_aff_ids: {num_aff_ids}')
+
 if __name__ == '__main__':
     # unittest.main()
 
     # run desired test.
     suite = unittest.TestSuite()
-    suite.addTest(DatasetStatisticsTest("test_occlusion"))
-    suite.addTest(DatasetStatisticsTest("test_rgbd_distribution"))
+    suite.addTest(DatasetStatisticsTest("test_class_distributions"))
     runner = unittest.TextTestRunner()
     runner.run(suite)
 
