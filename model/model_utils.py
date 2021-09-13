@@ -71,7 +71,6 @@ def unfreeze_all_layers(model):
         parameter.requires_grad_(True)
     return model
 
-
 def sigmoid_focal_loss(
     inputs: torch.Tensor,
     targets: torch.Tensor,
@@ -116,9 +115,9 @@ def sigmoid_focal_loss(
     return loss
 
 def rpn_loss(idx, pos_idx, objectness, label, pred_bbox_delta, regression_target):
-    # objectness_loss = F.binary_cross_entropy_with_logits(objectness[idx], label[idx])
     # TODO: try focal loss.
-    objectness_loss = sigmoid_focal_loss(objectness[idx], label[idx], reduction='mean')
+    objectness_loss = F.binary_cross_entropy_with_logits(objectness[idx], label[idx])
+    # objectness_loss = sigmoid_focal_loss(objectness[idx], label[idx], reduction='mean')
     box_loss = F.l1_loss(pred_bbox_delta[pos_idx], regression_target, reduction='sum') / idx.numel()
 
     return objectness_loss, box_loss
@@ -177,9 +176,14 @@ def maskrcnn_loss(mask_logit, proposal, matched_idx, label, gt_mask):
     #     cv2.imshow('pred', current_pred_mask)
     #     cv2.waitKey(0)
 
-    # mask_loss = F.binary_cross_entropy_with_logits(mask_logit[idx, label], mask_target)
+    mask_loss = F.binary_cross_entropy_with_logits(mask_logit[idx, label], mask_target,)
+
+    # TODO: try class weights loss.
+    # class_weights = arl_affpose_dataset_utils.get_class_weights(aff_ids=label)
+    # mask_loss = F.binary_cross_entropy_with_logits(mask_logit[idx, label], mask_target, reduction='none').sum() / class_weights.sum()
+
     # TODO: try focal loss.
-    mask_loss = sigmoid_focal_loss(mask_logit[idx, label], mask_target, reduction='mean')
+    # mask_loss = sigmoid_focal_loss(mask_logit[idx, label], mask_target, reduction='mean')
 
     return mask_loss
 

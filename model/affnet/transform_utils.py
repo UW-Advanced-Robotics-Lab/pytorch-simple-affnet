@@ -79,8 +79,10 @@ class Transformer:
 
             if 'aff_binary_masks' in result:
                 mask = result['aff_binary_masks']
+                # print(f'mask: {mask.size()}')
                 mask = paste_masks_in_image(mask, aff_box, 1, ori_image_shape)
                 result['aff_binary_masks'] = mask
+                # print(f'mask: {mask.size()}')
 
         return result
 

@@ -232,27 +232,45 @@ def format_target_data(image, target):
     target['depth_8bit'] = np.squeeze(np.array(target['depth_8bit'], dtype=np.uint8))
     target['depth_16bit'] = np.squeeze(np.array(target['depth_16bit'], dtype=np.uint16))
 
-    return image, target
+    return target
 
-def draw_bbox_on_img(image, obj_ids, boxes, color=(255, 255, 255)):
+def draw_bbox_on_img(image, obj_ids, boxes, color=(255, 255, 255), scores=None):
     bbox_img = image.copy()
 
-    for obj_id, bbox in zip(obj_ids, boxes):
-        bbox = dataset_utils.format_bbox(bbox)
-        # see dataset_utils.get_bbox for output of bbox.
-        # x1,y1 ------
-        # |          |
-        # |          |
-        # |          |
-        # --------x2,y2
-        bbox_img = cv2.rectangle(bbox_img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), 255, 1)
+    if scores is None:
+        for obj_id, bbox in zip(obj_ids, boxes):
+            bbox = dataset_utils.format_bbox(bbox)
+            # see dataset_utils.get_bbox for output of bbox.
+            # x1,y1 ------
+            # |          |
+            # |          |
+            # |          |
+            # --------x2,y2
+            bbox_img = cv2.rectangle(bbox_img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), 255, 1)
 
-        cv2.putText(bbox_img,
-                    map_obj_id_to_name(obj_id),
-                    (bbox[0], bbox[1] - 5),
-                    cv2.FONT_ITALIC,
-                    0.4,
-                    color)
+            cv2.putText(bbox_img,
+                        f'{map_obj_id_to_name(obj_id)}',
+                        (bbox[0], bbox[1] - 5),
+                        cv2.FONT_ITALIC,
+                        0.6,
+                        color)
+    else:
+        for score, obj_id, bbox in zip(scores, obj_ids, boxes):
+            bbox = dataset_utils.format_bbox(bbox)
+            # see dataset_utils.get_bbox for output of bbox.
+            # x1,y1 ------
+            # |          |
+            # |          |
+            # |          |
+            # --------x2,y2
+            bbox_img = cv2.rectangle(bbox_img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), 255, 1)
+
+            cv2.putText(bbox_img,
+                        f'{map_obj_id_to_name(obj_id)}: {score:.3f}',
+                        (bbox[0], bbox[1] - 5),
+                        cv2.FONT_ITALIC,
+                        0.6,
+                        color)
 
     return bbox_img
 

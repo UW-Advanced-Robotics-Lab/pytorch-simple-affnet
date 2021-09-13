@@ -40,27 +40,17 @@ def main():
     # Load the dataset.
     train_loader, val_loader, test_loader = umd_dataset_loaders.load_umd_train_datasets()
 
+    # Construct an optimizer.
+    params = [p for p in model.parameters() if p.requires_grad]
+    optimizer = torch.optim.SGD(params, lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY, momentum=config.MOMENTUM)
+    lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=config.MILESTONES, gamma=config.GAMMA)
+
     # Main training loop.
     num_epochs = config.NUM_EPOCHS
-    best_Fwb = -np.inf
+    best_Fwb, best_mAP = -np.inf, -np.inf
 
     for epoch in range(0, num_epochs):
         print()
-
-        if epoch < config.NUM_EPOCHS_HEADS:
-            print(f'Epoch {epoch}: Freezing backbone ..')
-            model = model_utils.freeze_backbone(model)
-            # Construct an optimizer.
-            params = [p for p in model.parameters() if p.requires_grad]
-            optimizer = torch.optim.SGD(params, lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY, momentum=config.MOMENTUM)
-            lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=config.MILESTONES, gamma=config.GAMMA)
-        else:
-            print(f'Epoch {epoch}: Training all layers ..')
-            model = model_utils.unfreeze_backbone(model)
-            # Construct an optimizer.
-            params = [p for p in model.parameters() if p.requires_grad]
-            optimizer = torch.optim.SGD(params, lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY, momentum=config.MOMENTUM)
-            lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=config.MILESTONES, gamma=config.GAMMA)
 
         if epoch < config.EPOCH_TO_TRAIN_FULL_DATASET:
             is_subsample = True
@@ -69,21 +59,20 @@ def main():
 
         # train & val for one epoch
         model, optimizer = train_utils.train_one_epoch(model, optimizer, train_loader, config.DEVICE, epoch, writer, is_subsample=is_subsample)
-        model, optimizer = train_utils.val_one_epoch(model, optimizer, val_loader, config.DEVICE, epoch, writer, is_subsample=True)
+        model, optimizer = train_utils.val_one_epoch(model, optimizer, val_loader, config.DEVICE, epoch, writer, is_subsample=is_subsample)
         # update learning rate.
         lr_scheduler.step()
 
-        if epoch >= config.EPOCH_TO_TRAIN_FULL_DATASET:
-            # eval model
-            model = eval_utils.eval_affnet_umd(model, test_loader)
-            Fwb = eval_utils.eval_fwb_umd_affnet()
-            # save best model.
-            if Fwb > best_Fwb:
-                best_Fwb = Fwb
-                writer.add_scalar('eval/Best Fwb', best_Fwb, int(epoch))
-                checkpoint_path = config.BEST_MODEL_SAVE_PATH
-                train_utils.save_checkpoint(model, optimizer, epoch, checkpoint_path)
-                print("Saving best model .. best Fwb={:.5} ..".format(best_Fwb))
+        # eval Fwb
+        model, Fwb = eval_utils.affnet_eval_umd(model, test_loader)
+        writer.add_scalar('eval/Fwb', Fwb, int(epoch))
+        # save best model.
+        if Fwb > best_Fwb:
+            best_Fwb = Fwb
+            writer.add_scalar('eval/Best_Fwb', best_Fwb, int(epoch))
+            checkpoint_path = config.BEST_MODEL_SAVE_PATH
+            train_utils.save_checkpoint(model, optimizer, epoch, checkpoint_path)
+            print("Saving best model .. best Fwb={:.5f} ..".format(best_Fwb))
 
         # checkpoint_path
         checkpoint_path = config.MODEL_SAVE_PATH + 'affnet_epoch_' + np.str(epoch) + '.pth'

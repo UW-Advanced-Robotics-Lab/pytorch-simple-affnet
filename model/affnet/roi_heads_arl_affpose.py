@@ -209,7 +209,7 @@ class RoIHeads(nn.Module):
 
                 # get aff_ids.
                 aff_labels = torch.as_tensor(_aff_labels).to(config.DEVICE)
-                # get tile bboxs.
+                # tile bboxs.
                 idxs = torch.arange(aff_labels.shape[0], device=aff_labels.device)
                 mask_proposal = torch.as_tensor(_mask_proposals).to(config.DEVICE)
                 result['aff_boxes'] = mask_proposal
@@ -226,21 +226,18 @@ class RoIHeads(nn.Module):
 
             if self.training:
                 gt_mask = target['aff_binary_masks']
-
                 mask_loss = maskrcnn_loss(mask_logit=mask_logit,
                                           gt_mask=gt_mask,
                                           proposal=mask_proposal,
                                           matched_idx=pos_matched_idx,
                                           label=aff_labels)
-
                 losses.update(dict(loss_mask=mask_loss))
-            else:
 
+            else:
                 mask_logit = mask_logit[idxs, aff_labels]
                 mask_prob = mask_logit.sigmoid()
 
-                # # check predicted masks before upsampling.
-                # print(f"mask_logit:{mask_logit.size()}")
+                # check predicted masks before upsampling.
                 # print(f'mask_prob:{mask_prob.size()}')
                 # for i in range(mask_prob.size(0)):
                 #     _mask_prob = mask_prob[i, :, :].detach().cpu().numpy()

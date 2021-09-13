@@ -12,6 +12,7 @@ from dataset.arl_affpose import arl_affpose_dataset
 from dataset import dataset_utils
 
 
+OBJ_NAMES = ['Missed Detection', 'Mallet','Spatula','Wooden Spoon','Screwdriver','Garden Shovel','Pitcher','Bowl','Mug','Power Drill','Scissors','Large Clamp',]
 # We only want to draw the object's pose for one object part.
 DRAW_OBJ_PART_POSE = np.array([1, 3, 5, 7, 9, 11, 14, 16, 19, 22, 24])
 # We modify the object's pose for visualization.
@@ -25,7 +26,7 @@ AFF_IDS_DISTRIBUTION = np.array([985/2812, 220/2812, 224/2812, 130/2812, 232/281
 def get_class_weights(obj_ids=None, aff_ids=None):
 
     if aff_ids is not None:
-        class_weights = torch.zeros(len(aff_ids))
+        class_weights = torch.zeros(len(aff_ids), device=config.DEVICE)
         for idx, aff_id in enumerate(aff_ids):
             class_weights[idx] = AFF_IDS_DISTRIBUTION[aff_id.item()-1]
         return class_weights
@@ -41,6 +42,8 @@ def print_class_aff_names(aff_labels):
         print(f"Aff Id:{aff_label}, Affordance: {_affordance}")
 
 def map_obj_id_to_name(object_id):
+    if object_id == 0:          # 001_mallet
+        return 'bg'
     if object_id == 1:          # 001_mallet
         return 'mallet'
     elif object_id == 2:        # 002_spatula
@@ -119,7 +122,9 @@ def convert_obj_part_mask_to_aff_mask(obj_part_mask):
 
 def map_obj_id_to_obj_part_ids(object_id):
 
-    if object_id == 1:          # 001_mallet
+    if object_id == 0:          # background
+        return []
+    elif object_id == 1:          # 001_mallet
         return [1, 2]
     elif object_id == 2:        # 002_spatula
         return [3, 4]
@@ -142,7 +147,7 @@ def map_obj_id_to_obj_part_ids(object_id):
     elif object_id == 11:       # 051_large_clamp
         return [24, 25]
     else:
-        print(" --- Object ID does not map to Object Part IDs --- ")
+        print(" --- Object ID:{} does not map to Object Part IDs --- ".format(object_id))
         exit(1)
 
 def map_obj_id_and_aff_id_to_obj_part_ids(object_id, aff_id):
@@ -288,7 +293,9 @@ def obj_color_map(idx):
     # print(f'idx:{idx}')
     ''' [red, blue, green]'''
 
-    if idx == 1:
+    if idx == 0:
+        return (0, 0, 0)
+    elif idx == 1:
         return (235, 34, 17)        # red
     elif idx == 2:
         return (235, 96, 17)        # orange
@@ -396,17 +403,19 @@ def map_obj_ids_to_aff_ids_list(object_ids):
         aff_ids.append(_obj_part)
     return obj_part_ids, aff_ids
 
-def get_obj_binary_masks(image, obj_ids, aff_binary_masks):
+def get_obj_binary_masks(image, obj_ids, obj_part_ids, aff_binary_masks):
 
     height, width = image.shape[:2]
     obj_binary_masks = np.zeros((len(obj_ids), height, width), dtype=np.uint8)
 
-    aff_idx = 0
-    for idx, obj_id in enumerate(obj_ids):
-        obj_part_ids = map_obj_id_to_obj_part_ids(obj_id)
-        for obj_part_id in obj_part_ids:
-            obj_binary_masks[idx, :, :] += np.array(aff_binary_masks[aff_idx, :, :], dtype=np.uint8)
-            aff_idx += 1
+    for obj_part_idx, obj_part_id in enumerate(obj_part_ids):
+        obj_id = map_obj_part_id_to_obj_id(obj_part_id)
+        obj_idx = np.argwhere(obj_id == obj_ids)[0][0]
+        obj_binary_masks[obj_idx, :, :] += np.array(aff_binary_masks[obj_part_idx, :, :], dtype=np.uint8)
+        # debug
+        # print(f'obj_idx:{obj_idx},\tobj_id: {obj_id},\tobj_ids: {obj_ids}')
+        # cv2.imshow('obj_binary_mask', obj_binary_masks[obj_idx, :, :] * 20)
+        # cv2.waitKey(0)
 
     return obj_binary_masks
 
@@ -423,124 +432,6 @@ def get_obj_part_mask(image, obj_part_ids, aff_binary_masks):
         instance_masks = np.where(aff_binary_mask, instance_mask, instance_masks).astype(np.uint8)
 
     return instance_masks
-
-def format_target_data(image, target):
-    height, width = image.shape[0], image.shape[1]
-
-    # original mask and binary masks.
-    target['obj_mask'] = np.array(target['obj_mask'], dtype=np.uint8).reshape(height, width)
-    target['obj_binary_masks'] = np.array(target['obj_binary_masks'] > config.MASK_THRESHOLD, dtype=np.uint8).reshape(-1, height, width)
-    target['aff_mask'] = np.array(target['aff_mask'], dtype=np.uint8).reshape(height, width)
-    target['aff_binary_masks'] = np.array(target['aff_binary_masks'] > config.MASK_THRESHOLD, dtype=np.uint8).reshape(-1, height, width)
-    target['obj_part_mask'] = np.array(target['obj_part_mask'], dtype=np.uint8).reshape(height, width)
-
-    # ids and bboxs.
-    target['obj_ids'] = np.array(target['obj_ids'], dtype=np.int32).flatten()
-    target['obj_boxes'] = np.array(target['obj_boxes'], dtype=np.int32).reshape(-1, 4)
-    target['aff_ids'] = np.array(target['aff_ids'], dtype=np.int32).flatten()
-    target['obj_part_ids'] = np.array(target['obj_part_ids'], dtype=np.int32).flatten()
-
-    # depth images.
-    target['depth_8bit'] = np.squeeze(np.array(target['depth_8bit'], dtype=np.uint8))
-    target['depth_16bit'] = np.squeeze(np.array(target['depth_16bit'], dtype=np.uint16))
-    # target['masked_depth_16bit'] = np.squeeze(np.array(target['masked_depth_16bit'], dtype=np.uint16))
-
-    return image, target
-
-def format_outputs(image, outputs):
-    height, width = image.shape[0], image.shape[1]
-
-    scores = np.array(outputs['scores'], dtype=np.float32).flatten()
-    obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
-    obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
-    obj_binary_masks = np.array(outputs['obj_binary_masks'] > config.MASK_THRESHOLD, dtype=np.uint8).reshape(-1, height, width)
-
-    # sort by class ids (which sorts by score as well).
-    idx = np.argsort(obj_ids)
-    outputs['scores'] = scores[idx]
-    outputs['obj_ids'] = obj_ids[idx]
-    outputs['obj_boxes'] = obj_boxes[idx, :]
-    outputs['obj_binary_masks'] = obj_binary_masks[idx, :, :]
-
-    # sort by most confident (i.e. -1 to sort in reverse).
-    # idx = np.argsort(-1*scores)
-    # outputs['scores'] = scores[idx]
-    # outputs['obj_ids'] = obj_ids[idx]
-    # outputs['obj_boxes'] = obj_boxes[idx, :]
-    # outputs['obj_binary_masks'] = obj_binary_masks[idx, :, :]
-
-    return image, outputs
-
-
-def format_affnet_outputs(image, outputs):
-    height, width = image.shape[0], image.shape[1]
-
-    outputs['scores'] = np.array(outputs['scores'], dtype=np.float32).flatten()
-    outputs['obj_ids'] = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
-    outputs['obj_boxes'] = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
-
-    if 'aff_scores' in outputs:
-        outputs['aff_scores'] = np.array(outputs['aff_scores'], dtype=np.float32).flatten()
-        outputs['obj_part_ids'] = np.array(outputs['obj_part_ids'], dtype=np.int32).flatten()
-        outputs['aff_ids'] = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
-        outputs['aff_binary_masks'] = np.array(outputs['aff_binary_masks'] > config.MASK_THRESHOLD, dtype=np.uint8).reshape(-1, height, width)
-    else:
-        outputs['aff_scores'] = np.zeros_like(outputs['scores'])
-        outputs['obj_part_ids'] = np.zeros_like(outputs['obj_ids'])
-        outputs['aff_ids'] = np.zeros_like(outputs['obj_ids'])
-        outputs['aff_binary_masks'] = np.zeros(shape=(len(outputs['obj_ids']), height, width))
-
-    # print(f"obj: {outputs['scores']}")
-    # print(f"aff: {outputs['aff_scores']}")
-
-    return image, outputs
-
-
-def threshold_outputs(image, outputs):
-    height, width = image.shape[0], image.shape[1]
-
-    scores = np.array(outputs['scores'], dtype=np.float32).flatten()
-    obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
-    obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
-    obj_binary_masks = np.array(outputs['obj_binary_masks'], dtype=np.uint8).reshape(-1, height, width)
-
-    # sort by class ids (which sorts by score as well).
-    idx = np.argwhere(scores > config.OBJ_CONFIDENCE_THRESHOLD)
-    outputs['scores'] = scores[idx]
-    outputs['obj_ids'] = obj_ids[idx]
-    outputs['obj_boxes'] = obj_boxes[idx, :]
-    outputs['obj_binary_masks'] = obj_binary_masks[idx, :, :]
-
-    return image, outputs
-
-
-def threshold_affnet_outputs(image, outputs):
-    height, width = image.shape[0], image.shape[1]
-
-    # obj
-    scores = np.array(outputs['scores'], dtype=np.float32).flatten()
-    obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
-    obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
-
-    idx = np.argwhere(scores > config.OBJ_CONFIDENCE_THRESHOLD)
-    outputs['scores'] = scores[idx]
-    outputs['obj_ids'] = obj_ids[idx]
-    outputs['obj_boxes'] = obj_boxes[idx, :]
-
-    # aff
-    aff_scores = np.array(outputs['aff_scores'], dtype=np.float32).flatten()
-    obj_part_ids = np.array(outputs['obj_part_ids'], dtype=np.int32).flatten()
-    aff_ids = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
-    aff_binary_masks = np.array(outputs['aff_binary_masks'], dtype=np.uint8).reshape(-1, height, width)
-
-    idx = np.argwhere(aff_scores > config.OBJ_CONFIDENCE_THRESHOLD)
-    outputs['aff_scores'] = aff_scores[idx]
-    outputs['obj_part_ids'] = obj_part_ids[idx]
-    outputs['aff_ids'] = aff_ids[idx]
-    outputs['aff_binary_masks'] = aff_binary_masks[idx, :, :]
-
-    return image, outputs
-
 
 def draw_bbox_on_img(image, obj_ids, boxes, color=(255, 255, 255), scores=None):
     bbox_img = image.copy()
@@ -597,3 +488,26 @@ def get_segmentation_masks(image, obj_ids, binary_masks):
         instance_masks = np.where(binary_mask, instance_mask, instance_masks).astype(np.uint8)
 
     return instance_masks
+
+def format_target_data(image, target):
+    height, width = image.shape[0], image.shape[1]
+
+    # original mask and binary masks.
+    target['obj_mask'] = np.array(target['obj_mask'], dtype=np.uint8).reshape(height, width)
+    target['obj_binary_masks'] = np.array(target['obj_binary_masks'] > config.MASK_THRESHOLD, dtype=np.uint8).reshape(-1, height, width)
+    target['aff_mask'] = np.array(target['aff_mask'], dtype=np.uint8).reshape(height, width)
+    target['aff_binary_masks'] = np.array(target['aff_binary_masks'] > config.MASK_THRESHOLD, dtype=np.uint8).reshape(-1, height, width)
+    target['obj_part_mask'] = np.array(target['obj_part_mask'], dtype=np.uint8).reshape(height, width)
+
+    # ids and bboxs.
+    target['obj_ids'] = np.array(target['obj_ids'], dtype=np.int32).flatten()
+    target['obj_boxes'] = np.array(target['obj_boxes'], dtype=np.int32).reshape(-1, 4)
+    target['aff_ids'] = np.array(target['aff_ids'], dtype=np.int32).flatten()
+    target['obj_part_ids'] = np.array(target['obj_part_ids'], dtype=np.int32).flatten()
+
+    # depth images.
+    target['depth_8bit'] = np.squeeze(np.array(target['depth_8bit'], dtype=np.uint8))
+    target['depth_16bit'] = np.squeeze(np.array(target['depth_16bit'], dtype=np.uint16))
+    # target['masked_depth_16bit'] = np.squeeze(np.array(target['masked_depth_16bit'], dtype=np.uint16))
+
+    return target

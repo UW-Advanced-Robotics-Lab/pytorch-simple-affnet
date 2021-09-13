@@ -37,6 +37,13 @@ def main():
     print()
     model = affnet.ResNetAffNet(pretrained=config.IS_PRETRAINED, num_classes=config.NUM_CLASSES)
     model.to(config.DEVICE)
+    torch.cuda.empty_cache()
+
+    # # Load pre-trained weights.
+    # print(f"\nrestoring pre-trained AffNet weights: {config.AFFNET_PRETRAINED_WEIGHTS} .. ")
+    # checkpoint = torch.load(config.AFFNET_PRETRAINED_WEIGHTS, map_location=config.DEVICE)
+    # model.load_state_dict(checkpoint["model"])
+    # model.to(config.DEVICE)
 
     # Load the dataset.
     train_loader, val_loader, test_loader = arl_affpose_dataset_loaders.load_arl_affpose_train_datasets()
@@ -64,24 +71,23 @@ def main():
         # update learning rate.
         lr_scheduler.step()
 
-        if epoch >= config.EPOCH_TO_TRAIN_FULL_DATASET:
-            # eval mAP
-            model, mAP = eval_utils.eval_affnet_arl_affpose(model, test_loader)
-            writer.add_scalar('eval/mAP', mAP, int(epoch))
-            print(f'mAP: {mAP:.5f}')
-            # # eval FwB
-            # Fwb = eval_utils.eval_fwb_arl_affpose_affnet()
-            # writer.add_scalar('eval/Fwb', Fwb, int(epoch))
-            # # save best model.
-            # if Fwb > best_Fwb:
-            #     best_Fwb = Fwb
-            #     writer.add_scalar('eval/Best_Fwb', best_Fwb, int(epoch))
-            if mAP > best_mAP:
-                best_mAP = mAP
-                writer.add_scalar('eval/Best_mAP', best_mAP, int(epoch))
-                checkpoint_path = config.BEST_MODEL_SAVE_PATH
-                train_utils.save_checkpoint(model, optimizer, epoch, checkpoint_path)
-                print("Saving best model .. best mAP={:.5f} ..".format(best_mAP))
+        # eval mAP
+        model, mAP, Fwb = eval_utils.affnet_eval_arl_affpose(model, test_loader)
+        writer.add_scalar('eval/mAP', mAP, int(epoch))
+        if mAP > best_mAP:
+            best_mAP = mAP
+            writer.add_scalar('eval/Best_mAP', best_mAP, int(epoch))
+            checkpoint_path = config.BEST_MODEL_SAVE_PATH
+            train_utils.save_checkpoint(model, optimizer, epoch, checkpoint_path)
+            print("Saving best model .. best mAP={:.5f} ..".format(best_mAP))
+        # # eval FwB
+        # Fwb = eval_utils.affnet_eval_fwb_arl_affpose()
+        writer.add_scalar('eval/Fwb', Fwb, int(epoch))
+        # save best model.
+        if Fwb > best_Fwb:
+            best_Fwb = Fwb
+            writer.add_scalar('eval/Best_Fwb', best_Fwb, int(epoch))
+
 
         # checkpoint_path
         checkpoint_path = config.MODEL_SAVE_PATH + 'affnet_epoch_' + np.str(epoch) + '.pth'

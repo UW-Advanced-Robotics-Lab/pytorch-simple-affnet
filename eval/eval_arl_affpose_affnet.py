@@ -8,6 +8,8 @@ import copy
 import numpy as np
 import cv2
 
+from sklearn.metrics import confusion_matrix as sklearn_confusion_matrix
+
 import torch
 
 import sys
@@ -22,9 +24,9 @@ from eval import eval_utils
 
 SHOW_IMAGES = True
 
-SHUFFLE_IMAGES = True
+SHUFFLE_IMAGES = False
 RANDOM_IMAGES = True
-NUM_RANDOM = 100
+NUM_RANDOM = 250
 
 SAVE_AND_EVAL_PRED = True
 
@@ -60,6 +62,7 @@ def main():
 
     # run the predictions.
     APs = []
+    gt_obj_ids_list, pred_obj_ids_list = [], []
     for image_idx, (images, targets) in enumerate(test_loader):
         print(f'\nImage:{image_idx}/{len(test_loader)}')
 
@@ -77,55 +80,36 @@ def main():
         image = np.array(image * (2 ** 8 - 1), dtype=np.uint8)
         H, W, C = image.shape
 
+        # Formatting targets.
         target = target[0]
         target = {k: v.to(config.CPU_DEVICE) for k, v in target.items()}
-        image, target = arl_affpose_dataset_utils.format_target_data(image, target)
-
-        # Formatting Output.
-        outputs = outputs.pop()
-        image, outputs = arl_affpose_dataset_utils.format_affnet_outputs(image, outputs)
-        scores = np.array(outputs['scores'], dtype=np.float32).flatten()
-        obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
-        obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
-        aff_binary_masks = np.array(outputs['aff_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
-        outputs['obj_binary_masks'] = arl_affpose_dataset_utils.get_obj_binary_masks(image, obj_ids, aff_binary_masks)
-        obj_binary_masks = np.array(outputs['obj_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
-
-        # match gt to pred.
-        num_gt, num_pred = len(target['obj_ids']), len(outputs['obj_ids'])
-        target, outputs = eval_utils.get_affnet_matched_predictions(image.copy(), target, outputs)
+        target = arl_affpose_dataset_utils.format_target_data(image.copy(), target.copy())
         gt_obj_ids = np.array(target['obj_ids'], dtype=np.int32).flatten()
         gt_obj_boxes = np.array(target['obj_boxes'], dtype=np.int32).reshape(-1, 4)
         gt_obj_binary_masks = np.array(target['obj_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
+
+        # Formatting Output.
+        outputs = outputs.pop()
+        outputs = eval_utils.affnet_format_outputs(image.copy(), outputs.copy())
+        outputs = eval_utils.affnet_threshold_outputs(image.copy(), outputs.copy())
+        outputs = eval_utils.maskrcnn_match_pred_to_gt(image.copy(), target.copy(), outputs.copy())
+        scores = np.array(outputs['scores'], dtype=np.float32).flatten()
+        obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
+        obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
+        obj_binary_masks = np.array(outputs['obj_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
+        aff_scores = np.array(outputs['aff_scores'], dtype=np.float32).flatten()
+        obj_part_ids = np.array(outputs['obj_part_ids'], dtype=np.int32).flatten()
+        aff_ids = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
+        aff_binary_masks = np.array(outputs['aff_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
+
+        # confusion matrix.
+        gt_obj_ids_list.extend(gt_obj_ids.tolist())
+        pred_obj_ids_list.extend(obj_ids.tolist())
 
         # for obj_binary_mask, gt_obj_binary_mask in zip(obj_binary_masks, gt_obj_binary_masks):
         #     cv2.imshow('obj_binary_mask', obj_binary_mask*20)
         #     cv2.imshow('gt_obj_binary_mask', gt_obj_binary_mask*20)
         #     cv2.waitKey(0)
-
-        # Quantify pred.
-        print(f"num gt: {num_gt},\t num preds: {num_pred}")
-        for gt_idx, pred_idx in zip(range(len(gt_obj_ids)), range(len(obj_ids))):
-            gt_obj_name = "{:<15}".format(arl_affpose_dataset_utils.map_obj_id_to_name(gt_obj_ids[gt_idx]))
-            pred_obj_name = "{:<15}".format(arl_affpose_dataset_utils.map_obj_id_to_name(obj_ids[pred_idx]))
-            score = scores[pred_idx]
-            bbox_iou = eval_utils.get_iou(obj_boxes[pred_idx], gt_obj_boxes[gt_idx])
-
-            if gt_obj_name == pred_obj_name and score > config.OBJ_CONFIDENCE_THRESHOLD:
-                detection = ':) -> [TP]'
-            elif gt_obj_name != pred_obj_name and score > config.OBJ_CONFIDENCE_THRESHOLD:
-                detection = 'X  -> [FP]'
-            elif gt_obj_name == pred_obj_name and score < config.OBJ_CONFIDENCE_THRESHOLD:
-                detection = 'X  -> [FN]'
-            else:
-                detection = 'X  -> [TN]'
-
-            print(f'{detection}\t'
-                  f'Pred: {pred_obj_name}'
-                  f'GT: {gt_obj_name}',
-                  f'Score: {score:.3f},\t\t',
-                  f'IoU: {bbox_iou:.3f},',
-                  )
 
         # get average precision.
         AP = eval_utils.compute_ap_range(gt_class_id=gt_obj_ids,
@@ -138,40 +122,41 @@ def main():
                                          verbose=False,
                                          )
         APs.append(AP)
+
+        # print outputs.
+        for gt_idx, pred_idx in zip(range(len(gt_obj_ids)), range(len(obj_ids))):
+            gt_obj_name = "{:<15}".format(arl_affpose_dataset_utils.map_obj_id_to_name(gt_obj_ids[gt_idx]))
+            pred_obj_name = "{:<15}".format(arl_affpose_dataset_utils.map_obj_id_to_name(obj_ids[pred_idx]))
+            score = scores[pred_idx]
+            bbox_iou = eval_utils.get_iou(obj_boxes[pred_idx], gt_obj_boxes[gt_idx])
+
+            print(f'GT: {gt_obj_name}',
+                  f'Pred: {pred_obj_name}'
+                  f'Score: {score:.3f},\t\t',
+                  f'IoU: {bbox_iou:.3f},',
+                  )
         print("AP @0.5-0.95: {:.5f}".format(AP))
 
-        # visualize all bbox predictions.
+        # visualize bbox.
         pred_bbox_img = arl_affpose_dataset_utils.draw_bbox_on_img(image=image, scores=scores, obj_ids=obj_ids, boxes=obj_boxes)
 
-        # threshold outputs for mask.
-        image, outputs = arl_affpose_dataset_utils.threshold_affnet_outputs(image, outputs)
-        scores = np.array(outputs['scores'], dtype=np.float32).flatten()
-        obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
-        obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
-        obj_part_ids = np.array(outputs['obj_part_ids'], dtype=np.int32).flatten()
-        aff_ids = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
-        aff_binary_masks = np.array(outputs['aff_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
-
-        # visualize "good" bbox predictions.
-        bbox_img = arl_affpose_dataset_utils.draw_bbox_on_img(image=image, scores=scores, obj_ids=obj_ids, boxes=obj_boxes)
-
-        # only visualize "good" affordance masks.
+        # visualize affordance masks.
         pred_aff_mask = arl_affpose_dataset_utils.get_segmentation_masks(image=image,
                                                                          obj_ids=aff_ids,
                                                                          binary_masks=aff_binary_masks,
                                                                          )
         color_aff_mask = arl_affpose_dataset_utils.colorize_aff_mask(pred_aff_mask)
-        color_aff_mask = cv2.addWeighted(bbox_img, 0.5, color_aff_mask, 0.5, 0)
+        color_aff_mask = cv2.addWeighted(pred_bbox_img, 0.5, color_aff_mask, 0.5, 0)
 
-        # get pred obj part mask.
+        # get obj part mask.
         pred_obj_part_mask = arl_affpose_dataset_utils.get_obj_part_mask(image=image,
                                                                     obj_part_ids=obj_part_ids,
                                                                     aff_binary_masks=aff_binary_masks,
                                                                     )
-        # Original Segmentation Mask.
+        # visualize object masks.
         pred_obj_mask = arl_affpose_dataset_utils.convert_obj_part_mask_to_obj_mask(pred_obj_part_mask)
         color_obj_mask = arl_affpose_dataset_utils.colorize_obj_mask(pred_obj_mask)
-        color_obj_mask = cv2.addWeighted(bbox_img, 0.5, color_obj_mask, 0.5, 0)
+        color_obj_mask = cv2.addWeighted(pred_bbox_img, 0.5, color_obj_mask, 0.5, 0)
 
         if SAVE_AND_EVAL_PRED:
             # saving predictions.
@@ -193,8 +178,15 @@ def main():
             cv2.imshow('pred_obj_part_mask', cv2.cvtColor(color_obj_mask, cv2.COLOR_BGR2RGB))
             cv2.waitKey(0)
 
-    print()
-    print("mAP @0.5-0.95: over {} test images is {:.3f}".format(len(APs), np.mean(APs)))
+    # Confusion Matrix.
+    cm = sklearn_confusion_matrix(y_true=gt_obj_ids_list, y_pred=pred_obj_ids_list)
+    print(f'\n{cm}')
+
+    # Plot Confusion Matrix.
+    # eval_utils.plot_confusion_matrix(cm, arl_affpose_dataset_utils.OBJ_NAMES)
+
+    # mAP
+    print("\nmAP @0.5-0.95: over {} test images is {:.3f}".format(len(APs), np.mean(APs)))
 
     if SAVE_AND_EVAL_PRED:
         print()

@@ -82,6 +82,7 @@ class ARLAffPoseDataset(data.Dataset):
         self.aff_masks_ids = np.sort(np.array(self.aff_masks_ids))
         self.depth_ids = np.sort(np.array(self.depth_ids))
 
+        # TODO: reduce dataset.
         SELECT_EVERY_ITH_FRAME = 5
         total_idx = np.arange(0, len(self.rgb_ids), SELECT_EVERY_ITH_FRAME)
         self.rgb_ids = self.rgb_ids[total_idx]

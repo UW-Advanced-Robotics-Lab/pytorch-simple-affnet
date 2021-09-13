@@ -7,25 +7,52 @@ import math
 import cv2
 import numpy as np
 
-from tqdm import tqdm
+from sklearn.metrics import confusion_matrix as sklearn_confusion_matrix
+import matplotlib.pyplot as plt
 
 import torch
-from torch.utils import data
-from torch.utils.data.sampler import SubsetRandomSampler
-
-import torchvision
-from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
-from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
-
-import torch.distributed as dist
 
 import config
-from dataset import dataset_utils
 from dataset.umd import umd_dataset_utils
 from dataset.arl_affpose import arl_affpose_dataset_utils
 
 
-def eval_affnet_umd(model, test_loader):
+def plot_confusion_matrix(cm, classes,
+                          normalize=False,
+                          title='Confusion matrix',
+                          cmap=plt.cm.Blues):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    """
+    import itertools
+    # if normalize:
+    #     cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    #     print("Normalized confusion matrix")
+    # else:
+    #     print('Confusion matrix, without normalization')
+    # print(cm)
+
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=90)
+    plt.yticks(tick_marks, classes)
+
+    fmt = '.2f' if normalize else 'd'
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, format(cm[i, j], fmt),
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
+
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.tight_layout()
+    plt.show()
+
+def affnet_eval_umd(model, test_loader):
     print('\nevaluating AffNet ..')
 
     # set the model to eval to disable batchnorm.
@@ -51,19 +78,20 @@ def eval_affnet_umd(model, test_loader):
         image = image[0]
         image = image.to(config.CPU_DEVICE)
         image = np.squeeze(np.array(image)).transpose(1, 2, 0)
+        image = np.array(image * (2 ** 8 - 1), dtype=np.uint8)
         H, W, C = image.shape
 
+        # Formatting targets.
         target = target[0]
         target = {k: v.to(config.CPU_DEVICE) for k, v in target.items()}
-        image, target = umd_dataset_utils.format_target_data(image, target)
+        target = umd_dataset_utils.format_target_data(image.copy(), target.copy())
 
         # Formatting Output.
         outputs = outputs.pop()
-        # TODO: threshold aff ids using objectiveness.
+        outputs = affnet_umd_format_outputs(image.copy(), outputs.copy())
+        outputs = affnet_umd_threshold_outputs(image.copy(), outputs.copy())
         aff_ids = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
-
-        # Thresholding Binary Masks.
-        aff_binary_masks = np.squeeze(np.array(outputs['aff_binary_masks'] > 0.5, dtype=np.uint8))
+        aff_binary_masks = np.array(outputs['aff_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
 
         # getting predicted object mask.
         aff_mask = umd_dataset_utils.get_segmentation_masks(image=image,
@@ -76,21 +104,18 @@ def eval_affnet_umd(model, test_loader):
 
         pred_name = config.UMD_TEST_SAVE_FOLDER + str(image_idx) + config.TEST_PRED_EXT
         cv2.imwrite(pred_name, aff_mask)
-    model.train()
-    return model
 
-def eval_fwb_umd_affnet(matlab_scrips_dir=config.MATLAB_SCRIPTS_DIR):
-    print()
-
-    os.chdir(matlab_scrips_dir)
+    # getting Fwb
+    os.chdir(config.MATLAB_SCRIPTS_DIR)
     import matlab.engine
     eng = matlab.engine.start_matlab()
     Fwb = eng.evaluate_umd_affnet(config.UMD_TEST_SAVE_FOLDER, nargout=1)
     os.chdir(config.ROOT_DIR_PATH)
 
-    return Fwb
+    model.train()
+    return model, Fwb
 
-def eval_maskrcnn_arl_affpose(model, test_loader):
+def maskrcnn_eval_arl_affpose(model, test_loader):
     print('\nevaluating MaskRCNN ..')
 
     model.eval()
@@ -104,6 +129,7 @@ def eval_maskrcnn_arl_affpose(model, test_loader):
         os.remove(images)
 
     APs = []
+    gt_obj_ids_list, pred_obj_ids_list = [], []
     for image_idx, (images, targets) in enumerate(test_loader):
         image, target = copy.deepcopy(images), copy.deepcopy(targets)
         images = list(image.to(config.DEVICE) for image in images)
@@ -119,64 +145,69 @@ def eval_maskrcnn_arl_affpose(model, test_loader):
         image = np.array(image * (2 ** 8 - 1), dtype=np.uint8)
         H, W, C = image.shape
 
+        # Formatting targets.
         target = target[0]
         target = {k: v.to(config.CPU_DEVICE) for k, v in target.items()}
-        image, target = arl_affpose_dataset_utils.format_target_data(image, target)
-
-        # format outputs by most confident.
-        outputs = outputs.pop()
-        image, outputs = arl_affpose_dataset_utils.format_outputs(image, outputs)
-        scores = np.array(outputs['scores'], dtype=np.float32).flatten()
-        obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
-        obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
-        obj_binary_masks = np.array(outputs['obj_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
-
-        # match gt to pred.
-        target, outputs = get_matched_predictions(image.copy(), target, outputs)
+        target = arl_affpose_dataset_utils.format_target_data(image.copy(), target.copy())
         gt_obj_ids = np.array(target['obj_ids'], dtype=np.int32).flatten()
         gt_obj_boxes = np.array(target['obj_boxes'], dtype=np.int32).reshape(-1, 4)
         gt_obj_binary_masks = np.array(target['obj_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
 
+        # format outputs.
+        outputs = outputs.pop()
+        outputs = maskrcnn_format_outputs(image.copy(), outputs.copy())
+        outputs = maskrcnn_threshold_outputs(image.copy(), outputs.copy())
+        matched_outputs = maskrcnn_match_pred_to_gt(image.copy(), target.copy(), outputs.copy())
+        scores = np.array(matched_outputs['scores'], dtype=np.float32).flatten()
+        obj_ids = np.array(matched_outputs['obj_ids'], dtype=np.int32).flatten()
+        obj_boxes = np.array(matched_outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
+        obj_binary_masks = np.array(matched_outputs['obj_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
+
+        # confusion matrix.
+        gt_obj_ids_list.extend(gt_obj_ids.tolist())
+        pred_obj_ids_list.extend(obj_ids.tolist())
+
         # get average precision.
         AP = compute_ap_range(gt_class_id=gt_obj_ids,
-                              gt_box=gt_obj_boxes,
-                              gt_mask=gt_obj_binary_masks.reshape(H, W, -1),
-                              pred_score=scores,
-                              pred_class_id=obj_ids,
-                              pred_box=obj_boxes,
-                              pred_mask=obj_binary_masks.reshape(H, W, -1),
-                              verbose=False,
-                              )
+                                         gt_box=gt_obj_boxes,
+                                         gt_mask=gt_obj_binary_masks.reshape(H, W, -1),
+                                         pred_score=scores,
+                                         pred_class_id=obj_ids,
+                                         pred_box=obj_boxes,
+                                         pred_mask=obj_binary_masks.reshape(H, W, -1),
+                                         verbose=False,
+                                         )
         APs.append(AP)
 
-        # threshold outputs for mask.
-        image, outputs = arl_affpose_dataset_utils.threshold_outputs(image, outputs)
-        obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
-        obj_binary_masks = np.array(outputs['obj_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
-        # only visualize "good" masks.
+        # create masks.
         pred_obj_mask = arl_affpose_dataset_utils.get_segmentation_masks(image=image, obj_ids=obj_ids,binary_masks=obj_binary_masks)
 
+        # save masks.
         gt_name = config.ARL_TEST_SAVE_FOLDER + str(image_idx) + config.TEST_GT_EXT
         cv2.imwrite(gt_name, target['obj_mask'])
 
         pred_name = config.ARL_TEST_SAVE_FOLDER + str(image_idx) + config.TEST_PRED_EXT
         cv2.imwrite(pred_name, pred_obj_mask)
 
-    model.train()
-    return model, np.mean(APs)
+    # Confusion Matrix.
+    cm = sklearn_confusion_matrix(y_true=gt_obj_ids_list, y_pred=pred_obj_ids_list)
+    print(f'\n{cm}')
 
-def eval_fwb_arl_affpose_maskrcnn(matlab_scrips_dir=config.MATLAB_SCRIPTS_DIR):
-    print()
+    # mAP
+    mAP = np.mean(APs)
+    print(f'\nmAP: {mAP:.5f}')
 
-    os.chdir(matlab_scrips_dir)
+    # getting Fwb
+    os.chdir(config.MATLAB_SCRIPTS_DIR)
     import matlab.engine
     eng = matlab.engine.start_matlab()
     Fwb = eng.evaluate_arl_affpose_maskrcnn(config.ARL_TEST_SAVE_FOLDER, nargout=1)
     os.chdir(config.ROOT_DIR_PATH)
 
-    return Fwb
+    model.train()
+    return model, mAP, Fwb
 
-def eval_affnet_arl_affpose(model, test_loader):
+def affnet_eval_arl_affpose(model, test_loader):
     print('\nevaluating AffNet ..')
 
     # set the model to eval to disable batchnorm.
@@ -191,6 +222,7 @@ def eval_affnet_arl_affpose(model, test_loader):
         os.remove(images)
 
     APs = []
+    gt_obj_ids_list, pred_obj_ids_list = [], []
     for image_idx, (images, targets) in enumerate(test_loader):
         image, target = copy.deepcopy(images), copy.deepcopy(targets)
         images = list(image.to(config.DEVICE) for image in images)
@@ -206,25 +238,31 @@ def eval_affnet_arl_affpose(model, test_loader):
         image = np.array(image * (2 ** 8 - 1), dtype=np.uint8)
         H, W, C = image.shape
 
+        # Formatting targets.
         target = target[0]
         target = {k: v.to(config.CPU_DEVICE) for k, v in target.items()}
-        image, target = arl_affpose_dataset_utils.format_target_data(image, target)
-
-        # format outputs by most confident.
-        outputs = outputs.pop()
-        image, outputs = arl_affpose_dataset_utils.format_affnet_outputs(image, outputs)
-        scores = np.array(outputs['scores'], dtype=np.float32).flatten()
-        obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
-        obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
-        aff_binary_masks = np.array(outputs['aff_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
-        outputs['obj_binary_masks'] = arl_affpose_dataset_utils.get_obj_binary_masks(image, obj_ids, aff_binary_masks)
-        obj_binary_masks = np.array(outputs['obj_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
-
-        # match gt to pred.
-        target, outputs = get_affnet_matched_predictions(image.copy(), target, outputs)
+        target = arl_affpose_dataset_utils.format_target_data(image.copy(), target.copy())
         gt_obj_ids = np.array(target['obj_ids'], dtype=np.int32).flatten()
         gt_obj_boxes = np.array(target['obj_boxes'], dtype=np.int32).reshape(-1, 4)
         gt_obj_binary_masks = np.array(target['obj_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
+
+        # Formatting Output.
+        outputs = outputs.pop()
+        outputs = affnet_format_outputs(image.copy(), outputs.copy())
+        outputs = affnet_threshold_outputs(image.copy(), outputs.copy())
+        outputs = maskrcnn_match_pred_to_gt(image.copy(), target.copy(), outputs.copy())
+        scores = np.array(outputs['scores'], dtype=np.float32).flatten()
+        obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
+        obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
+        obj_binary_masks = np.array(outputs['obj_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
+        aff_scores = np.array(outputs['aff_scores'], dtype=np.float32).flatten()
+        obj_part_ids = np.array(outputs['obj_part_ids'], dtype=np.int32).flatten()
+        aff_ids = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
+        aff_binary_masks = np.array(outputs['aff_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
+
+        # confusion matrix.
+        gt_obj_ids_list.extend(gt_obj_ids.tolist())
+        pred_obj_ids_list.extend(obj_ids.tolist())
 
         # get average precision.
         AP = compute_ap_range(gt_class_id=gt_obj_ids,
@@ -238,12 +276,7 @@ def eval_affnet_arl_affpose(model, test_loader):
                               )
         APs.append(AP)
 
-        # threshold outputs for mask.
-        image, outputs = arl_affpose_dataset_utils.threshold_affnet_outputs(image, outputs)
-        aff_ids = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
-        aff_binary_masks = np.array(outputs['aff_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
-
-        # only visualize "good" masks.
+        # get aff masks.
         aff_mask = arl_affpose_dataset_utils.get_segmentation_masks(image=image,
                                                                     obj_ids=aff_ids,
                                                                     binary_masks=aff_binary_masks,
@@ -255,101 +288,23 @@ def eval_affnet_arl_affpose(model, test_loader):
         pred_name = config.ARL_TEST_SAVE_FOLDER + str(image_idx) + config.TEST_PRED_EXT
         cv2.imwrite(pred_name, aff_mask)
 
-    model.train()
-    return model, np.mean(APs)
+    # Confusion Matrix.
+    cm = sklearn_confusion_matrix(y_true=gt_obj_ids_list, y_pred=pred_obj_ids_list)
+    print(f'\n{cm}')
 
-def eval_fwb_arl_affpose_affnet(matlab_scrips_dir=config.MATLAB_SCRIPTS_DIR):
-    print()
+    # mAP
+    mAP = np.mean(APs)
+    print(f'\nmAP: {mAP:.5f}')
 
-    os.chdir(matlab_scrips_dir)
+    # getting Fwb
+    os.chdir(config.MATLAB_SCRIPTS_DIR)
     import matlab.engine
     eng = matlab.engine.start_matlab()
     Fwb = eng.evaluate_arl_affpose_affnet(config.ARL_TEST_SAVE_FOLDER, nargout=1)
     os.chdir(config.ROOT_DIR_PATH)
 
-    return Fwb
-
-def get_matched_predictions(image, target, outputs):
-    H, W, C = image.shape
-
-    gt_obj_ids = np.array(target['obj_ids'], dtype=np.int32).flatten()
-    gt_obj_boxes = np.array(target['obj_boxes'], dtype=np.int32).reshape(-1, 4)
-    gt_obj_binary_masks = np.squeeze(np.array(target['obj_binary_masks'] > config.MASK_THRESHOLD, dtype=np.uint8)).reshape(-1, H, W)
-
-    pred_obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
-    pred_obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
-    pred_obj_binary_masks = np.squeeze(np.array(outputs['obj_binary_masks'] > config.MASK_THRESHOLD, dtype=np.uint8)).reshape(-1, H, W)
-
-    matched_obj_ids = np.zeros_like(pred_obj_ids)
-    matched_obj_boxes = np.zeros_like(pred_obj_boxes)
-    matched_obj_binary_masks = np.zeros_like(pred_obj_binary_masks)
-
-    # match based on box IoU.
-    for pred_idx, pred_obj_id in enumerate(pred_obj_ids):
-        # print()
-        pred_obj_id = pred_obj_ids[pred_idx]
-        pred_obj_box = pred_obj_boxes[pred_idx, :]
-
-        best_iou, best_idx = 0, 0
-        for gt_idx, gt_obj_id in enumerate(gt_obj_ids):
-            gt_obj_id = gt_obj_ids[gt_idx]
-            gt_obj_box = gt_obj_boxes[gt_idx, :]
-            pred_iou = get_iou(pred_box=pred_obj_box, gt_box=gt_obj_box)
-            if pred_iou > best_iou:
-                best_idx = gt_idx
-                best_iou = pred_iou
-            # print(f'Pred: {pred_obj_id}, GT: {gt_obj_id}, IoU: {pred_iou}')
-        # print(f'Best IoU: {best_iou}, Pred Idx: {best_idx}')
-        matched_obj_ids[pred_idx] = gt_obj_ids[best_idx]
-        matched_obj_boxes[pred_idx, :] = gt_obj_boxes[best_idx, :]
-        matched_obj_binary_masks[pred_idx, :, :] = gt_obj_binary_masks[best_idx, :, :]
-
-    target['obj_ids'] = matched_obj_ids
-    target['obj_boxes'] = matched_obj_boxes
-    target['obj_binary_masks'] = matched_obj_binary_masks
-
-    return target, outputs
-
-def get_affnet_matched_predictions(image, target, outputs):
-    H, W, C = image.shape
-
-    gt_obj_ids = np.array(target['obj_ids'], dtype=np.int32).flatten()
-    gt_obj_boxes = np.array(target['obj_boxes'], dtype=np.int32).reshape(-1, 4)
-    gt_obj_binary_masks = np.squeeze(np.array(target['obj_binary_masks'] > config.MASK_THRESHOLD, dtype=np.uint8)).reshape(-1, H, W)
-
-    pred_obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
-    pred_obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
-    pred_obj_binary_masks = np.squeeze(np.array(outputs['obj_binary_masks'] > config.MASK_THRESHOLD, dtype=np.uint8)).reshape(-1, H, W)
-
-    matched_obj_ids = np.zeros_like(pred_obj_ids)
-    matched_obj_boxes = np.zeros_like(pred_obj_boxes)
-    matched_obj_binary_masks = np.zeros_like(pred_obj_binary_masks)
-
-    # match based on box IoU.
-    for pred_idx, pred_obj_id in enumerate(pred_obj_ids):
-        # print()
-        pred_obj_id = pred_obj_ids[pred_idx]
-        pred_obj_box = pred_obj_boxes[pred_idx, :]
-
-        best_iou, best_idx = 0, 0
-        for gt_idx, gt_obj_id in enumerate(gt_obj_ids):
-            gt_obj_id = gt_obj_ids[gt_idx]
-            gt_obj_box = gt_obj_boxes[gt_idx, :]
-            pred_iou = get_iou(pred_box=pred_obj_box, gt_box=gt_obj_box)
-            if pred_iou > best_iou:
-                best_idx = gt_idx
-                best_iou = pred_iou
-            # print(f'Pred: {pred_obj_id}, GT: {gt_obj_id}, IoU: {pred_iou}')
-        # print(f'Best IoU: {best_iou}, Pred Idx: {best_idx}')
-        matched_obj_ids[pred_idx] = gt_obj_ids[best_idx]
-        matched_obj_boxes[pred_idx, :] = gt_obj_boxes[best_idx, :]
-        matched_obj_binary_masks[pred_idx, :, :] = gt_obj_binary_masks[best_idx, :, :]
-
-    target['obj_ids'] = matched_obj_ids
-    target['obj_boxes'] = matched_obj_boxes
-    target['obj_binary_masks'] = matched_obj_binary_masks
-
-    return target, outputs
+    model.train()
+    return model, mAP, Fwb
 
 def get_iou(pred_box, gt_box):
     """
@@ -561,3 +516,256 @@ def compute_ap_range(gt_box, gt_class_id, gt_mask,
     if verbose:
         print("AP @{:.2f}-{:.2f}:\t {:.3f}".format(iou_thresholds[0], iou_thresholds[-1], AP))
     return AP
+
+def maskrcnn_format_outputs(image, outputs):
+    height, width = image.shape[0], image.shape[1]
+
+    scores = np.array(outputs['scores'], dtype=np.float32).flatten()
+    obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
+    obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
+    obj_binary_masks = np.array(outputs['obj_binary_masks'] > config.MASK_THRESHOLD, dtype=np.uint8).reshape(-1, height, width)
+
+    # sort by class ids (which sorts by score as well).
+    idx = np.argsort(obj_ids)
+    outputs['scores'] = scores[idx]
+    outputs['obj_ids'] = obj_ids[idx]
+    outputs['obj_boxes'] = obj_boxes[idx, :]
+    outputs['obj_binary_masks'] = obj_binary_masks[idx, :, :]
+
+    # sort by most confident (i.e. -1 to sort in reverse).
+    # idx = np.argsort(-1*scores)
+    # outputs['scores'] = scores[idx]
+    # outputs['obj_ids'] = obj_ids[idx]
+    # outputs['obj_boxes'] = obj_boxes[idx, :]
+    # outputs['obj_binary_masks'] = obj_binary_masks[idx, :, :]
+
+    return outputs
+
+def maskrcnn_threshold_outputs(image, outputs):
+    height, width = image.shape[0], image.shape[1]
+
+    scores = np.array(outputs['scores'], dtype=np.float32).flatten()
+    obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
+    obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
+    obj_binary_masks = np.array(outputs['obj_binary_masks'], dtype=np.uint8).reshape(-1, height, width)
+
+    # sort by class ids (which sorts by score as well).
+    idx = np.argwhere(scores > config.OBJ_CONFIDENCE_THRESHOLD)
+    outputs['scores'] = scores[idx]
+    outputs['obj_ids'] = obj_ids[idx]
+    outputs['obj_boxes'] = obj_boxes[idx, :]
+    outputs['obj_binary_masks'] = obj_binary_masks[idx, :, :]
+
+    return outputs
+
+def maskrcnn_match_pred_to_gt(image, target, outputs):
+    H, W, C = image.shape
+
+    gt_obj_ids = np.array(target['obj_ids'], dtype=np.int32).flatten()
+    gt_obj_boxes = np.array(target['obj_boxes'], dtype=np.int32).reshape(-1, 4)
+    gt_obj_binary_masks = np.squeeze(np.array(target['obj_binary_masks'] > config.MASK_THRESHOLD, dtype=np.uint8)).reshape(-1, H, W)
+
+    pred_scores = np.array(outputs['scores'], dtype=np.float32).flatten()
+    pred_obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
+    pred_obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
+    pred_obj_binary_masks = np.squeeze(np.array(outputs['obj_binary_masks'] > config.MASK_THRESHOLD, dtype=np.uint8)).reshape(-1, H, W)
+
+    matched_scores = np.zeros_like(gt_obj_ids, dtype=np.float32)
+    matched_obj_ids = np.zeros_like(gt_obj_ids)
+    matched_obj_boxes = np.zeros_like(gt_obj_boxes)
+    matched_obj_binary_masks = np.zeros_like(gt_obj_binary_masks)
+
+    # match based on box IoU.
+    for pred_idx, pred_obj_id in enumerate(pred_obj_ids):
+        # print()
+        pred_obj_box = pred_obj_boxes[pred_idx, :]
+
+        best_iou, best_idx = 0, 0
+        for gt_idx, gt_obj_id in enumerate(gt_obj_ids):
+            gt_obj_box = gt_obj_boxes[gt_idx, :]
+            pred_iou = get_iou(pred_box=pred_obj_box, gt_box=gt_obj_box)
+            if pred_iou > best_iou:
+                best_idx = gt_idx
+                best_iou = pred_iou
+            # print(f'Pred: {pred_obj_id}, GT: {gt_obj_id}, IoU: {pred_iou}')
+        # print(f'Best IoU: {best_iou}, Pred Idx: {best_idx}')
+        matched_scores[best_idx] = pred_scores[pred_idx]
+        matched_obj_ids[best_idx] = pred_obj_ids[pred_idx]
+        matched_obj_boxes[best_idx, :] = pred_obj_boxes[pred_idx, :]
+        matched_obj_binary_masks[best_idx, :, :] = pred_obj_binary_masks[pred_idx, :, :]
+
+    outputs['scores'] = matched_scores.flatten()
+    outputs['obj_ids'] = matched_obj_ids.flatten()
+    outputs['obj_boxes'] = matched_obj_boxes
+    outputs['obj_binary_masks'] = matched_obj_binary_masks
+
+    return outputs
+
+def maskrcnn_get_best_pred(image, outputs):
+    height, width = image.shape[0], image.shape[1]
+
+    scores = outputs['scores'].flatten()
+    obj_ids = outputs['obj_ids'].flatten()
+    obj_boxes = outputs['obj_boxes'].reshape(-1, 4)
+    obj_binary_masks = outputs['obj_binary_masks'].reshape(-1, height, width)
+
+    # Thresholding best confidence score for each object.
+    unique_obj_ids = np.unique(obj_ids)
+    best_idxs = {obj_id: 0 for obj_id in unique_obj_ids}
+    best_scores = {obj_id: 0 for obj_id in unique_obj_ids}
+    for idx in range(len(scores)):
+        score = scores[idx]
+        obj_id = obj_ids[idx]
+        best_score = best_scores[obj_id]
+        if score > best_score:
+            best_scores[obj_id] = score
+            best_idxs[obj_id] = idx
+
+    # convert idxs to list.
+    idxs = list(best_idxs.values())
+    outputs['scores'] = scores[idxs].flatten()
+    outputs['obj_ids'] = obj_ids[idxs].flatten()
+    outputs['obj_boxes'] = obj_boxes[idxs].reshape(-1, 4)
+    outputs['obj_binary_masks'] = obj_binary_masks[idxs, :, :].reshape(-1, height, width)
+
+    return outputs
+
+def affnet_format_outputs(image, outputs):
+    height, width = image.shape[0], image.shape[1]
+
+    outputs['scores'] = np.array(outputs['scores'], dtype=np.float32).flatten()
+    outputs['obj_ids'] = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
+    outputs['obj_boxes'] = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
+
+    if 'aff_scores' in outputs:
+        outputs['aff_scores'] = np.array(outputs['aff_scores'], dtype=np.float32).flatten()
+        outputs['obj_part_ids'] = np.array(outputs['obj_part_ids'], dtype=np.int32).flatten()
+        outputs['aff_ids'] = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
+        outputs['aff_binary_masks'] = np.array(outputs['aff_binary_masks'] > config.MASK_THRESHOLD, dtype=np.uint8).reshape(-1, height, width)
+        # get obj mask.
+        outputs['obj_binary_masks'] = arl_affpose_dataset_utils.get_obj_binary_masks(image,
+                                                                                     outputs['obj_ids'],
+                                                                                     outputs['obj_part_ids'],
+                                                                                     outputs['aff_binary_masks'])
+    else:
+        outputs['aff_scores'] = np.zeros_like(outputs['scores'])
+        outputs['obj_part_ids'] = np.zeros_like(outputs['obj_ids'])
+        outputs['aff_ids'] = np.zeros_like(outputs['obj_ids'])
+        outputs['aff_binary_masks'] = np.zeros(shape=(len(outputs['obj_ids']), height, width))
+        outputs['obj_binary_masks'] = np.zeros(shape=(len(outputs['obj_ids']), height, width))
+
+    # print(f"obj: {outputs['scores']}")
+    # print(f"aff: {outputs['aff_scores']}")
+
+    return outputs
+
+def affnet_threshold_outputs(image, outputs):
+    height, width = image.shape[0], image.shape[1]
+
+    # obj
+    scores = np.array(outputs['scores'], dtype=np.float32).flatten()
+    obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
+    obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
+    obj_binary_masks = np.array(outputs['obj_binary_masks'], dtype=np.uint8).reshape(-1, height, width)
+
+    idx = np.argwhere(scores > config.OBJ_CONFIDENCE_THRESHOLD)
+    outputs['scores'] = scores[idx]
+    outputs['obj_ids'] = obj_ids[idx]
+    outputs['obj_boxes'] = obj_boxes[idx, :]
+    outputs['obj_binary_masks'] = obj_binary_masks[idx, :, :]
+
+    # aff
+    aff_scores = np.array(outputs['aff_scores'], dtype=np.float32).flatten()
+    obj_part_ids = np.array(outputs['obj_part_ids'], dtype=np.int32).flatten()
+    aff_ids = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
+    aff_binary_masks = np.array(outputs['aff_binary_masks'], dtype=np.uint8).reshape(-1, height, width)
+
+    idx = np.argwhere(aff_scores > config.OBJ_CONFIDENCE_THRESHOLD)
+    outputs['aff_scores'] = aff_scores[idx]
+    outputs['obj_part_ids'] = obj_part_ids[idx]
+    outputs['aff_ids'] = aff_ids[idx]
+    outputs['aff_binary_masks'] = aff_binary_masks[idx, :, :]
+
+    return outputs
+
+def affnet_match_pred_to_gt(image, target, outputs):
+    H, W, C = image.shape
+
+    aff_ids = np.array(target['aff_ids'], dtype=np.int32).flatten()
+    gt_aff_binary_masks = np.array(target['aff_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
+
+    pred_scores = np.array(outputs['scores'], dtype=np.float32).flatten()
+    pred_obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
+    pred_obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
+    pred_obj_binary_masks = np.squeeze(np.array(outputs['obj_binary_masks'] > config.MASK_THRESHOLD, dtype=np.uint8)).reshape(-1, H, W)
+
+    pred_aff_scores = np.array(outputs['aff_scores'], dtype=np.float32).flatten()
+    pred_obj_part_ids = np.array(outputs['obj_part_ids'], dtype=np.int32).flatten()
+    pred_aff_ids = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
+    pred_aff_binary_masks = np.array(outputs['aff_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
+
+    matched_aff_scores = np.zeros_like(aff_ids, dtype=np.float32)
+    matched_obj_part_ids = np.zeros_like(aff_ids)
+    matched_aff_ids = np.zeros_like(aff_ids)
+    matched_aff_binary_masks = np.zeros_like(gt_aff_binary_masks)
+
+    # match based on box IoU.
+    for obj_idx, pred_obj_id in enumerate(pred_obj_ids):
+        obj_part_ids = arl_affpose_dataset_utils.map_obj_id_to_obj_part_ids(pred_obj_id)
+        for obj_part_idx, obj_part_id in enumerate(obj_part_ids):
+            pred_idx = np.argwhere(pred_obj_part_ids == obj_part_id)[0]
+            matched_aff_scores[obj_part_idx] = pred_aff_scores[pred_idx]
+            matched_obj_part_ids[obj_part_idx] = pred_obj_part_ids[pred_idx]
+            matched_aff_ids[obj_part_idx] = pred_aff_ids[pred_idx]
+            matched_aff_binary_masks[obj_part_idx, :, :] = pred_aff_binary_masks[pred_idx, :, :]
+
+    outputs['aff_scores'] = matched_aff_scores.flatten()
+    outputs['obj_part_ids'] = matched_obj_part_ids.flatten()
+    outputs['aff_ids'] = matched_aff_ids
+    outputs['aff_binary_masks'] = matched_aff_binary_masks
+
+    return outputs
+
+def affnet_umd_format_outputs(image, outputs):
+    height, width = image.shape[0], image.shape[1]
+
+    outputs['scores'] = np.array(outputs['scores'], dtype=np.float32).flatten()
+    outputs['obj_ids'] = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
+    outputs['obj_boxes'] = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
+
+    if 'aff_scores' in outputs:
+        outputs['aff_scores'] = np.array(outputs['aff_scores'], dtype=np.float32).flatten()
+        outputs['aff_ids'] = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
+        outputs['aff_binary_masks'] = np.array(outputs['aff_binary_masks'] > config.MASK_THRESHOLD, dtype=np.uint8).reshape(-1, height, width)
+
+    else:
+        outputs['aff_scores'] = np.zeros_like(outputs['scores'])
+        outputs['aff_ids'] = np.zeros_like(outputs['obj_ids'])
+        outputs['aff_binary_masks'] = np.zeros(shape=(len(outputs['obj_ids']), height, width))
+
+    return outputs
+
+def affnet_umd_threshold_outputs(image, outputs):
+    height, width = image.shape[0], image.shape[1]
+
+    # obj
+    scores = np.array(outputs['scores'], dtype=np.float32).flatten()
+    obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
+    obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
+
+    idx = np.argwhere(scores > config.OBJ_CONFIDENCE_THRESHOLD)
+    outputs['scores'] = scores[idx]
+    outputs['obj_ids'] = obj_ids[idx]
+    outputs['obj_boxes'] = obj_boxes[idx, :]
+
+    # aff
+    aff_scores = np.array(outputs['aff_scores'], dtype=np.float32).flatten()
+    aff_ids = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
+    aff_binary_masks = np.array(outputs['aff_binary_masks'], dtype=np.uint8).reshape(-1, height, width)
+
+    idx = np.argwhere(aff_scores > config.OBJ_CONFIDENCE_THRESHOLD)
+    outputs['aff_scores'] = aff_scores[idx]
+    outputs['aff_ids'] = aff_ids[idx]
+    outputs['aff_binary_masks'] = aff_binary_masks[idx, :, :]
+
+    return outputs

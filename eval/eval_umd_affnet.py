@@ -20,28 +20,32 @@ from dataset.umd import umd_dataset_utils
 from dataset.umd import umd_dataset_loaders
 from eval import eval_utils
 
-RANDOM_IMAGES = True
 SHOW_IMAGES = True
+
+SHUFFLE_IMAGES = False
+RANDOM_IMAGES = True
+NUM_RANDOM = 250
+
+SAVE_AND_EVAL_PRED = True
 
 
 def main():
 
-    # Init folders
-    print('\neval in .. {}'.format(config.UMD_AFF_EVAL_SAVE_FOLDER))
+    if SAVE_AND_EVAL_PRED:
+        # Init folders
+        print('\neval in .. {}'.format(config.UMD_AFF_EVAL_SAVE_FOLDER))
 
-    if not os.path.exists(config.UMD_AFF_EVAL_SAVE_FOLDER):
-        os.makedirs(config.UMD_AFF_EVAL_SAVE_FOLDER)
+        if not os.path.exists(config.UMD_AFF_EVAL_SAVE_FOLDER):
+            os.makedirs(config.UMD_AFF_EVAL_SAVE_FOLDER)
 
-    gt_pred_images = glob.glob(config.UMD_AFF_EVAL_SAVE_FOLDER + '*')
-    for images in gt_pred_images:
-        os.remove(images)
+        gt_pred_images = glob.glob(config.UMD_AFF_EVAL_SAVE_FOLDER + '*')
+        for images in gt_pred_images:
+            os.remove(images)
 
     # Load the Model.
     print()
     model = affnet.ResNetAffNet(pretrained=config.IS_PRETRAINED, num_classes=config.NUM_CLASSES)
-    # Send model to GPU and load backends (if all inputs are the same size).
     model.to(config.DEVICE)
-    torch.backends.cudnn.benchmark = True
 
     # Load saved weights.
     print(f"\nrestoring pre-trained AffNet weights for UMD: {config.RESTORE_UMD_AFFNET_WEIGHTS} .. ")
@@ -50,7 +54,9 @@ def main():
     model.eval()
 
     # Load the dataset.
-    test_loader = umd_dataset_loaders.load_umd_eval_datasets(RANDOM_IMAGES)
+    test_loader = umd_dataset_loaders.load_umd_eval_datasets(random_images=RANDOM_IMAGES,
+                                                             num_random=NUM_RANDOM,
+                                                             shuffle_images=SHUFFLE_IMAGES)
 
     # run the predictions.
     for image_idx, (images, targets) in enumerate(test_loader):
@@ -67,38 +73,41 @@ def main():
         image = image[0]
         image = image.to(config.CPU_DEVICE)
         image = np.squeeze(np.array(image)).transpose(1, 2, 0)
-        image = np.array(image*(2**8-1), dtype=np.uint8)
+        image = np.array(image * (2 ** 8 - 1), dtype=np.uint8)
         H, W, C = image.shape
 
+        # Formatting targets.
         target = target[0]
         target = {k: v.to(config.CPU_DEVICE) for k, v in target.items()}
-        image, target = umd_dataset_utils.format_target_data(image, target)
+        target = umd_dataset_utils.format_target_data(image.copy(), target.copy())
 
         # Formatting Output.
         outputs = outputs.pop()
+        outputs = eval_utils.affnet_umd_format_outputs(image.copy(), outputs.copy())
+        outputs = eval_utils.affnet_umd_threshold_outputs(image.copy(), outputs.copy())
         scores = np.array(outputs['scores'], dtype=np.float32).flatten()
         obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
         obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
         aff_ids = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
+        aff_binary_masks = np.array(outputs['aff_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
 
-        # Thresholding Binary Masks.
-        aff_binary_masks = np.squeeze(np.array(outputs['aff_binary_masks'] > 0.5, dtype=np.uint8))
+        for idx in range(len(obj_ids)):
+            obj_name = "{:<10}".format(umd_dataset_utils.map_obj_id_to_name(obj_ids[idx]))
+            print(f'Object:{obj_name}'
+                  f'Obj id: {obj_ids[idx]}, '
+                  f'Score:{scores[idx]:.3f}, ',
+                  )
 
         # Pred bbox.
-        pred_bbox_img = umd_dataset_utils.draw_bbox_on_img(image=image, obj_ids=obj_ids, boxes=obj_boxes)
-        bbox_ious = eval_utils.get_bbox_ious(pred_bboxs=obj_boxes, gt_bboxs=target['obj_boxes'])
-        if SHOW_IMAGES:
-            cv2.imshow('pred_bbox', cv2.cvtColor(pred_bbox_img, cv2.COLOR_BGR2RGB))
+        pred_bbox_img = umd_dataset_utils.draw_bbox_on_img(image=image, scores=scores, obj_ids=obj_ids, boxes=obj_boxes)
 
         # Pred affordnace mask.
         pred_aff_mask = umd_dataset_utils.get_segmentation_masks(image=image,
-                                                                         obj_ids=aff_ids,
-                                                                         binary_masks=aff_binary_masks,
-                                                                         )
+                                                                 obj_ids=aff_ids,
+                                                                 binary_masks=aff_binary_masks,
+                                                                 )
         color_aff_mask = umd_dataset_utils.colorize_aff_mask(pred_aff_mask)
-        color_aff_mask = cv2.addWeighted(pred_bbox_img, 0.35, color_aff_mask, 0.65, 0)
-        if SHOW_IMAGES:
-            cv2.imshow('pred_aff_mask', cv2.cvtColor(color_aff_mask, cv2.COLOR_BGR2RGB))
+        color_aff_mask = cv2.addWeighted(pred_bbox_img, 0.5, color_aff_mask, 0.5, 0)
 
         # gt affordance masks.
         binary_mask = umd_dataset_utils.get_segmentation_masks(image=image,
@@ -106,39 +115,34 @@ def main():
                                                                binary_masks=target['aff_binary_masks'],
                                                                )
         color_binary_mask = umd_dataset_utils.colorize_aff_mask(binary_mask)
-        color_binary_mask = cv2.addWeighted(image, 0.35, color_binary_mask, 0.65, 0)
-        if SHOW_IMAGES:
-            cv2.imshow('gt_aff_mask', cv2.cvtColor(color_binary_mask, cv2.COLOR_BGR2RGB))
+        color_binary_mask = cv2.addWeighted(image, 0.5, color_binary_mask, 0.5, 0)
 
-        for idx in range(len(obj_ids)):
-            obj_name = "{:<15}".format(umd_dataset_utils.map_obj_id_to_name(obj_ids[idx]))
-            print(f'Object:{obj_name}'
-                  f'Obj id: {obj_ids[idx]}, '
-                  f'Score:{scores[idx]:.3f}, ',
-                  f'IoU:{bbox_ious[idx]:.3f}, ',
-                  )
+        if SAVE_AND_EVAL_PRED:
+            # saving predictions.
+            _image_idx = target["image_id"].detach().numpy()[0]
+            _image_idx = str(1000000 + _image_idx)[1:]
 
-        # saving predictions.
-        _image_idx = target["image_id"].detach().numpy()[0]
-        _image_idx = str(1000000 + _image_idx)[1:]
+            gt_name = config.UMD_AFF_EVAL_SAVE_FOLDER + _image_idx + config.TEST_GT_EXT
+            pred_name = config.UMD_AFF_EVAL_SAVE_FOLDER + _image_idx + config.TEST_PRED_EXT
 
-        gt_name = config.UMD_AFF_EVAL_SAVE_FOLDER + _image_idx + config.TEST_GT_EXT
-        pred_name = config.UMD_AFF_EVAL_SAVE_FOLDER + _image_idx + config.TEST_PRED_EXT
-
-        cv2.imwrite(gt_name, target['aff_mask'])
-        cv2.imwrite(pred_name, pred_aff_mask)
+            cv2.imwrite(gt_name, target['aff_mask'])
+            cv2.imwrite(pred_name, pred_aff_mask)
 
         # show plot.
         if SHOW_IMAGES:
+            cv2.imshow('pred_bbox', cv2.cvtColor(pred_bbox_img, cv2.COLOR_BGR2RGB))
+            cv2.imshow('pred_aff_mask', cv2.cvtColor(color_aff_mask, cv2.COLOR_BGR2RGB))
+            cv2.imshow('gt_aff_mask', cv2.cvtColor(color_binary_mask, cv2.COLOR_BGR2RGB))
             cv2.waitKey(0)
 
-    print()
-    # getting FwB.
-    os.chdir(config.MATLAB_SCRIPTS_DIR)
-    import matlab.engine
-    eng = matlab.engine.start_matlab()
-    Fwb = eng.evaluate_umd_affnet(config.UMD_AFF_EVAL_SAVE_FOLDER, nargout=1)
-    os.chdir(config.ROOT_DIR_PATH)
+    if SAVE_AND_EVAL_PRED:
+        print()
+        # getting FwB.
+        os.chdir(config.MATLAB_SCRIPTS_DIR)
+        import matlab.engine
+        eng = matlab.engine.start_matlab()
+        Fwb = eng.evaluate_umd_affnet(config.UMD_AFF_EVAL_SAVE_FOLDER, nargout=1)
+        os.chdir(config.ROOT_DIR_PATH)
 
 if __name__ == "__main__":
     main()

@@ -87,7 +87,7 @@ def load_umd_train_datasets():
 
     return train_loader, val_loader, test_loader
 
-def load_umd_eval_datasets(random_images=True):
+def load_umd_eval_datasets(random_images=False, num_random=config.NUM_TEST, shuffle_images=False):
     # Test dataset.
     print("\nloading test ..")
     test_dataset = umd_dataset.UMDDataset(
@@ -104,12 +104,12 @@ def load_umd_eval_datasets(random_images=True):
         # Selecting a subset of test images.
         np.random.seed(config.RANDOM_SEED)
         total_idx = np.arange(0, len(test_dataset), 1)
-        test_idx = np.random.choice(total_idx, size=int(config.NUM_TEST), replace=False)
+        test_idx = np.random.choice(total_idx, size=int(num_random), replace=False)
         test_dataset = Subset(test_dataset, test_idx)
 
     test_loader = torch.utils.data.DataLoader(test_dataset,
                                               batch_size=config.BATCH_SIZE,
-                                              shuffle=False,
+                                              shuffle=shuffle_images,
                                               num_workers=config.NUM_WORKERS,
                                               pin_memory=True,
                                               collate_fn=dataset_utils.collate_fn

@@ -23,7 +23,7 @@ class ARLAffPoseDatasetTest(unittest.TestCase):
 
         # Load ARL AffPose dataset.
         dataset = arl_affpose_dataset.ARLAffPoseDataset(
-            dataset_dir=config.ARL_DATA_DIRECTORY_TEST,
+            dataset_dir=config.ARL_DATA_DIRECTORY_WAM,
             mean=config.ARL_IMAGE_MEAN,
             std=config.ARL_IMAGE_STD,
             resize=config.ARL_RESIZE,
