@@ -20,14 +20,16 @@ from dataset.umd import umd_dataset_utils
 from dataset.umd import umd_dataset_loaders
 from eval import eval_utils
 
-SHOW_IMAGES = True
+SHOW_IMAGES = False
 
 SHUFFLE_IMAGES = False
-RANDOM_IMAGES = True
+RANDOM_IMAGES = False
 NUM_RANDOM = 250
 
 SAVE_AND_EVAL_PRED = True
 
+NUM_UMD_TEST = 1298
+OBJ_MASK_PROBABILITIES = np.zeros(shape=(NUM_UMD_TEST*5, config.UMD_NUM_OBJECT_CLASSES))
 
 def main():
 
@@ -85,6 +87,7 @@ def main():
         outputs = outputs.pop()
         outputs = eval_utils.affnet_umd_format_outputs(image.copy(), outputs.copy())
         outputs = eval_utils.affnet_umd_threshold_outputs(image.copy(), outputs.copy())
+        outputs, obj_mask_probabilities = eval_utils.affnet_umd_threshold_binary_masks(image.copy(), outputs.copy(), False)
         scores = np.array(outputs['scores'], dtype=np.float32).flatten()
         obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
         obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
@@ -92,7 +95,8 @@ def main():
         aff_binary_masks = np.array(outputs['aff_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
 
         for idx in range(len(obj_ids)):
-            obj_name = "{:<10}".format(umd_dataset_utils.map_obj_id_to_name(obj_ids[idx]))
+            OBJ_MASK_PROBABILITIES[image_idx, obj_ids[idx]] = obj_mask_probabilities
+            obj_name = "{:<13}".format(umd_dataset_utils.map_obj_id_to_name(obj_ids[idx]))
             print(f'Object:{obj_name}'
                   f'Obj id: {obj_ids[idx]}, '
                   f'Score:{scores[idx]:.3f}, ',
@@ -134,6 +138,20 @@ def main():
             cv2.imshow('pred_aff_mask', cv2.cvtColor(color_aff_mask, cv2.COLOR_BGR2RGB))
             cv2.imshow('gt_aff_mask', cv2.cvtColor(color_binary_mask, cv2.COLOR_BGR2RGB))
             cv2.waitKey(0)
+
+    print()
+    for obj_id in range(1, config.UMD_NUM_OBJECT_CLASSES):
+        obj_mask_probabilities = OBJ_MASK_PROBABILITIES[:, obj_id]
+
+        mean = obj_mask_probabilities[np.nonzero(obj_mask_probabilities.copy())].mean()
+        std = obj_mask_probabilities[np.nonzero(obj_mask_probabilities.copy())].std()
+
+        obj_name = "{:<13}".format(umd_dataset_utils.map_obj_id_to_name(obj_id))
+        print(f'Object:{obj_name}'
+              f'Obj id: {obj_id}, '
+              f'Mean: {mean: .5f}, '
+              # f'Std: {std: .5f}'
+              )
 
     if SAVE_AND_EVAL_PRED:
         print()

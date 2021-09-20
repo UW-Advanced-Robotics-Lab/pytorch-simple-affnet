@@ -22,12 +22,12 @@ class AffNetTest(unittest.TestCase):
         self.model.to(config.DEVICE)
 
         # Load the dataset.
-        test_loader = arl_affpose_dataset_loaders.load_arl_affpose_eval_datasets()
+        test_loader = umd_dataset_loaders.load_umd_eval_datasets()
         # create dataloader.
         self.data_loader = test_loader
 
     def test_freeze_backbone(self):
-        self.model = model_utils.freeze_backbone(self.model)
+        # self.model = model_utils.freeze_backbone(self.model)
         # freeze backbone layers
         for name, parameter in self.model.named_parameters():
             if parameter.requires_grad:
@@ -52,15 +52,32 @@ class AffNetTest(unittest.TestCase):
         target["aff_ids"] = labels
         target["aff_binary_masks"] = mask
 
-        image = image.to(config.DEVICE)
-        target = {k: v.to(config.DEVICE) for k, v in target.items()}
+        images = image.to(config.DEVICE)
+        targets = {k: v.to(config.DEVICE) for k, v in target.items()}
 
-        with torch.no_grad():
-            self.model.eval()
-            outputs = self.model(image, target)
+        self.model.train()
+        loss_dict = self.model(images, targets)
 
-        outputs = [{k: v.to(config.CPU_DEVICE) for k, v in t.items()} for t in outputs]
-        outputs = outputs.pop()
+        losses = sum(loss for loss in loss_dict.values())
+        # reduce losses over all GPUs for logging purposes
+        loss_dict_reduced = train_utils.reduce_dict(loss_dict)
+        losses_reduced = sum(loss for loss in loss_dict_reduced.values())
+        # getting summed loss.
+        loss_value = losses_reduced.item()
+
+        print(f'\nloss_value: {loss_value}')
+        print(f'\nloss_objectness: {loss_dict_reduced["loss_objectness"]}')
+        print(f'loss_rpn_box_reg: {loss_dict_reduced["loss_rpn_box_reg"]}')
+        print(f'loss_classifier: {loss_dict_reduced["loss_classifier"]}')
+        print(f'loss_box_reg: {loss_dict_reduced["loss_box_reg"]}')
+        print(f'loss_mask: {loss_dict_reduced["loss_mask"]}')
+
+        # with torch.no_grad():
+        #     self.model.eval()
+        #     outputs = self.model(images, targets)
+
+        # outputs = [{k: v.to(config.CPU_DEVICE) for k, v in t.items()} for t in outputs]
+        # outputs = outputs.pop()
 
     def test_affnet_train(self):
         # get one item from dataloader.

@@ -1,8 +1,24 @@
 import cv2
 import numpy as np
 
+import torch
+
 import config
 from dataset import dataset_utils
+
+# Class distributions.
+OBJ_IDS_DISTRIBUTION = np.array([1000, 48, 62, 32, 131, 55, 33, 183, 16, 45, 90, 16, 24, 14, 77, 28, 44, 102]) / 1000
+# Affordance distributions.
+AFF_IDS_DISTRIBUTION = np.array([813, 289, 137, 355, 93, 116, 261]) / 2064
+
+def get_class_weights(logits_size, obj_ids, distribution=OBJ_IDS_DISTRIBUTION):
+
+    class_weights = torch.ones(size=(len(obj_ids), logits_size[0], logits_size[1]), device=config.DEVICE)
+    for idx, obj_id in enumerate(obj_ids):
+        obj_id = obj_id.item()
+        if obj_id > 0:
+            class_weights[idx, :, :] = 1 / distribution[obj_id-1]
+    return class_weights
 
 def map_obj_name_to_id(obj_name):
     if obj_name == "bowl":
@@ -229,8 +245,8 @@ def format_target_data(image, target):
     target['aff_ids'] = np.array(target['aff_ids'], dtype=np.int32).flatten()
 
     # depth images.
-    target['depth_8bit'] = np.squeeze(np.array(target['depth_8bit'], dtype=np.uint8))
-    target['depth_16bit'] = np.squeeze(np.array(target['depth_16bit'], dtype=np.uint16))
+    # target['depth_8bit'] = np.squeeze(np.array(target['depth_8bit'], dtype=np.uint8))
+    # target['depth_16bit'] = np.squeeze(np.array(target['depth_16bit'], dtype=np.uint16))
 
     return target
 

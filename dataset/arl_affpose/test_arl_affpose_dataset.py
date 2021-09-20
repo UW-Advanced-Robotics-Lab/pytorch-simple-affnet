@@ -45,7 +45,7 @@ class ARLAffPoseDatasetTest(unittest.TestCase):
             # format data.
             image = np.squeeze(np.array(image)).transpose(1, 2, 0)
             image = np.array(image * (2 ** 8 - 1), dtype=np.uint8).reshape(config.ARL_CROP_SIZE[0], config.ARL_CROP_SIZE[1], -1)
-            image, target = arl_affpose_dataset_utils.format_target_data(image, target)
+            target = arl_affpose_dataset_utils.format_target_data(image, target)
 
             # Bounding Box.
             bbox_img = arl_affpose_dataset_utils.draw_bbox_on_img(image=image,

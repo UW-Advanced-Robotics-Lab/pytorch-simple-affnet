@@ -155,20 +155,20 @@ class MaskRCNN(nn.Module):
         )
 
         self.head.mask_roi_pool = roi_align.RoIAlign(output_size=config.ROIALIGN_MASK_OUTPUT_SIZE,
-                                          sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
+                                                     sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
 
         # self.head.mask_roi_pool = roi_align.MultiScaleRoIAlign(
         #                             featmap_names=['0', '1', '2', '3'],
         #                             output_size=config.ROIALIGN_MASK_OUTPUT_SIZE,
         #                             sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
 
-        # layers = (rpn_num_samples, rpn_num_samples, rpn_num_samples, rpn_num_samples)
-        # dim_reduced = rpn_num_samples
-        # self.head.mask_predictor = MaskRCNNPredictor(out_channels, layers, dim_reduced, num_classes)
+        layers = (out_channels, out_channels, out_channels, out_channels) # from feature map
+        dim_reduced = out_channels
+        self.head.mask_predictor = MaskRCNNPredictor(out_channels, layers, dim_reduced, num_classes)
 
-        mask_predictor_in_channels = rpn_num_samples
-        mask_dim_reduced = rpn_num_samples
-        self.head.mask_predictor = MaskRCNNPredictor(mask_predictor_in_channels, mask_dim_reduced, num_classes)
+        # in_channels = out_channels  # from feature map
+        # dim_reduced = out_channels
+        # self.head.mask_predictor = MaskRCNNPredictor(in_channels, dim_reduced, num_classes)
         
     def forward(self, image, target=None):
         if isinstance(image, list):
@@ -211,87 +211,99 @@ class FastRCNNPredictor(nn.Module):
         return score, bbox_delta
 
 
-# class MaskRCNNPredictor(nn.Sequential):
-#     def __init__(self, in_channels, layers, dim_reduced, num_classes):
-#         """
-#         Arguments:
-#             in_channels (int)
-#             layers (Tuple[int])
-#             dim_reduced (int)
-#             num_classes (int)
-#         """
-#
-#         d = OrderedDict()
-#         next_feature = in_channels
-#         for layer_idx, layer_features in enumerate(layers, 1):
-#             d['mask_fcn{}'.format(layer_idx)] = nn.Conv2d(next_feature, layer_features, 3, 1, 1)
-#             d['relu{}'.format(layer_idx)] = nn.ReLU(inplace=True)
-#             next_feature = layer_features
-#
-#         # TODO: look at Deconvolutional layers.
-#         ### output is [14x14] -> [28x28]
-#         ### nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding)
-#         d['mask_conv5'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
-#         d['relu5'] = nn.ReLU(inplace=True)
-#         # ### output is [28x28] -> [56x56]
-#         # d['mask_conv6'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
-#         # d['relu6'] = nn.ReLU(inplace=True)
-#         # # ### output is [56x56] -> [112x112]
-#         # d['mask_conv7'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
-#         # d['relu7'] = nn.ReLU(inplace=True)
-#         # ## output is [112x112] -> [224x224]
-#         # d['mask_conv8'] = nn.ConvTranspose2d(next_feature, dim_reduced, 2, 2, 0)
-#         # d['relu8'] = nn.ReLU(inplace=True)
-#
-#         d['mask_fcn_logits'] = nn.Conv2d(dim_reduced, num_classes, 1, 1, 0)
-#         super().__init__(d)
-#
-#         for name, param in self.named_parameters():
-#             if 'weight' in name:
-#                 nn.init.kaiming_normal_(param, mode='fan_out', nonlinearity='relu')
-
-
 class MaskRCNNPredictor(nn.Sequential):
-    def __init__(self, in_channels, dim_reduced, num_classes):
-        super(MaskRCNNPredictor, self).__init__(
-            OrderedDict([
-            # TODO: torchvision.
-            ("conv5_mask", nn.ConvTranspose2d(in_channels, dim_reduced, 2, 2, 0)),
-            ("relu", nn.ReLU(inplace=True)),
+    def __init__(self, in_channels, layers, dim_reduced, num_classes):
+        """
+        Arguments:
+            in_channels (int)
+            layers (Tuple[int])
+            dim_reduced (int)
+            num_classes (int)
+        """
 
-            # TODO: Simple transpose_conv
-            ### output mask: [14x14] -> [28x28]
-            # ("conv5_mask", nn.Conv2d(256, dim_reduced, 3, 1, 1)),
-            # ("relu5", nn.ReLU(inplace=True)),
-            # ("transpose_conv5", nn.ConvTranspose2d(in_channels, dim_reduced, padding=0, stride=2, kernel_size=2)),
-            ### output mask: [28x28] -> [56x56]
-            # ("conv6_mask", nn.Conv2d(256, dim_reduced, 3, 1, 1)),
-            # ("relu6", nn.ReLU(inplace=True)),
-            # ("transpose_conv6", nn.ConvTranspose2d(in_channels, dim_reduced, padding=0, stride=2, kernel_size=2)),
+        d = OrderedDict()
+        next_feature = in_channels
+        for layer_idx, layer_features in enumerate(layers, 1):
+            d['mask_fcn{}'.format(layer_idx)] = nn.Conv2d(next_feature, layer_features, kernel_size=3, stride=1, padding=1)
+            d['relu{}'.format(layer_idx)] = nn.ReLU(inplace=True)
+            next_feature = layer_features
 
-            # TODO: AffNet
-            ### output mask: [7x7] -> [30x30]
-            # ("conv5_mask", nn.Conv2d(256, dim_reduced, 3, 1, 1)),
-            # ("relu5", nn.ReLU(inplace=True)),
-            # ("transpose_conv5", nn.ConvTranspose2d(in_channels, dim_reduced, padding=1, stride=4, kernel_size=8)),
-            ### output mask: [30x30] -> [122x122]
-            # ("conv6_mask", nn.Conv2d(in_channels, dim_reduced, 3, 1, 1)),
-            # ("relu6", nn.ReLU(inplace=True)),
-            # ("transpose_conv6", nn.ConvTranspose2d(in_channels, dim_reduced, padding=1, stride=4, kernel_size=8)),
-            # ### output mask: [56x56] -> [128x128]
-            # ("conv7_mask", nn.Conv2d(in_channels, dim_reduced, 3, 1, 1)),
-            # ("relu7", nn.ReLU(inplace=True)),
-            # ("transpose_conv7", nn.ConvTranspose2d(in_channels, dim_reduced, padding=1, stride=2, kernel_size=4)),
-            # sigmoid
-            ("mask_fcn_logits", nn.Conv2d(dim_reduced, num_classes, 1, 1, 0)),
-        ])
-        )
+        # TODO: look at Deconvolutional layers.
+        ### output is [14x14] -> [28x28]
+        # d['mask_conv5'] = nn.ConvTranspose2d(next_feature, dim_reduced, kernel_size=2, stride=2, padding=0)
+        # d['relu5'] = nn.ReLU(inplace=True)
+        # ### output is [28x28] -> [56x56]
+        # d['mask_conv6'] = nn.ConvTranspose2d(next_feature, dim_reduced, kernel_size=2, stride=2, padding=0)
+        # d['relu6'] = nn.ReLU(inplace=True)
+        # # ### output is [56x56] -> [112x112]
+        # d['mask_conv7'] = nn.ConvTranspose2d(next_feature, dim_reduced, kernel_size=2, stride=2, padding=0)
+        # d['relu7'] = nn.ReLU(inplace=True)
+        # ## output is [112x112] -> [224x224]
+        # d['mask_conv8'] = nn.ConvTranspose2d(next_feature, dim_reduced, kernel_size=2, stride=2, padding=0)
+        # d['relu8'] = nn.ReLU(inplace=True)
+
+        # TODO: AffNet
+        ###  output mask: [7x7] -> [30x30]
+        d['conv5'] = nn.Conv2d(next_feature, dim_reduced, kernel_size=3, stride=1, padding=1)
+        d['relu5'] = nn.ReLU(inplace=True)
+        d['transpose_conv5'] = nn.ConvTranspose2d(in_channels, dim_reduced, kernel_size=8, stride=4, padding=1)
+        # ## output mask: [30x30] -> [122x122]
+        # d['conv6'] = nn.Conv2d(next_feature, dim_reduced, kernel_size=3, stride=1, padding=1)
+        # d['relu6'] = nn.ReLU(inplace=True)
+        # d['transpose_conv6'] = nn.ConvTranspose2d(in_channels, dim_reduced, kernel_size=8, stride=4, padding=1)
+        # ## output mask: [122x122] -> [224x224]
+        # d['transpose_conv7'] = nn.ConvTranspose2d(in_channels, dim_reduced, kernel_size=4, stride=2, padding=1)
+        # d['relu7'] = nn.ReLU(inplace=True)
+
+        d['mask_fcn_logits'] = nn.Conv2d(dim_reduced, num_classes, 1, 1, 0)
+        super().__init__(d)
 
         for name, param in self.named_parameters():
-            if "weight" in name:
-                nn.init.kaiming_normal_(param, mode="fan_out", nonlinearity="relu")
+            if 'weight' in name:
+                nn.init.kaiming_normal_(param, mode='fan_out', nonlinearity='relu')
 
-    
+#
+# class MaskRCNNPredictor(nn.Sequential):
+#     def __init__(self, in_channels, dim_reduced, num_classes):
+#         super(MaskRCNNPredictor, self).__init__(
+#             OrderedDict([
+#             # TODO: torchvision.
+#             ("conv5_mask", nn.ConvTranspose2d(in_channels, dim_reduced, 2, 2, 0)),
+#             ("relu", nn.ReLU(inplace=True)),
+#
+#             # TODO: Simple transpose_conv
+#             ### output mask: [14x14] -> [28x28]
+#             # ("conv5_mask", nn.Conv2d(256, dim_reduced, 3, 1, 1)),
+#             # ("relu5", nn.ReLU(inplace=True)),
+#             # ("transpose_conv5", nn.ConvTranspose2d(in_channels, dim_reduced, padding=0, stride=2, kernel_size=2)),
+#             ### output mask: [28x28] -> [56x56]
+#             # ("conv6_mask", nn.Conv2d(256, dim_reduced, 3, 1, 1)),
+#             # ("relu6", nn.ReLU(inplace=True)),
+#             # ("transpose_conv6", nn.ConvTranspose2d(in_channels, dim_reduced, padding=0, stride=2, kernel_size=2)),
+#
+#             # TODO: AffNet
+#             ### output mask: [7x7] -> [30x30]
+#             # ("conv5_mask", nn.Conv2d(256, dim_reduced, 3, 1, 1)),
+#             # ("relu5", nn.ReLU(inplace=True)),
+#             # ("transpose_conv5", nn.ConvTranspose2d(in_channels, dim_reduced, padding=1, stride=4, kernel_size=8)),
+#             ### output mask: [30x30] -> [122x122]
+#             # ("conv6_mask", nn.Conv2d(in_channels, dim_reduced, 3, 1, 1)),
+#             # ("relu6", nn.ReLU(inplace=True)),
+#             # ("transpose_conv6", nn.ConvTranspose2d(in_channels, dim_reduced, padding=1, stride=4, kernel_size=8)),
+#             # ### output mask: [56x56] -> [128x128]
+#             # ("conv7_mask", nn.Conv2d(in_channels, dim_reduced, 3, 1, 1)),
+#             # ("relu7", nn.ReLU(inplace=True)),
+#             # ("transpose_conv7", nn.ConvTranspose2d(in_channels, dim_reduced, padding=1, stride=2, kernel_size=4)),
+#             # sigmoid
+#             ("mask_fcn_logits", nn.Conv2d(dim_reduced, num_classes, 1, 1, 0)),
+#         ])
+#         )
+#
+#         for name, param in self.named_parameters():
+#             if "weight" in name:
+#                 nn.init.kaiming_normal_(param, mode="fan_out", nonlinearity="relu")
+
+
 def ResNetMaskRCNN(pretrained=config.IS_PRETRAINED,
                    backbone_feat_extractor=config.BACKBONE_FEAT_EXTRACTOR,
                    num_classes=config.NUM_CLASSES):

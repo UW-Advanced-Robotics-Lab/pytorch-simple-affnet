@@ -99,7 +99,7 @@ class UMDDataset(data.Dataset):
         mask = aug_concat_mask
 
         rgb = self.colour_aug(image=rgb)
-        depth = self.depth_aug(image=depth)
+        # depth = self.depth_aug(image=depth)
 
         rgb = np.array(rgb, dtype=np.uint8)
         mask = np.array(mask, dtype=np.uint8)
@@ -131,27 +131,14 @@ class UMDDataset(data.Dataset):
         depth_8bit = dataset_utils.convert_16_bit_depth_to_8_bit(depth_16bit)
         mask = Image.open(mask_file[0])
 
-        # resize and crop images.
         image = np.array(image, dtype=np.uint8)
         depth_16bit = np.array(depth_16bit, dtype=np.float16)
         depth_8bit = np.array(depth_8bit, dtype=np.uint8)
         mask = np.array(mask, dtype=np.uint8)
 
-        # masked depth for stats.
-        # masked_label = np.ma.getmaskarray(np.ma.masked_not_equal(obj_mask, 0)).astype(np.uint8)
-        # masked_depth_16bit = masked_label * depth_16bit.copy()
-
-        image = cv2.resize(image, self.RESIZE, interpolation=cv2.INTER_CUBIC)
-        depth_8bit = cv2.resize(depth_8bit, self.RESIZE, interpolation=cv2.INTER_CUBIC)
-        mask = cv2.resize(mask, self.RESIZE, interpolation=cv2.INTER_NEAREST)
-
-        image = dataset_utils.crop(image, self.CROP_SIZE, is_img=True)
-        depth_8bit = dataset_utils.crop(depth_8bit, self.CROP_SIZE)
-        mask = dataset_utils.crop(mask, self.CROP_SIZE)
-
         # applying image augmentation.
         if self.apply_imgaug:
-            image, depth_8bit, mask = self.apply_imgaug_to_imgs(rgb=image,depth=depth_8bit,mask=mask)
+            image, depth_8bit, mask = self.apply_imgaug_to_imgs(rgb=image, depth=depth_8bit, mask=mask)
 
         image = np.array(image, dtype=np.uint8)
         H, W = image.shape[0], image.shape[1]
@@ -210,8 +197,8 @@ class UMDDataset(data.Dataset):
         target["obj_boxes"] = torch.as_tensor(obj_boxes, dtype=torch.float32)
         target["aff_ids"] = torch.as_tensor(aff_ids, dtype=torch.int64)
         # viewing how far objects are from the camera using depth images and object masks.
-        target["depth_8bit"] = torch.as_tensor(depth_8bit, dtype=torch.float32)
-        target["depth_16bit"] = torch.as_tensor(depth_16bit, dtype=torch.float32)
+        # target["depth_8bit"] = torch.as_tensor(depth_8bit, dtype=torch.float32)
+        # target["depth_16bit"] = torch.as_tensor(depth_16bit, dtype=torch.float32)
         # target["masked_depth_16bit"] = torch.as_tensor(masked_depth_16bit, dtype=torch.float32)
 
         # sent to transform.

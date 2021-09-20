@@ -16,7 +16,7 @@ FRAMEWORK = 'AffNet'
 EXP_DATASET = 'UMD'
 EXP_DOMAIN = 'Real'
 EXP_IMAGES = 'RGB'
-EXP_NUM = 'v1_transpose_conv2d_122x122'
+EXP_NUM = 'v5_torchvision_transpose_conv2d_112x112'
 
 '''
 Backbone Selection:
@@ -29,16 +29,14 @@ BACKBONE_FEAT_EXTRACTOR = 'resnet50'
 IS_PRETRAINED = True
 RESNET_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth'
 MASKRCNN_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/maskrcnn_resnet50_fpn_coco-bf2d0c1e.pth'  # resnet50
-# MASKRCNN_PRETRAINED_WEIGHTS = ROOT_DIR_PATH + 'pretrained_coco_weights_ResNet18.pth' # resnet18
-# MASKRCNN_PRETRAINED_WEIGHTS = ROOT_DIR_PATH + 'pretrained_coco_weights_ResNet50.pth' # resnet50
 
-RESTORE_COCO_MASKRCNN_WEIGHTS = ROOT_DIR_PATH + 'trained_models/COCO_Real_RGB/Torchvision_MaskRCNN_COCO_Real_RGB_640x480_v0/maskrcnn_epoch_3.pth'
+RESTORE_COCO_MASKRCNN_WEIGHTS = ROOT_DIR_PATH + 'trained_models/COCO_Real_RGB/MaskRCNN_COCO_Real_RGB_640x640_v0_transpose_conv2d_30x30/maskrcnn_epoch_5.pth'  # resnet50
 
-RESTORE_UMD_AFFNET_WEIGHTS = ROOT_DIR_PATH + 'trained_models/UMD_Real_RGB/AffNet_UMD_Real_RGB_640x640_v0_transpose_conv2d_30x30/affnet_epoch_4.pth'
+RESTORE_UMD_AFFNET_WEIGHTS = ROOT_DIR_PATH + 'trained_models/UMD_Real_RGB/AffNet_UMD_Real_RGB_640x640_v5_torchvision_transpose_conv2d_112x112/BEST_MODEL.pth'
 
 RESTORE_ARL_TORCHVISION_MASKRCNN_WEIGHTS = ROOT_DIR_PATH + 'trained_models/ARLAffPose_Real_RGB/MaskRCNN_ARLAffPose_Real_RGB_640x480_v1_torchvision/maskrcnn_epoch_4.pth'
 RESTORE_ARL_MASKRCNN_WEIGHTS = ROOT_DIR_PATH + 'trained_models/ARLAffPose_Real_RGB/MaskRCNN_ARLAffPose_Real_RGB_640x640_v1_resnet50/BEST_MODEL.pth'
-RESTORE_ARL_AFFNET_WEIGHTS = ROOT_DIR_PATH + 'trained_models/ARLAffPose_Real_RGB/AffNet_ARLAffPose_Real_RGB_640x640_v4_conv2d_2/BEST_MODEL.pth'
+RESTORE_ARL_AFFNET_WEIGHTS = ROOT_DIR_PATH + 'trained_models/ARLAffPose_Real_RGB/AffNet_UMD_Real_RGB_640x640_v1_transpose_conv2d_122x122/BEST_MODEL.pth'
 
 ''' 
 MaskRCNN configs. 
@@ -47,11 +45,10 @@ see reference here https://www.telesens.co/2018/03/11/object-detection-and-class
 
 # Used to threshold predictions based on objectiveness.
 OBJ_CONFIDENCE_THRESHOLD = 0.7
-MASK_THRESHOLD = 0.4
+MASK_THRESHOLD = 0.5
 
 # Anchor Generator
-# ANCHOR_SIZES = (32, 64, 128, 256, 512)
-ANCHOR_SIZES = (128, 256, 512)
+ANCHOR_SIZES = (32, 64, 128, 256, 384)
 ANCHOR_RATIOS = (0.5, 1, 2)
 
 # transform parameters
@@ -63,7 +60,7 @@ IMAGE_STD = [0.229, 0.224, 0.225]
 # RPN parameters
 RPN_FG_IOU_THRESH = 0.7
 RPN_BG_IOU_THRESH = 0.3  # 0.5
-RPN_NUM_SAMPLES = 256
+RPN_NUM_SAMPLES = 256  # 256
 RPN_POSITIVE_FRACTION = 0.5
 RPN_REG_WEIGHTS = (1., 1., 1., 1.)
 RPN_PRE_NMS_TOP_N_TRAIN = 2000  # * 2 to try to reduce false positives.
@@ -74,7 +71,7 @@ RPN_NMS_THRESH = 0.7
 
 # RoIAlign parameters
 ROIALIGN_BOX_OUTPUT_SIZE = (7, 7)
-ROIALIGN_MASK_OUTPUT_SIZE = (7, 7)  # (14, 14)
+ROIALIGN_MASK_OUTPUT_SIZE = (14, 14)  # (7, 7) or (14, 14)
 ROIALIGN_SAMPLING_RATIO = 2
 
 # RoIHeads parameters
@@ -112,8 +109,8 @@ UMD_NUM_AFF_CLASSES = 7 + 1  # 1 is for the background
 
 UMD_IMAGE_MEAN = [148.06817006/255, 175.72064619/255, 164.09241116]
 UMD_IMAGE_STD = [19.12525118/255, 34.56108673/255, 30.58577597]
-UMD_RESIZE = (int(640), int(640))  # (int(640), int(480))
-UMD_CROP_SIZE = (int(640), int(640))  # (int(640), int(480))
+UMD_RESIZE = (int(480), int(640))  # (int(640), int(480))
+UMD_CROP_SIZE = (int(480), int(640))  # (int(640), int(480))
 UMD_MIN_SIZE = 600
 UMD_MAX_SIZE = 1000
 
@@ -194,8 +191,9 @@ print("using device: {} ..".format(DEVICE))
 
 RANDOM_SEED = 1234
 
-EPOCH_TO_TRAIN_FULL_DATASET = 3
-NUM_EPOCHS = 10
+EPOCH_TO_TRAIN_HEADS = 1
+NUM_EPOCHS = 50
+EPOCH_TO_TRAIN_FULL_DATASET = 0
 BATCH_SIZE = 1
 NUM_WORKERS = 4
 
@@ -215,10 +213,10 @@ NUM_CLASSES = UMD_NUM_CLASSES
 NUM_OBJECT_CLASSES = UMD_NUM_OBJECT_CLASSES
 NUM_AFF_CLASSES = UMD_NUM_AFF_CLASSES
 
-MIN_SIZE = UMD_CROP_SIZE[0]
-MAX_SIZE = UMD_CROP_SIZE[1]
-IMAGE_MEAN = UMD_MIN_SIZE
-IMAGE_STD = UMD_MAX_SIZE
+MIN_SIZE = UMD_MIN_SIZE
+MAX_SIZE = UMD_MAX_SIZE
+IMAGE_MEAN = UMD_IMAGE_MEAN
+IMAGE_STD = UMD_IMAGE_STD
 
 ''' 
 Configs for logging & eval.

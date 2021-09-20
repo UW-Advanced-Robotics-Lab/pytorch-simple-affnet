@@ -52,7 +52,7 @@ class ResNetBackbone(nn.Module):
 def resnet_fpn_backbone(
         backbone_name,
         pretrained,
-        trainable_layers=3,
+        trainable_layers=5,
         returned_layers=None,
         extra_blocks=None
 ):

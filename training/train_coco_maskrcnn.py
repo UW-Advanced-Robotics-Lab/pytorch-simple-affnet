@@ -35,9 +35,7 @@ def main():
 
     # Load the Model.
     print()
-    # TODO: Compare Pytorch-Simple-MaskRCNN. with Torchvision MaskRCNN.
-    model = model_utils.get_model_instance_segmentation(pretrained=config.IS_PRETRAINED, num_classes=config.COCO_NUM_CLASSES)
-    # model = maskrcnn.ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, num_classes=config.NUM_CLASSES)
+    model = maskrcnn.ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, num_classes=config.COCO_NUM_CLASSES)
     model.to(config.DEVICE)
 
     # Load the dataset.
@@ -46,19 +44,24 @@ def main():
     # Construct an optimizer.
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.SGD(params, lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY, momentum=config.MOMENTUM)
-
-    # Init a learning rate scheduler.
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=config.STEP_SIZE, gamma=config.GAMMA)
+    lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=config.MILESTONES, gamma=config.GAMMA)
 
     # Main training loop.
-    num_epochs = 5
-
+    num_epochs = config.NUM_EPOCHS
     for epoch in range(0, num_epochs):
         print()
+
+        if epoch < config.EPOCH_TO_TRAIN_FULL_DATASET:
+            is_subsample = True
+        else:
+            is_subsample = False
+
         # train & val for one epoch
-        model, optimizer = train_utils.train_one_epoch(model, optimizer, train_loader, config.DEVICE, epoch, writer, is_subsample=True)
-        model, optimizer = train_utils.val_one_epoch(model, optimizer, val_loader, config.DEVICE, epoch, writer, is_subsample=True)
+        model, optimizer = train_utils.train_one_epoch(model, optimizer, train_loader, config.DEVICE, epoch, writer, is_subsample=is_subsample)
+        model, optimizer = train_utils.val_one_epoch(model, optimizer, val_loader, config.DEVICE, epoch, writer, is_subsample=is_subsample)
+        # update learning rate.
         lr_scheduler.step()
+
         # checkpoint_path
         CHECKPOINT_PATH = config.MODEL_SAVE_PATH + 'maskrcnn_epoch_' + np.str(epoch) + '.pth'
         train_utils.save_checkpoint(model, optimizer, epoch, CHECKPOINT_PATH)

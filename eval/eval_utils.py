@@ -12,6 +12,9 @@ import matplotlib.pyplot as plt
 
 import torch
 
+import pydensecrf.densecrf as dcrf
+from pydensecrf.utils import unary_from_labels, create_pairwise_bilateral, create_pairwise_gaussian
+
 import config
 from dataset.umd import umd_dataset_utils
 from dataset.arl_affpose import arl_affpose_dataset_utils
@@ -55,6 +58,8 @@ def plot_confusion_matrix(cm, classes,
 def affnet_eval_umd(model, test_loader):
     print('\nevaluating AffNet ..')
 
+    OBJ_MASK_PROBABILITIES = np.zeros(shape=(len(test_loader), config.UMD_NUM_OBJECT_CLASSES))
+
     # set the model to eval to disable batchnorm.
     model.eval()
 
@@ -90,21 +95,37 @@ def affnet_eval_umd(model, test_loader):
         outputs = outputs.pop()
         outputs = affnet_umd_format_outputs(image.copy(), outputs.copy())
         outputs = affnet_umd_threshold_outputs(image.copy(), outputs.copy())
+        outputs, obj_mask_probabilities = affnet_umd_threshold_binary_masks(image.copy(), outputs.copy())
+        obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
         aff_ids = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
         aff_binary_masks = np.array(outputs['aff_binary_masks'], dtype=np.uint8).reshape(-1, H, W)
 
-        # getting predicted object mask.
-        aff_mask = umd_dataset_utils.get_segmentation_masks(image=image,
-                                                            obj_ids=aff_ids,
-                                                            binary_masks=aff_binary_masks,
-                                                            )
+        for idx in range(len(obj_ids)):
+            OBJ_MASK_PROBABILITIES[image_idx, obj_ids[idx]] = obj_mask_probabilities
 
+        # getting predicted object mask.
+        aff_mask = umd_dataset_utils.get_segmentation_masks(image=image, obj_ids=aff_ids, binary_masks=aff_binary_masks)
         gt_name = config.UMD_TEST_SAVE_FOLDER + str(image_idx) + config.TEST_GT_EXT
         cv2.imwrite(gt_name, target['aff_mask'])
 
         pred_name = config.UMD_TEST_SAVE_FOLDER + str(image_idx) + config.TEST_PRED_EXT
         cv2.imwrite(pred_name, aff_mask)
 
+    print()
+    for obj_id in range(1, config.UMD_NUM_OBJECT_CLASSES):
+        obj_mask_probabilities = OBJ_MASK_PROBABILITIES[:, obj_id]
+
+        mean = obj_mask_probabilities[np.nonzero(obj_mask_probabilities.copy())].mean()
+        std = obj_mask_probabilities[np.nonzero(obj_mask_probabilities.copy())].std()
+
+        obj_name = "{:<13}".format(umd_dataset_utils.map_obj_id_to_name(obj_id))
+        print(f'Object:{obj_name}'
+              f'Obj id: {obj_id}, '
+              f'Mean: {mean: .5f}, '
+              # f'Std: {std: .5f}'
+              )
+
+    print()
     # getting Fwb
     os.chdir(config.MATLAB_SCRIPTS_DIR)
     import matlab.engine
@@ -736,7 +757,8 @@ def affnet_umd_format_outputs(image, outputs):
     if 'aff_scores' in outputs:
         outputs['aff_scores'] = np.array(outputs['aff_scores'], dtype=np.float32).flatten()
         outputs['aff_ids'] = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
-        outputs['aff_binary_masks'] = np.array(outputs['aff_binary_masks'] > config.MASK_THRESHOLD, dtype=np.uint8).reshape(-1, height, width)
+        outputs['aff_binary_masks'] = np.array(outputs['aff_binary_masks'], dtype=np.float32).reshape(-1, height, width)
+        # outputs['aff_binary_masks'] = np.array(outputs['aff_binary_masks'] > config.MASK_THRESHOLD, dtype=np.uint8).reshape(-1, height, width)
 
     else:
         outputs['aff_scores'] = np.zeros_like(outputs['scores'])
@@ -753,7 +775,10 @@ def affnet_umd_threshold_outputs(image, outputs):
     obj_ids = np.array(outputs['obj_ids'], dtype=np.int32).flatten()
     obj_boxes = np.array(outputs['obj_boxes'], dtype=np.int32).reshape(-1, 4)
 
-    idx = np.argwhere(scores > config.OBJ_CONFIDENCE_THRESHOLD)
+    try:
+        idx = np.argmax(scores)
+    except:
+        idx = np.argwhere(scores > config.OBJ_CONFIDENCE_THRESHOLD)
     outputs['scores'] = scores[idx]
     outputs['obj_ids'] = obj_ids[idx]
     outputs['obj_boxes'] = obj_boxes[idx, :]
@@ -761,7 +786,7 @@ def affnet_umd_threshold_outputs(image, outputs):
     # aff
     aff_scores = np.array(outputs['aff_scores'], dtype=np.float32).flatten()
     aff_ids = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
-    aff_binary_masks = np.array(outputs['aff_binary_masks'], dtype=np.uint8).reshape(-1, height, width)
+    aff_binary_masks = np.array(outputs['aff_binary_masks'], dtype=np.float32).reshape(-1, height, width)
 
     idx = np.argwhere(aff_scores > config.OBJ_CONFIDENCE_THRESHOLD)
     outputs['aff_scores'] = aff_scores[idx]
@@ -769,3 +794,40 @@ def affnet_umd_threshold_outputs(image, outputs):
     outputs['aff_binary_masks'] = aff_binary_masks[idx, :, :]
 
     return outputs
+
+def affnet_umd_threshold_binary_masks(image, outputs, SHOW_IMAGES=False):
+    height, width = image.shape[0], image.shape[1]
+    plt.close('all')
+
+    aff_binary_masks = np.array(outputs['aff_binary_masks'], dtype=np.float32).reshape(-1, height, width)
+    aff_ids = np.array(outputs['aff_ids'], dtype=np.int32).flatten()
+    MEAN = 0
+
+    if len(aff_ids) == 0:
+        return outputs, MEAN
+
+    for idx, data in enumerate(zip(aff_ids, aff_binary_masks)):
+        aff_id, aff_binary_mask = data
+
+        mean = aff_binary_mask[np.nonzero(aff_binary_mask.copy())].mean()
+        std = aff_binary_mask[np.nonzero(aff_binary_mask.copy())].std()
+        threshold = mean + std
+        MEAN += mean
+
+        threshold = config.MASK_THRESHOLD  # threshold if threshold < config.MASK_THRESHOLD else config.MASK_THRESHOLD
+        threshold_mask = np.array(aff_binary_mask > threshold, dtype=np.uint8).reshape(height, width)
+        outputs['aff_binary_masks'][idx, :, :] = threshold_mask
+
+        if SHOW_IMAGES:
+            print(f'Aff Id: {aff_id}, Mean: {mean:.5f}, Std: {std:.5f}, threshold: {threshold:.5f}')
+            plt.figure(figsize=(10, 4))
+            plt.subplot(121)
+            plt.imshow(aff_binary_mask, cmap=plt.cm.plasma)
+            plt.colorbar()
+            plt.subplot(122)
+            plt.imshow(threshold_mask * threshold, cmap=plt.cm.plasma)
+            plt.colorbar()
+            plt.draw()
+            plt.pause(0.0001)
+
+    return outputs, MEAN/len(aff_ids)

@@ -45,7 +45,7 @@ class UMDDatasetTest(unittest.TestCase):
             # format data.
             image = np.squeeze(np.array(image)).transpose(1, 2, 0)
             image = np.array(image * (2 ** 8 - 1), dtype=np.uint8)
-            image, target = umd_dataset_utils.format_target_data(image, target)
+            target = umd_dataset_utils.format_target_data(image, target)
 
             # RGB.
             cv2.imshow('rgb', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))

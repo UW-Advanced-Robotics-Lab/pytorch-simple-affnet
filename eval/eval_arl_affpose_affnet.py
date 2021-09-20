@@ -22,9 +22,9 @@ from dataset.arl_affpose import arl_affpose_dataset_utils
 from dataset.arl_affpose import arl_affpose_dataset_loaders
 from eval import eval_utils
 
-SHOW_IMAGES = True
+SHOW_IMAGES = False
 
-SHUFFLE_IMAGES = False
+SHUFFLE_IMAGES = True
 RANDOM_IMAGES = True
 NUM_RANDOM = 250
 

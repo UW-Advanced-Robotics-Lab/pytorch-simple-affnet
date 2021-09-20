@@ -82,15 +82,15 @@ class ARLAffPoseDataset(data.Dataset):
         self.aff_masks_ids = np.sort(np.array(self.aff_masks_ids))
         self.depth_ids = np.sort(np.array(self.depth_ids))
 
-        # TODO: reduce dataset.
-        SELECT_EVERY_ITH_FRAME = 5
-        total_idx = np.arange(0, len(self.rgb_ids), SELECT_EVERY_ITH_FRAME)
-        self.rgb_ids = self.rgb_ids[total_idx]
-        self.obj_masks_ids = self.obj_masks_ids[total_idx]
-        self.obj_part_masks_ids = self.obj_part_masks_ids[total_idx]
-        self.aff_masks_ids = self.aff_masks_ids[total_idx]
-        self.depth_ids = self.depth_ids[total_idx]
-        print(f'Dataset has {len(self.rgb_ids)} examples .. {dataset_dir}')
+        # # TODO: reduce dataset.
+        # SELECT_EVERY_ITH_FRAME = 5
+        # total_idx = np.arange(0, len(self.rgb_ids), SELECT_EVERY_ITH_FRAME)
+        # self.rgb_ids = self.rgb_ids[total_idx]
+        # self.obj_masks_ids = self.obj_masks_ids[total_idx]
+        # self.obj_part_masks_ids = self.obj_part_masks_ids[total_idx]
+        # self.aff_masks_ids = self.aff_masks_ids[total_idx]
+        # self.depth_ids = self.depth_ids[total_idx]
+        # print(f'Dataset has {len(self.rgb_ids)} examples .. {dataset_dir}')
 
         # Augmenting images.
         self.apply_imgaug = apply_imgaug
@@ -127,7 +127,7 @@ class ARLAffPoseDataset(data.Dataset):
         obj_mask = aug_concat_mask[:, :, 1]
         obj_part_mask = aug_concat_mask[:, :, 2]
 
-        rgb = self.colour_aug(image=rgb)
+        # rgb = self.colour_aug(image=rgb)
         depth = self.depth_aug(image=depth)
 
         rgb = np.array(rgb, dtype=np.uint8)

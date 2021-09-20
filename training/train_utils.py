@@ -17,6 +17,8 @@ import torch.distributed as dist
 
 import config
 from dataset import dataset_utils
+from model import model_utils
+from eval import eval_utils
 
 
 def save_checkpoint(model, optimizer, epochs, checkpoint_path):
@@ -26,6 +28,52 @@ def save_checkpoint(model, optimizer, epochs, checkpoint_path):
     checkpoint["epochs"] = epochs
 
     torch.save(checkpoint, checkpoint_path)
+
+def affnet_train_umd(model, train_loader, val_loader, test_loader, writer, learning_rate, start_epochs, end_epochs, best_Fwb, layers='all'):
+
+    assert layers in np.array(['heads', 'all'])
+
+    # freeze layers.
+    if layers == 'all':
+        model = model_utils.unfreeze_all_layers(model)
+    elif layers == 'heads':
+        model = model_utils.freeze_backbone(model)
+
+    # construct optimizer.
+    params = [p for p in model.parameters() if p.requires_grad]
+    optimizer = torch.optim.SGD(params, lr=learning_rate, weight_decay=config.WEIGHT_DECAY, momentum=config.MOMENTUM)
+    lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=config.MILESTONES, gamma=config.GAMMA)
+
+    for epoch in range(start_epochs, end_epochs):
+        print()
+
+        if epoch < config.EPOCH_TO_TRAIN_FULL_DATASET:
+            is_subsample = True
+        else:
+            is_subsample = False
+
+        # train & val for one epoch
+        model, optimizer = train_one_epoch(model, optimizer, train_loader, config.DEVICE, epoch, writer, is_subsample=is_subsample)
+        model, optimizer = val_one_epoch(model, optimizer, val_loader, config.DEVICE, epoch, writer, is_subsample=is_subsample)
+        # update learning rate.
+        lr_scheduler.step()
+
+        # eval Fwb
+        model, Fwb = eval_utils.affnet_eval_umd(model, test_loader)
+        writer.add_scalar('eval/Fwb', Fwb, int(epoch))
+        # save best model.
+        if Fwb > best_Fwb:
+            best_Fwb = Fwb
+            writer.add_scalar('eval/Best_Fwb', best_Fwb, int(epoch))
+            checkpoint_path = config.BEST_MODEL_SAVE_PATH
+            save_checkpoint(model, optimizer, epoch, checkpoint_path)
+            print("Saving best model .. best Fwb={:.5f} ..".format(best_Fwb))
+
+        # checkpoint_path
+        checkpoint_path = config.MODEL_SAVE_PATH + 'affnet_epoch_' + np.str(epoch) + '.pth'
+        save_checkpoint(model, optimizer, epoch, checkpoint_path)
+
+    return model, best_Fwb
 
 def train_one_epoch(model, optimizer, data_loader, device, epoch, writer, is_subsample=True):
     # set the model to train to enable batchnorm.

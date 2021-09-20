@@ -40,14 +40,14 @@ def main():
     # Load the dataset.
     train_loader, val_loader, test_loader = umd_dataset_loaders.load_umd_train_datasets()
 
-    # Construct an optimizer.
+    # construct optimizer.
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.SGD(params, lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY, momentum=config.MOMENTUM)
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=config.MILESTONES, gamma=config.GAMMA)
 
     # Main training loop.
     num_epochs = config.NUM_EPOCHS
-    best_Fwb, best_mAP = -np.inf, -np.inf
+    best_Fwb = -np.inf
 
     for epoch in range(0, num_epochs):
         print()

@@ -88,7 +88,6 @@ def main():
             best_Fwb = Fwb
             writer.add_scalar('eval/Best_Fwb', best_Fwb, int(epoch))
 
-
         # checkpoint_path
         checkpoint_path = config.MODEL_SAVE_PATH + 'affnet_epoch_' + np.str(epoch) + '.pth'
         train_utils.save_checkpoint(model, optimizer, epoch, checkpoint_path)

@@ -135,13 +135,13 @@ class AffNet(nn.Module):
              rpn_reg_weights,
              rpn_pre_nms_top_n, rpn_post_nms_top_n, rpn_nms_thresh)
 
-        box_roi_pool = roi_align.RoIAlign(output_size=config.ROIALIGN_BOX_OUTPUT_SIZE,
-                                          sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
+        # box_roi_pool = roi_align.RoIAlign(output_size=config.ROIALIGN_BOX_OUTPUT_SIZE,
+        #                                   sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
 
-        # box_roi_pool = roi_align.MultiScaleRoIAlign(
-        #     featmap_names=['0', '1', '2', '3'],
-        #     output_size=config.ROIALIGN_BOX_OUTPUT_SIZE,
-        #     sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
+        box_roi_pool = roi_align.MultiScaleRoIAlign(
+            featmap_names=['0', '1', '2', '3'],
+            output_size=config.ROIALIGN_BOX_OUTPUT_SIZE,
+            sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
         
         resolution = box_roi_pool.output_size[0]
         in_channels = out_channels * resolution ** 2
@@ -155,20 +155,21 @@ class AffNet(nn.Module):
              box_reg_weights,
              box_score_thresh, box_nms_thresh, box_num_detections)
         
-        self.head.mask_roi_pool = roi_align.RoIAlign(output_size=config.ROIALIGN_MASK_OUTPUT_SIZE,
-                                                     sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
+        # self.head.mask_roi_pool = roi_align.RoIAlign(output_size=config.ROIALIGN_MASK_OUTPUT_SIZE,
+        #                                              sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
 
-        # self.head.mask_roi_pool = roi_align.MultiScaleRoIAlign(
-        #                             featmap_names=['0', '1', '2', '3'],
-        #                             output_size=config.ROIALIGN_MASK_OUTPUT_SIZE,
-        #                             sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
+        self.head.mask_roi_pool = roi_align.MultiScaleRoIAlign(
+                                    featmap_names=['0', '1', '2', '3'],
+                                    output_size=config.ROIALIGN_MASK_OUTPUT_SIZE,
+                                    sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
 
-        layers = (out_channels, out_channels, out_channels, out_channels)
+        layers = (out_channels, out_channels, out_channels, out_channels) # from feature map
         dim_reduced = out_channels
         self.head.mask_predictor = AffNetPredictor(out_channels, layers, dim_reduced, config.NUM_AFF_CLASSES)
 
         # in_channels = out_channels  # from feature map
-        # self.head.mask_predictor = AffNetPredictor(in_channels, rpn_num_samples, config.NUM_AFF_CLASSES)
+        # dim_reduced = out_channels
+        # self.head.mask_predictor = AffNetPredictor(in_channels, dim_reduced, config.NUM_AFF_CLASSES)
         
     def forward(self, image, target=None):
         if isinstance(image, list):
@@ -230,28 +231,30 @@ class AffNetPredictor(nn.Sequential):
 
         # TODO: look at Deconvolutional layers.
         ### output is [14x14] -> [28x28]
-        # d['mask_conv5'] = nn.ConvTranspose2d(next_feature, dim_reduced, kernel_size=2, stride=2, padding=0)
-        # d['relu5'] = nn.ReLU(inplace=True)
+        d['mask_conv5'] = nn.ConvTranspose2d(next_feature, dim_reduced, kernel_size=2, stride=2, padding=0)
+        d['relu5'] = nn.ReLU(inplace=True)
         # ### output is [28x28] -> [56x56]
-        # d['mask_conv6'] = nn.ConvTranspose2d(next_feature, dim_reduced, kernel_size=2, stride=2, padding=0)
-        # d['relu6'] = nn.ReLU(inplace=True)
+        d['mask_conv6'] = nn.ConvTranspose2d(next_feature, dim_reduced, kernel_size=2, stride=2, padding=0)
+        d['relu6'] = nn.ReLU(inplace=True)
         # # ### output is [56x56] -> [112x112]
-        # d['mask_conv7'] = nn.ConvTranspose2d(next_feature, dim_reduced, kernel_size=2, stride=2, padding=0)
-        # d['relu7'] = nn.ReLU(inplace=True)
+        d['mask_conv7'] = nn.ConvTranspose2d(next_feature, dim_reduced, kernel_size=2, stride=2, padding=0)
+        d['relu7'] = nn.ReLU(inplace=True)
         # ## output is [112x112] -> [224x224]
         # d['mask_conv8'] = nn.ConvTranspose2d(next_feature, dim_reduced, kernel_size=2, stride=2, padding=0)
         # d['relu8'] = nn.ReLU(inplace=True)
 
         # TODO: AffNet
         ###  output mask: [7x7] -> [30x30]
-        d['transpose_conv5'] = nn.ConvTranspose2d(in_channels, dim_reduced, kernel_size=8, stride=4, padding=1)
-        d['relu5'] = nn.ReLU(inplace=True)
-        # ## output mask: [30x30] -> [122x122]
-        d['transpose_conv6'] = nn.ConvTranspose2d(in_channels, dim_reduced, kernel_size=8, stride=4, padding=1)
-        d['relu6'] = nn.ReLU(inplace=True)
-        # ## output mask: [30x30] -> [122x122]
-        # d['transpose_conv7'] = nn.ConvTranspose2d(in_channels, dim_reduced, kernel_size=4, stride=2, padding=1)
+        # d['transpose_conv5'] = nn.ConvTranspose2d(in_channels, dim_reduced, kernel_size=8, stride=4, padding=1)
+        # d['relu5'] = nn.ReLU(inplace=True)
+        # ### output mask: [30x30] -> [122x122]
+        # d['conv6'] = nn.Conv2d(next_feature, dim_reduced, kernel_size=3, stride=1, padding=1)
+        # d['relu6'] = nn.ReLU(inplace=True)
+        # d['transpose_conv6'] = nn.ConvTranspose2d(in_channels, dim_reduced, kernel_size=8, stride=4, padding=1)
+        # ### output mask: [122x122] -> [224x224]
+        # d['conv7'] = nn.Conv2d(next_feature, dim_reduced, kernel_size=3, stride=1, padding=1)
         # d['relu7'] = nn.ReLU(inplace=True)
+        # d['transpose_conv7'] = nn.ConvTranspose2d(in_channels, dim_reduced, kernel_size=4, stride=2, padding=1)
 
         d['mask_fcn_logits'] = nn.Conv2d(dim_reduced, num_classes, 1, 1, 0)
         super().__init__(d)
@@ -259,7 +262,6 @@ class AffNetPredictor(nn.Sequential):
         for name, param in self.named_parameters():
             if 'weight' in name:
                 nn.init.kaiming_normal_(param, mode='fan_out', nonlinearity='relu')
-
 
 # class AffNetPredictor(nn.Sequential):
 #     def __init__(self, in_channels, dim_reduced, num_classes):
@@ -318,14 +320,14 @@ def ResNetAffNet(pretrained=config.IS_PRETRAINED, pretrained_backbone=True,
         num_classes (int): number of classes (including the background).
     """
 
-    backbone = feature_extractor.resnet_backbone(backbone_name=backbone_feat_extractor, pretrained=pretrained)
-    # backbone = feature_extractor.resnet_fpn_backbone(backbone_feat_extractor, pretrained)
+    # backbone = feature_extractor.resnet_backbone(backbone_name=backbone_feat_extractor, pretrained=pretrained)
+    backbone = feature_extractor.resnet_fpn_backbone(backbone_feat_extractor, pretrained)
 
     # load AffNet.
     model = AffNet(backbone, num_classes)
 
     if pretrained:
-        print(f"loading pre-trained COCO weights: {config.MASKRCNN_PRETRAINED_WEIGHTS} .. ")
+        print(f"loading pre-trained torchvision weights: {config.MASKRCNN_PRETRAINED_WEIGHTS} .. ")
         print(f'num classes (excluding background): {num_classes - 1} ..')
 
         # loading torchvision pre-trained weights.
@@ -338,10 +340,10 @@ def ResNetAffNet(pretrained=config.IS_PRETRAINED, pretrained_backbone=True,
         273 to 279: backbone.fpn weights
         '''
 
-        del_list = [i for i in range(265, 271)] + [i for i in range(273, 279)]
-        for i, del_idx in enumerate(del_list):
-            pretrained_msd_names.pop(del_idx - i)
-            pretrained_msd_values.pop(del_idx - i)
+        # del_list = [i for i in range(265, 271)] + [i for i in range(273, 279)]
+        # for i, del_idx in enumerate(del_list):
+        #     pretrained_msd_names.pop(del_idx - i)
+        #     pretrained_msd_values.pop(del_idx - i)
 
         '''
         271: 'rpn.head.cls_logits.weight'
@@ -358,17 +360,17 @@ def ResNetAffNet(pretrained=config.IS_PRETRAINED, pretrained_backbone=True,
         msd = model.state_dict()
         msd_values = list(msd.values())
         msd_names = list(msd.keys())
-        # Simple.
-        # skip_list = [271, 272, 273, 274, 279, 280, 281, 282, 293, 294]
+
         # Mask Head
-        skip_list = [271, 272, 273, 274, 279, 280, 281, 282,
-                     # transpose_conv
-                     283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296, 297, 298]
+        # skip_list = [271, 272, 273, 274, 279, 280, 281, 282,
+        #              # transpose_conv
+        #              281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292,
+        #              293, 294, 295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312]
         # FPN
-        # skip_list = [
-        #     # 271, 272, 273, 274, 279, 280,
-        #     281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292,
-        #     293, 294, 295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 307, 308]
+        skip_list = [
+            # 271, 272, 273, 274, 279, 280,
+            281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292,
+            293, 294, 295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312]
         if num_classes == 91:
             skip_list = [271, 272, 273, 274]
         for i, name in enumerate(msd):
@@ -378,5 +380,26 @@ def ResNetAffNet(pretrained=config.IS_PRETRAINED, pretrained_backbone=True,
             # print(f'i:{i},\tmsd_names:{msd_names[i]:<50} i:{i},\tname:{name}')
             msd[name].copy_(pretrained_msd_values[i])
         model.load_state_dict(msd)
+
+        # # loading local COCO pre-trained weights.
+        # print(f"loading pre-trained COCO weights: {config.MASKRCNN_PRETRAINED_WEIGHTS} .. ")
+        # print(f'num classes (excluding background): {num_classes - 1} ..')
+
+        # checkpoint = torch.load(config.RESTORE_COCO_MASKRCNN_WEIGHTS, map_location=config.DEVICE)
+        # pretrained_msd_names = list(checkpoint["model"].keys())
+        # pretrained_msd_values = list(checkpoint["model"].values())
+        #
+        # msd = model.state_dict()
+        # msd_names = list(msd.keys())
+        # msd_values = list(msd.values())
+        # # Simple.
+        # skip_list = [279, 280, 281, 282, 295, 296]
+        # for i, name in enumerate(msd):
+        #     if i in skip_list:
+        #         # print(f'i:{i},\tmsd_names:{msd_names[i]},\tpretrained_msd_names:{pretrained_msd_names[i]}')
+        #         continue
+        #     # print(f'i:{i},\tmsd_names:{msd_names[i]:<50} i:{i},\tname:{name}')
+        #     msd[name].copy_(pretrained_msd_values[i])
+        # model.load_state_dict(msd)
 
     return model

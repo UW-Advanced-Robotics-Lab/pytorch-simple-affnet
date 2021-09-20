@@ -10,7 +10,9 @@ import torchvision
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 
+import config
 from model import roi_align
+from dataset.umd import umd_dataset_utils
 from dataset.arl_affpose import arl_affpose_dataset_utils
 
 
@@ -36,9 +38,10 @@ def get_model_instance_segmentation(pretrained, num_classes):
 
     return model
 
+
 def freeze_backbone(model, verbose=False):
     """Function to Freeze Backbone."""
-    # print(f'\nFreezing backbone ..')
+    print(f'\nFreezing backbone ..')
     for name, parameter in model.named_parameters():
         if 'backbone' in name:
             parameter.requires_grad_(False)
@@ -50,33 +53,21 @@ def freeze_backbone(model, verbose=False):
                 print(f'Requires Grad: {name}')
     return model
 
-def freeze_heads(model, verbose=False):
-    """Function to Freeze Network Heads."""
-    # print(f'\nFreezing backbone ..')
-    for name, parameter in model.named_parameters():
-        if 'backbone' in name:
-            parameter.requires_grad_(True)
-            if verbose:
-                print(f'Frozen: {name}')
-        else:
-            parameter.requires_grad_(False)
-            if verbose:
-                print(f'Requires Grad: {name}')
-    return model
 
 def unfreeze_all_layers(model):
     """Function to Un-freeze Backbone."""
-    # print(f'\nUn-freezing backbone ..')
+    print(f'\nUn-freezing backbone ..')
     for name, parameter in model.named_parameters():
         parameter.requires_grad_(True)
     return model
 
+
 def sigmoid_focal_loss(
-    inputs: torch.Tensor,
-    targets: torch.Tensor,
-    alpha: float = 0.25,
-    gamma: float = 2,
-    reduction: str = "none",
+        inputs: torch.Tensor,
+        targets: torch.Tensor,
+        alpha: float = 0.25,
+        gamma: float = 2,
+        reduction: str = "none",
 ):
     """
     Original implementation from https://github.com/facebookresearch/fvcore/blob/master/fvcore/nn/focal_loss.py .
@@ -114,16 +105,28 @@ def sigmoid_focal_loss(
 
     return loss
 
+
 def rpn_loss(idx, pos_idx, objectness, label, pred_bbox_delta, regression_target):
-    # TODO: try focal loss.
     objectness_loss = F.binary_cross_entropy_with_logits(objectness[idx], label[idx])
-    # objectness_loss = sigmoid_focal_loss(objectness[idx], label[idx], reduction='mean')
     box_loss = F.l1_loss(pred_bbox_delta[pos_idx], regression_target, reduction='sum') / idx.numel()
+
+    # # TODO: try focal loss.
+    # print(f'objectness_loss: {objectness_loss}')
+    # objectness_loss = sigmoid_focal_loss(objectness[idx], label[idx], reduction='mean')
+    # print(f'objectness_loss: {objectness_loss}')
 
     return objectness_loss, box_loss
 
+
 def fastrcnn_loss(class_logit, box_regression, label, regression_target):
     classifier_loss = F.cross_entropy(class_logit, label)
+
+    # # TODO: try class weights loss.
+    # # print(f'classifier_loss: {classifier_loss}')
+    # class_weights = torch.Tensor(1 / umd_dataset_utils.OBJ_IDS_DISTRIBUTION).to(config.DEVICE)
+    # classifier_loss = F.cross_entropy(class_logit, label, weight=class_weights)
+    # # print(f'class_weights: {class_weights}')
+    # # print(f'classifier_loss: {classifier_loss}')
 
     N, num_pos = class_logit.shape[0], regression_target.shape[0]
     box_regression = box_regression.reshape(N, -1, 4)
@@ -134,8 +137,8 @@ def fastrcnn_loss(class_logit, box_regression, label, regression_target):
 
     return classifier_loss, box_reg_loss
 
-def maskrcnn_loss(mask_logit, proposal, matched_idx, label, gt_mask):
 
+def maskrcnn_loss(mask_logit, proposal, matched_idx, label, gt_mask):
     matched_idx = matched_idx[:, None].to(proposal)
     roi = torch.cat((matched_idx, proposal), dim=1)
 
@@ -146,46 +149,47 @@ def maskrcnn_loss(mask_logit, proposal, matched_idx, label, gt_mask):
     idx = torch.arange(label.shape[0], device=label.device)
 
     # # TODO: upsample masks for better predictions.
-    # size = (640, 640)  # (224, 224)
-    # # print(f"\n[before upsample] mask_logit: {mask_logit.size()}")
-    # # print(f"[before upsample] mask_target: {mask_target.size()}")
+    # print(f"\n[before upsample] mask_logit: {mask_logit.size()}")
+    # print(f"[before upsample] mask_target: {mask_target.size()}")
+    # size = (244, 244)
     # mask_logit = F.interpolate(mask_logit, size=size, mode='bilinear', align_corners=False)
     # mask_target = F.interpolate(mask_target[None], size=size, mode='bilinear', align_corners=False)[0]
-    # # print(f"[after upsample] mask_logit: {mask_logit.size()}")
-    # # print(f""[after upsample] mask_target: {mask_target.size()}")
+    # print(f"[after upsample] mask_logit: {mask_logit.size()}")
+    # print(f""[after upsample] mask_target: {mask_target.size()}")
 
     # # check size of gt mask.
     # print(f'\ngt mask: {gt_mask.size()}')
     # # check size of mask after ROI pooling.
     # print(f"pred mask: {mask_logit[idx, label].size()}")
 
-    # check gt masks after ROI cropping.
+    # # check gt masks after ROI cropping.
     # for i in range(len(idx)):
     #     current_obj_id = label[i]
     #     current_gt_mask = mask_target[i, :, :].detach().cpu().numpy()
     #     current_pred_mask = mask_logit[idx, label][i, :, :].detach().cpu().numpy()
     #
     #     # print output.
-    #     print(f"\nidx: {i}, num idxs {len(idx)}")
-    #     print(f"obj id:{current_obj_id}")
-    #     print(f"gt mask: {mask_target.shape}")
-    #     print(f"gt mask: {mask_logit.shape}")
+    #     # print(f"\nidx: {i}, num idxs {len(idx)}")
+    #     # print(f"obj id:{current_obj_id}")
+    #     # print(f"gt mask: {mask_target.shape}")
+    #     # print(f"gt mask: {mask_logit.shape}")
     #
     #     # visualize.
     #     cv2.imshow('gt', current_gt_mask)
     #     cv2.imshow('pred', current_pred_mask)
     #     cv2.waitKey(0)
 
-    mask_loss = F.binary_cross_entropy_with_logits(mask_logit[idx, label], mask_target,)
+    mask_loss = F.binary_cross_entropy_with_logits(mask_logit[idx, label], mask_target)
 
-    # TODO: try class weights loss.
-    # class_weights = arl_affpose_dataset_utils.get_class_weights(aff_ids=label)
-    # mask_loss = F.binary_cross_entropy_with_logits(mask_logit[idx, label], mask_target, reduction='none').sum() / class_weights.sum()
-
-    # TODO: try focal loss.
-    # mask_loss = sigmoid_focal_loss(mask_logit[idx, label], mask_target, reduction='mean')
+    # # TODO: try class weights loss.
+    # mask_size = mask_logit.size()[2:]
+    # class_weights = umd_dataset_utils.get_class_weights(mask_size, label, umd_dataset_utils.AFF_IDS_DISTRIBUTION)
+    # logits = mask_logit[idx, label]
+    # pred = torch.sigmoid(logits)
+    # mask_loss = F.binary_cross_entropy(pred, mask_target, weight=class_weights)
 
     return mask_loss
+
 
 class AnchorGenerator:
     def __init__(self, sizes, ratios):
@@ -243,6 +247,7 @@ class AnchorGenerator:
         anchor = self.cached_grid_anchor(grid_size, stride)
         return anchor
 
+
 class Matcher:
     def __init__(self, high_threshold, low_threshold, allow_low_quality_matches=False):
         self.high_threshold = high_threshold
@@ -274,6 +279,7 @@ class Matcher:
 
         return label, matched_idx
 
+
 class BalancedPositiveNegativeSampler:
     def __init__(self, num_samples, positive_fraction):
         self.num_samples = num_samples
@@ -296,6 +302,7 @@ class BalancedPositiveNegativeSampler:
 
         return pos_idx, neg_idx
 
+
 class BoxCoder:
     def __init__(self, weights, bbox_xform_clip=math.log(1000. / 16)):
         self.weights = weights
@@ -310,7 +317,7 @@ class BoxCoder:
             reference_boxes (Tensor[N, 4]): reference boxes
             proposals (Tensor[N, 4]): boxes to be encoded
         """
-        
+
         width = proposal[:, 2] - proposal[:, 0]
         height = proposal[:, 3] - proposal[:, 1]
         ctr_x = proposal[:, 0] + 0.5 * width
@@ -338,7 +345,7 @@ class BoxCoder:
             delta (Tensor[N, 4]): encoded boxes.
             boxes (Tensor[N, 4]): reference boxes.
         """
-        
+
         dx = delta[:, 0] / self.weights[0]
         dy = delta[:, 1] / self.weights[1]
         dw = delta[:, 2] / self.weights[2]
@@ -364,7 +371,8 @@ class BoxCoder:
 
         target = torch.stack((xmin, ymin, xmax, ymax), dim=1)
         return target
-    
+
+
 def box_iou(box_a, box_b):
     """
     Arguments:
@@ -382,21 +390,23 @@ def box_iou(box_a, box_b):
     inter = wh[:, :, 0] * wh[:, :, 1]
     area_a = torch.prod(box_a[:, 2:] - box_a[:, :2], 1)
     area_b = torch.prod(box_b[:, 2:] - box_b[:, :2], 1)
-    
+
     return inter / (area_a[:, None] + area_b - inter)
+
 
 def process_box(box, score, image_shape, min_size):
     """
     Clip boxes in the image size and remove boxes which are too small.
     """
-    
-    box[:, [0, 2]] = box[:, [0, 2]].clamp(0, image_shape[1]) 
-    box[:, [1, 3]] = box[:, [1, 3]].clamp(0, image_shape[0]) 
+
+    box[:, [0, 2]] = box[:, [0, 2]].clamp(0, image_shape[1])
+    box[:, [1, 3]] = box[:, [1, 3]].clamp(0, image_shape[0])
 
     w, h = box[:, 2] - box[:, 0], box[:, 3] - box[:, 1]
     keep = torch.where((w >= min_size) & (h >= min_size))[0]
     box, score = box[keep], score[keep]
     return box, score
+
 
 def nms(box, score, threshold):
     """
@@ -405,21 +415,22 @@ def nms(box, score, threshold):
         score (Tensor[N]): scores of the boxes.
         threshold (float): iou threshold.
 
-    Returns: 
+    Returns:
         keep (Tensor): indices of boxes filtered by NMS.
     """
-    
+
     return torch.ops.torchvision.nms(box, score, threshold)
+
 
 # just for test. It is too slow. Don't use it during train
 def slow_nms(box, nms_thresh):
     idx = torch.arange(box.size(0))
-    
+
     keep = []
     while idx.size(0) > 0:
         keep.append(idx[0].item())
         head_box = box[idx[0], None, :]
         remain = torch.where(box_iou(head_box, box[idx]) <= nms_thresh)[1]
         idx = idx[remain]
-    
+
     return keep

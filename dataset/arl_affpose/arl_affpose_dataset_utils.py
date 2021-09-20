@@ -335,7 +335,7 @@ def aff_color_map_dict():
 
     aff_color_map_dict = {
         0: [0, 0, 0],
-        1: [133, 17, 235],   # red
+        1: [133, 17, 235],  # red
         2: [235, 96, 17],   # orange
         3: [235, 195, 17],  # gold
         4: [176, 235, 17],  # light green/yellow
@@ -343,7 +343,7 @@ def aff_color_map_dict():
         6: [17, 235, 139],  # teal
         7: [17, 235, 225],  # light blue
         8: [17, 103, 235],  # dark blue
-        9: [235, 34, 17],  # purple
+        9: [235, 34, 17],   # purple
     }
 
     return aff_color_map_dict

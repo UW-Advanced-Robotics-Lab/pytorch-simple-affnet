@@ -146,12 +146,42 @@ class DatasetStatisticsTest(unittest.TestCase):
         plt.legend(bbox_to_anchor=(1.0, 1), loc='upper left')
         plt.show()
 
+    def test_class_distributions(self):
+
+        num_obj_ids = np.zeros(shape=(config.UMD_NUM_OBJECT_CLASSES))
+        num_aff_ids = np.zeros(shape=(config.UMD_NUM_AFF_CLASSES))
+
+        # loop over dataset.
+        for i, (image, target) in enumerate(self.data_loader):
+            if i % 10 == 0:
+                print(f'{i}/{len(self.data_loader)} ..')
+
+            # format data.
+            image = np.squeeze(np.array(image)).transpose(1, 2, 0)
+            image = np.array(image * (2 ** 8 - 1), dtype=np.uint8).reshape(config.UMD_CROP_SIZE[0], config.UMD_CROP_SIZE[1], -1)
+            target = umd_dataset_utils.format_target_data(image, target)
+
+            # obj_ids.
+            obj_ids = target['obj_ids']
+            for obj_id in obj_ids:
+                num_obj_ids[0] += 1
+                num_obj_ids[obj_id] += 1
+
+            # aff_ids.
+            aff_ids = target['aff_ids']
+            for aff_id in aff_ids:
+                num_aff_ids[0] += 1
+                num_aff_ids[aff_id] += 1
+
+        print(f'num_obj_ids: {num_obj_ids}')
+        print(f'num_aff_ids: {num_aff_ids}')
+
 if __name__ == '__main__':
     # unittest.main()
 
     # run desired test.
     suite = unittest.TestSuite()
-    suite.addTest(DatasetStatisticsTest("test_rgbd_distribution"))
+    suite.addTest(DatasetStatisticsTest("test_class_distributions"))
     runner = unittest.TextTestRunner()
     runner.run(suite)
 
