@@ -20,11 +20,11 @@ from dataset.umd import umd_dataset_utils
 from dataset.umd import umd_dataset_loaders
 from eval import eval_utils
 
-SHOW_IMAGES = False
+SHOW_IMAGES = True
 
-SHUFFLE_IMAGES = False
-RANDOM_IMAGES = False
 NUM_RANDOM = 250
+RANDOM_IMAGES = True
+SHUFFLE_IMAGES = False
 
 SAVE_AND_EVAL_PRED = True
 

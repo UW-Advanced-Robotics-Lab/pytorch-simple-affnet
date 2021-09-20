@@ -12,11 +12,11 @@ Framework Selection:
 '''
 
 # Prelim for naming experiment.
-FRAMEWORK = 'AffNet'
-EXP_DATASET = 'UMD'
+FRAMEWORK = 'MaskRCNN'
+EXP_DATASET = 'ARL_AffPose'
 EXP_DOMAIN = 'Real'
 EXP_IMAGES = 'RGB'
-EXP_NUM = 'v5_torchvision_transpose_conv2d_112x112'
+EXP_NUM = 'v0_torchvision_transpose_conv2d_28x28'
 
 '''
 Backbone Selection:
@@ -30,9 +30,7 @@ IS_PRETRAINED = True
 RESNET_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth'
 MASKRCNN_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/maskrcnn_resnet50_fpn_coco-bf2d0c1e.pth'  # resnet50
 
-RESTORE_COCO_MASKRCNN_WEIGHTS = ROOT_DIR_PATH + 'trained_models/COCO_Real_RGB/MaskRCNN_COCO_Real_RGB_640x640_v0_transpose_conv2d_30x30/maskrcnn_epoch_5.pth'  # resnet50
-
-RESTORE_UMD_AFFNET_WEIGHTS = ROOT_DIR_PATH + 'trained_models/UMD_Real_RGB/AffNet_UMD_Real_RGB_640x640_v5_torchvision_transpose_conv2d_112x112/BEST_MODEL.pth'
+RESTORE_UMD_AFFNET_WEIGHTS = ROOT_DIR_PATH + 'trained_models/UMD_Real_RGB/AffNet_UMD_Real_RGB_640x640_v3_torchvision_transpose_conv2d_28x28/BEST_MODEL.pth'
 
 RESTORE_ARL_TORCHVISION_MASKRCNN_WEIGHTS = ROOT_DIR_PATH + 'trained_models/ARLAffPose_Real_RGB/MaskRCNN_ARLAffPose_Real_RGB_640x480_v1_torchvision/maskrcnn_epoch_4.pth'
 RESTORE_ARL_MASKRCNN_WEIGHTS = ROOT_DIR_PATH + 'trained_models/ARLAffPose_Real_RGB/MaskRCNN_ARLAffPose_Real_RGB_640x640_v1_resnet50/BEST_MODEL.pth'
@@ -59,13 +57,13 @@ IMAGE_STD = [0.229, 0.224, 0.225]
 
 # RPN parameters
 RPN_FG_IOU_THRESH = 0.7
-RPN_BG_IOU_THRESH = 0.3  # 0.5
-RPN_NUM_SAMPLES = 256  # 256
+RPN_BG_IOU_THRESH = 0.3
+RPN_NUM_SAMPLES = 256
 RPN_POSITIVE_FRACTION = 0.5
 RPN_REG_WEIGHTS = (1., 1., 1., 1.)
-RPN_PRE_NMS_TOP_N_TRAIN = 2000  # * 2 to try to reduce false positives.
+RPN_PRE_NMS_TOP_N_TRAIN = 2000
 RPN_PRE_NMS_TOP_N_TEST = 1000
-RPN_POST_NMS_TOP_N_TRAIN = 2000  # * 2 to try to reduce false positives.
+RPN_POST_NMS_TOP_N_TRAIN = 2000
 RPN_POST_NMS_TOP_N_TEST = 1000
 RPN_NMS_THRESH = 0.7
 
@@ -209,14 +207,14 @@ MOMENTUM = 0.9
 MILESTONES = [3, 5]
 GAMMA = 0.1
 
-NUM_CLASSES = UMD_NUM_CLASSES
-NUM_OBJECT_CLASSES = UMD_NUM_OBJECT_CLASSES
-NUM_AFF_CLASSES = UMD_NUM_AFF_CLASSES
+NUM_CLASSES = ARL_NUM_CLASSES
+NUM_OBJECT_CLASSES = ARL_NUM_OBJECT_CLASSES
+NUM_AFF_CLASSES = ARL_NUM_AFF_CLASSES
 
-MIN_SIZE = UMD_MIN_SIZE
-MAX_SIZE = UMD_MAX_SIZE
-IMAGE_MEAN = UMD_IMAGE_MEAN
-IMAGE_STD = UMD_IMAGE_STD
+MIN_SIZE = MIN_SIZE
+MAX_SIZE = MAX_SIZE
+IMAGE_MEAN = ARL_IMAGE_MEAN
+IMAGE_STD = ARL_IMAGE_STD
 
 ''' 
 Configs for logging & eval.

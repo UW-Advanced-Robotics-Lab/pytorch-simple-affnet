@@ -99,7 +99,7 @@ class UMDDataset(data.Dataset):
         mask = aug_concat_mask
 
         rgb = self.colour_aug(image=rgb)
-        # depth = self.depth_aug(image=depth)
+        depth = self.depth_aug(image=depth)
 
         rgb = np.array(rgb, dtype=np.uint8)
         mask = np.array(mask, dtype=np.uint8)
@@ -142,7 +142,6 @@ class UMDDataset(data.Dataset):
 
         image = np.array(image, dtype=np.uint8)
         H, W = image.shape[0], image.shape[1]
-
 
         # Get obj name from bbox.
         obj_name = idx.split("_")[0]

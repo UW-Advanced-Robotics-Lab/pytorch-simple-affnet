@@ -127,7 +127,7 @@ class ARLAffPoseDataset(data.Dataset):
         obj_mask = aug_concat_mask[:, :, 1]
         obj_part_mask = aug_concat_mask[:, :, 2]
 
-        # rgb = self.colour_aug(image=rgb)
+        rgb = self.colour_aug(image=rgb)
         depth = self.depth_aug(image=depth)
 
         rgb = np.array(rgb, dtype=np.uint8)
@@ -186,7 +186,7 @@ class ARLAffPoseDataset(data.Dataset):
 
         # masked depth for stats.
         # masked_label = np.ma.getmaskarray(np.ma.masked_not_equal(obj_mask, 0)).astype(np.uint8)
-       # masked_depth_16bit = masked_label * depth_16bit.copy()
+        # masked_depth_16bit = masked_label * depth_16bit.copy()
 
         image = cv2.resize(image, self.RESIZE, interpolation=cv2.INTER_CUBIC)
         depth_8bit = cv2.resize(depth_8bit, self.RESIZE, interpolation=cv2.INTER_CUBIC)
