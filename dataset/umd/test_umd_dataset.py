@@ -47,31 +47,29 @@ class UMDDatasetTest(unittest.TestCase):
             image = np.array(image * (2 ** 8 - 1), dtype=np.uint8)
             target = umd_dataset_utils.format_target_data(image, target)
 
-            # RGB.
-            cv2.imshow('rgb', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-
             # Bounding Box.
             bbox_img = umd_dataset_utils.draw_bbox_on_img(image=image,
-                                                                  obj_ids=target['obj_ids'],
-                                                                  boxes=target['obj_boxes'],
-                                                                  )
-            cv2.imshow('bbox', cv2.cvtColor(bbox_img, cv2.COLOR_BGR2RGB))
+                                                          obj_ids=target['obj_ids'],
+                                                          boxes=target['obj_boxes'],
+                                                          )
 
             # Original Segmentation Mask.
             color_mask = umd_dataset_utils.colorize_aff_mask(target['aff_mask'])
             color_mask = cv2.addWeighted(bbox_img, 0.35, color_mask, 0.65, 0)
-            cv2.imshow('mask', cv2.cvtColor(color_mask, cv2.COLOR_BGR2RGB))
 
             # Binary Masks.
             binary_mask = umd_dataset_utils.get_segmentation_masks(image=image,
-                                                                           obj_ids=target['aff_ids'],
-                                                                           binary_masks=target['aff_binary_masks'],
-                                                                           )
+                                                                   obj_ids=target['aff_ids'],
+                                                                   binary_masks=target['aff_binary_masks'],
+                                                                   )
             color_binary_mask = umd_dataset_utils.colorize_aff_mask(binary_mask)
             color_binary_mask = cv2.addWeighted(bbox_img, 0.35, color_binary_mask, 0.65, 0)
-            cv2.imshow('binary_mask', cv2.cvtColor(color_binary_mask, cv2.COLOR_BGR2RGB))
 
             # show plots.
+            cv2.imshow('rgb', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+            cv2.imshow('bbox', cv2.cvtColor(bbox_img, cv2.COLOR_BGR2RGB))
+            cv2.imshow('mask', cv2.cvtColor(color_mask, cv2.COLOR_BGR2RGB))
+            cv2.imshow('binary_mask', cv2.cvtColor(color_binary_mask, cv2.COLOR_BGR2RGB))
             cv2.waitKey(0)
 
 if __name__ == '__main__':

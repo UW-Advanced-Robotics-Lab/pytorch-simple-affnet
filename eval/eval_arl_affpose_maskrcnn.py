@@ -21,11 +21,11 @@ from eval import eval_utils
 from dataset.arl_affpose import arl_affpose_dataset_utils
 from dataset.arl_affpose import arl_affpose_dataset_loaders
 
-SHOW_IMAGES = True
+SHOW_IMAGES = False
 
-SHUFFLE_IMAGES = True
-RANDOM_IMAGES = True
-NUM_RANDOM = 250    
+NUM_RANDOM = 50
+RANDOM_IMAGES = False
+SHUFFLE_IMAGES = False
 
 SAVE_AND_EVAL_PRED = True
 
@@ -48,11 +48,17 @@ def main():
     model = maskrcnn.ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, num_classes=config.NUM_CLASSES)
     model.to(config.DEVICE)
 
-    # Load saved weights.
-    print(f"\nrestoring pre-trained MaskRCNN weights: {config.RESTORE_ARL_MASKRCNN_WEIGHTS} .. ")
-    checkpoint = torch.load(config.RESTORE_ARL_MASKRCNN_WEIGHTS, map_location=config.DEVICE)
+    # Load REAL saved weights.
+    print(f"\nrestoring pre-trained MaskRCNN weights: {config.RESTORE_SYN_AND_REAL_ARL_MASKRCNN_WEIGHTS} .. ")
+    checkpoint = torch.load(config.RESTORE_SYN_AND_REAL_ARL_MASKRCNN_WEIGHTS, map_location=config.DEVICE)
     model.load_state_dict(checkpoint["model"])
     model.eval()
+
+    # # Load SYN saved weights.
+    # print(f"\nrestoring pre-trained MaskRCNN weights: {config.RESTORE_SYN_ARL_MASKRCNN_WEIGHTS} .. ")
+    # checkpoint = torch.load(config.RESTORE_SYN_ARL_MASKRCNN_WEIGHTS, map_location=config.DEVICE)
+    # model.load_state_dict(checkpoint["model"])
+    # model.eval()
 
     # Load the dataset.
     test_loader = arl_affpose_dataset_loaders.load_arl_affpose_eval_datasets(random_images=RANDOM_IMAGES,
@@ -63,7 +69,7 @@ def main():
     APs = []
     gt_obj_ids_list, pred_obj_ids_list = [], []
     for image_idx, (images, targets) in enumerate(test_loader):
-        print(f'\nImage:{image_idx}/{len(test_loader)}')
+        print(f'\nImage:{image_idx+1}/{len(test_loader)}')
 
         image, target = copy.deepcopy(images), copy.deepcopy(targets)
         images = list(image.to(config.DEVICE) for image in images)

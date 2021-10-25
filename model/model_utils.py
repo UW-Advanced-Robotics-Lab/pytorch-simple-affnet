@@ -1,10 +1,12 @@
 import math
 
+import numpy as np
 import cv2
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.autograd import Variable
 
 import torchvision
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
@@ -155,13 +157,13 @@ def maskrcnn_loss(mask_logit, proposal, matched_idx, label, gt_mask):
     # mask_logit = F.interpolate(mask_logit, size=size, mode='bilinear', align_corners=False)
     # mask_target = F.interpolate(mask_target[None], size=size, mode='bilinear', align_corners=False)[0]
     # print(f"[after upsample] mask_logit: {mask_logit.size()}")
-    # print(f""[after upsample] mask_target: {mask_target.size()}")
-
+    # print(f"[after upsample] mask_target: {mask_target.size()}")
+    #
     # # check size of gt mask.
     # print(f'\ngt mask: {gt_mask.size()}')
     # # check size of mask after ROI pooling.
     # print(f"pred mask: {mask_logit[idx, label].size()}")
-
+    #
     # # check gt masks after ROI cropping.
     # for i in range(len(idx)):
     #     current_obj_id = label[i]
@@ -170,9 +172,7 @@ def maskrcnn_loss(mask_logit, proposal, matched_idx, label, gt_mask):
     #
     #     # print output.
     #     # print(f"\nidx: {i}, num idxs {len(idx)}")
-    #     # print(f"obj id:{current_obj_id}")
-    #     # print(f"gt mask: {mask_target.shape}")
-    #     # print(f"gt mask: {mask_logit.shape}")
+    #     print(f"obj id:{current_obj_id}")
     #
     #     # visualize.
     #     cv2.imshow('gt', current_gt_mask)
@@ -181,15 +181,83 @@ def maskrcnn_loss(mask_logit, proposal, matched_idx, label, gt_mask):
 
     mask_loss = F.binary_cross_entropy_with_logits(mask_logit[idx, label], mask_target)
 
-    # # TODO: try class weights loss.
+    # TODO: try class weights loss.
     # mask_size = mask_logit.size()[2:]
-    # class_weights = umd_dataset_utils.get_class_weights(mask_size, label, umd_dataset_utils.AFF_IDS_DISTRIBUTION)
+    # class_weights = arl_affpose_dataset_utils.get_class_weights(mask_size, label, arl_affpose_dataset_utils.AFF_IDS_DISTRIBUTION)
     # logits = mask_logit[idx, label]
     # pred = torch.sigmoid(logits)
     # mask_loss = F.binary_cross_entropy(pred, mask_target, weight=class_weights)
 
     return mask_loss
 
+class CrossEntropy2d(nn.Module):
+
+    def __init__(self, size_average=True, ignore_label=255):
+        super(CrossEntropy2d, self).__init__()
+        self.size_average = size_average
+        self.ignore_label = ignore_label
+
+    def forward(self, predict, target, weight=None):
+        """
+            Args:
+                predict:(n, c, h, w)
+                target:(n, h, w)
+                weight (Tensor, optional): a manual rescaling weight given to each class.
+                                           If given, has to be a Tensor of size "nclasses"
+        """
+        assert not target.requires_grad
+        assert predict.dim() == 4
+        assert target.dim() == 3
+        assert predict.size(0) == target.size(0), "{0} vs {1} ".format(predict.size(0), target.size(0))
+        assert predict.size(2) == target.size(1), "{0} vs {1} ".format(predict.size(2), target.size(1))
+        assert predict.size(3) == target.size(2), "{0} vs {1} ".format(predict.size(3), target.size(3))
+        n, c, h, w = predict.size()
+        target_mask = (target >= 0) * (target != self.ignore_label)
+
+        # print(f'Target:')
+        # arl_affpose_dataset_utils.print_class_aff_names(target.cpu().detach().clone())
+        # print(f'Pred:')
+        # arl_affpose_dataset_utils.print_class_aff_names(target_mask.cpu().detach().clone())
+
+        target = target[target_mask]
+        if not target.data.dim():
+            return Variable(torch.zeros(1))
+        predict = predict.transpose(1, 2).transpose(2, 3).contiguous()
+        predict = predict[target_mask.view(n, h, w, 1).repeat(1, 1, 1, c)].view(-1, c)
+        loss = F.cross_entropy(predict, target, weight=weight, size_average=self.size_average)
+        return loss
+
+def maskrcnn_ce_loss(mask_logit, gt_mask):
+
+    # format gt mask.
+    gt_mask = gt_mask.view(1, gt_mask.size(0), gt_mask.size(1))
+    gt_mask = gt_mask.to(torch.long)
+    # current_gt_mask = gt_mask.detach().cpu().numpy()
+    # print(f'\nGT dtype: {gt_mask.dtype}')
+    # print(f'GT size: {gt_mask.size()}')
+    # print(f'GT Class labels: {np.unique(current_gt_mask)}')
+
+    # format pred mask.
+    size = (gt_mask.size(1), gt_mask.size(2))
+    mask_probs = F.interpolate(mask_logit, size=size, mode='bilinear', align_corners=False)
+    # print(f'\tPred dtype: {mask_probs.dtype}')
+    # print(f'\tPred size: {mask_probs.size()}')
+
+    # affordance_classes = mask_logit.size(1)  # .detach().cpu().numpy()
+    # for affordance_class in range(affordance_classes):
+    #     current_pred_mask = mask_probs[:, affordance_class, :, :].detach().cpu().numpy()
+    #     print(f"\tpred mask: {current_pred_mask.shape}")
+    #     print(f"\tpred mask: min:{np.min(current_pred_mask)}, max:{np.max(current_pred_mask)}")
+    #     # cv2.imshow('gt', np.squeeze(current_gt_mask))
+    #     cv2.imshow('pred', np.squeeze(current_pred_mask))
+    #     cv2.waitKey(0)
+
+    # loss = CrossEntropy2d()
+    loss = nn.CrossEntropyLoss()
+    mask_loss = loss(mask_probs, gt_mask)
+    # print(f'mask_loss: {mask_loss}')
+
+    return mask_loss
 
 class AnchorGenerator:
     def __init__(self, sizes, ratios):

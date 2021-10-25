@@ -222,13 +222,13 @@ def color_map_aff_id():
 
     color_map_dic = {
     0:  [0, 0, 0],
-    1:  [235, 17,  17],     # grasp: red
-    2:  [235, 209, 17],     # cut: yellow
-    3:  [113, 235, 17],     # scoop: green
-    4:  [17,  235, 202],    # contain: teal
-    5:  [17,   54, 235],    # pound: blue
-    6:  [129,  17, 235],    # support: purple
-    7:  [235,  17, 179],    # wrap-grasp: pink
+    1:  [133, 17, 235],     # grasp: purple
+    2:  [17, 235, 139],     # cut: teal
+    3:  [235, 195, 17],     # scoop: yellow/gold
+    4:  [17, 103, 235],     # contain: dark blue
+    5:  [176, 235, 17],     # pound: light green/yellow
+    6:  [76, 235, 17],      # support: green
+    7:  [17, 235, 225],     # wrap-grasp: light blue
     }
     return color_map_dic
 

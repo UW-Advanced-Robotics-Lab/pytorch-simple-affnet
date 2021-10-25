@@ -313,40 +313,55 @@ def aff_color_map_dict():
 
     aff_color_map_dict = {
         0: [0, 0, 0],
-        1: [133, 17, 235],  # red
-        2: [235, 96, 17],   # orange
-        3: [235, 195, 17],  # gold
-        4: [176, 235, 17],  # light green/yellow
-        5: [76, 235, 17],   # green
-        6: [17, 235, 139],  # teal
-        7: [17, 235, 225],  # light blue
+        1: [133, 17, 235],  # grasp: purple
+        2: [17, 235, 225],  # wrap-grasp: light blue
+        3: [76, 235, 17],   # support: green
+        4: [17, 103, 235],  # contain: dark blue
+        5: [17, 235, 139],  # cut: teal
+        6: [235, 34, 17],   # clamp: red
+        7: [235, 96, 17],   # screw: orange
     }
 
     return aff_color_map_dict
 
-##################################
-##################################
 
 def aff_color_map(idx):
     ''' [red, blue, green]'''
 
     if idx == 1:
-        return (133,  17, 235)        # red
+        return (133, 17, 235)  # grasp: purple
     elif idx == 2:
-        return (235, 96, 17)        # orange
+        return (17, 235, 225)  # wrap-grasp: light blue
     elif idx == 3:
-        return (235, 195, 17)       # gold
+        return (76, 235, 17)   # support: green
     elif idx == 4:
-        return (176,  235, 17)      # light green/yellow
+        return (17, 103, 235)  # contain: dark blue
     elif idx == 5:
-        return (76,   235, 17)      # green
+        return (17, 235, 139)  # cut: teal
     elif idx == 6:
-        return (17,  235, 139)      # teal
+        return (235, 34, 17)   # clamp: red
     elif idx == 7:
-        return (17,  235, 225)      # light blue
+        return (235, 96, 17)   # screw: orange
     else:
         print(" --- idx does not map to a colour --- ")
         exit(1)
+
+def get_segmentation_masks(image, obj_ids, binary_masks):
+
+    height, width = image.shape[0], image.shape[1]
+    instance_masks = np.zeros((height, width), dtype=np.uint8)
+    instance_mask_one = np.ones((height, width), dtype=np.uint8)
+
+    if len(binary_masks.shape) == 2:
+        binary_masks = binary_masks[np.newaxis, :, :]
+
+    for idx, obj_id in enumerate(obj_ids):
+        binary_mask = binary_masks[idx, :, :]
+
+        instance_mask = instance_mask_one * obj_id
+        instance_masks = np.where(binary_mask, instance_mask, instance_masks).astype(np.uint8)
+
+    return instance_masks
 
 def format_target_data(image, target):
     height, width = image.shape[0], image.shape[1]
@@ -393,20 +408,3 @@ def draw_bbox_on_img(image, obj_ids, boxes, color=(255, 255, 255)):
                     color)
 
     return bbox_img
-
-def get_segmentation_masks(image, obj_ids, binary_masks):
-
-    height, width = image.shape[0], image.shape[1]
-    instance_masks = np.zeros((height, width), dtype=np.uint8)
-    instance_mask_one = np.ones((height, width), dtype=np.uint8)
-
-    if len(binary_masks.shape) == 2:
-        binary_masks = binary_masks[np.newaxis, :, :]
-
-    for idx, obj_id in enumerate(obj_ids):
-        binary_mask = binary_masks[idx, :, :]
-
-        instance_mask = instance_mask_one * obj_id
-        instance_masks = np.where(binary_mask, instance_mask, instance_masks).astype(np.uint8)
-
-    return instance_masks

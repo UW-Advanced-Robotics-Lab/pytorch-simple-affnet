@@ -24,25 +24,25 @@ from eval import eval_utils
 
 SHOW_IMAGES = False
 
-SHUFFLE_IMAGES = True
-RANDOM_IMAGES = True
-NUM_RANDOM = 250
+NUM_RANDOM = 100
+RANDOM_IMAGES = False
+SHUFFLE_IMAGES = False
 
 SAVE_AND_EVAL_PRED = True
 
 
 def main():
 
-    if SAVE_AND_EVAL_PRED:
-        # Init folders
-        print('\neval in .. {}'.format(config.ARL_AFF_EVAL_SAVE_FOLDER))
-
-        if not os.path.exists(config.ARL_AFF_EVAL_SAVE_FOLDER):
-            os.makedirs(config.ARL_AFF_EVAL_SAVE_FOLDER)
-
-        gt_pred_images = glob.glob(config.ARL_AFF_EVAL_SAVE_FOLDER + '*')
-        for images in gt_pred_images:
-            os.remove(images)
+    # if SAVE_AND_EVAL_PRED:
+    #     # Init folders
+    #     print('\neval in .. {}'.format(config.ARL_AFF_EVAL_SAVE_FOLDER))
+    #
+    #     if not os.path.exists(config.ARL_AFF_EVAL_SAVE_FOLDER):
+    #         os.makedirs(config.ARL_AFF_EVAL_SAVE_FOLDER)
+    #
+    #     gt_pred_images = glob.glob(config.ARL_AFF_EVAL_SAVE_FOLDER + '*')
+    #     for images in gt_pred_images:
+    #         os.remove(images)
 
     # Load the Model.
     print()
@@ -64,7 +64,7 @@ def main():
     APs = []
     gt_obj_ids_list, pred_obj_ids_list = [], []
     for image_idx, (images, targets) in enumerate(test_loader):
-        print(f'\nImage:{image_idx}/{len(test_loader)}')
+        print(f'\nImage:{image_idx+1}/{len(test_loader)}')
 
         image, target = copy.deepcopy(images), copy.deepcopy(targets)
         images = list(image.to(config.DEVICE) for image in images)

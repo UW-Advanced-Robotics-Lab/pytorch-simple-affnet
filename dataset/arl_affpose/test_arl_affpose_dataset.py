@@ -23,7 +23,7 @@ class ARLAffPoseDatasetTest(unittest.TestCase):
 
         # Load ARL AffPose dataset.
         dataset = arl_affpose_dataset.ARLAffPoseDataset(
-            dataset_dir=config.ARL_DATA_DIRECTORY_WAM,
+            dataset_dir=config.ARL_SYN_DATA_DIRECTORY_TRAIN,
             mean=config.ARL_IMAGE_MEAN,
             std=config.ARL_IMAGE_STD,
             resize=config.ARL_RESIZE,
@@ -85,22 +85,17 @@ class ARLAffPoseDatasetTest(unittest.TestCase):
             # format data.
             image = np.squeeze(np.array(image)).transpose(1, 2, 0)
             image = np.array(image * (2 ** 8 - 1), dtype=np.uint8).reshape(config.ARL_CROP_SIZE[0], config.ARL_CROP_SIZE[1], -1)
-            image, target = arl_affpose_dataset_utils.format_target_data(image, target)
-
-            # RGB.
-            cv2.imshow('rgb', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+            target = arl_affpose_dataset_utils.format_target_data(image, target)
 
             # Bounding Box.
             bbox_img = arl_affpose_dataset_utils.draw_bbox_on_img(image=image,
                                                                   obj_ids=target['obj_ids'],
                                                                   boxes=target['obj_boxes'],
                                                                   )
-            cv2.imshow('bbox', cv2.cvtColor(bbox_img, cv2.COLOR_BGR2RGB))
 
             # Original Segmentation Mask.
             color_mask = arl_affpose_dataset_utils.colorize_aff_mask(target['aff_mask'])
             color_mask = cv2.addWeighted(bbox_img, 0.35, color_mask, 0.65, 0)
-            cv2.imshow('mask', cv2.cvtColor(color_mask, cv2.COLOR_BGR2RGB))
 
             # Binary Masks.
             binary_mask = arl_affpose_dataset_utils.get_segmentation_masks(image=image,
@@ -109,22 +104,23 @@ class ARLAffPoseDatasetTest(unittest.TestCase):
                                                                            )
             color_binary_mask = arl_affpose_dataset_utils.colorize_aff_mask(binary_mask)
             color_binary_mask = cv2.addWeighted(bbox_img, 0.35, color_binary_mask, 0.65, 0)
-            cv2.imshow('binary_mask', cv2.cvtColor(color_binary_mask, cv2.COLOR_BGR2RGB))
 
             # show object mask derived from affordance masks.
             obj_part_mask = arl_affpose_dataset_utils.get_obj_part_mask(image=image,
-                                                                         obj_ids=target['obj_ids'],
-                                                                         aff_ids=target['aff_ids'],
-                                                                         bboxs=target['obj_boxes'],
-                                                                         binary_masks=target['aff_binary_masks'],
-                                                                         )
+                                                                        obj_part_ids=target['obj_part_ids'],
+                                                                        aff_binary_masks=target['aff_binary_masks'],
+                                                                        )
 
             obj_mask = arl_affpose_dataset_utils.convert_obj_part_mask_to_obj_mask(obj_part_mask)
             color_obj_mask = arl_affpose_dataset_utils.colorize_obj_mask(obj_mask)
             color_obj_mask = cv2.addWeighted(bbox_img, 0.35, color_obj_mask, 0.65, 0)
-            cv2.imshow('obj_mask', cv2.cvtColor(color_obj_mask, cv2.COLOR_BGR2RGB))
 
             # show plots.
+            cv2.imshow('rgb', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+            cv2.imshow('bbox', cv2.cvtColor(bbox_img, cv2.COLOR_BGR2RGB))
+            cv2.imshow('mask', cv2.cvtColor(color_mask, cv2.COLOR_BGR2RGB))
+            cv2.imshow('binary_mask', cv2.cvtColor(color_binary_mask, cv2.COLOR_BGR2RGB))
+            cv2.imshow('obj_mask', cv2.cvtColor(color_obj_mask, cv2.COLOR_BGR2RGB))
             cv2.waitKey(0)
 
 if __name__ == '__main__':
@@ -132,7 +128,7 @@ if __name__ == '__main__':
 
     # run desired test.
     suite = unittest.TestSuite()
-    suite.addTest(ARLAffPoseDatasetTest("test_maskrcnn_dataloader"))
+    suite.addTest(ARLAffPoseDatasetTest("test_affnet_dataloader"))
     runner = unittest.TextTestRunner()
     runner.run(suite)
 

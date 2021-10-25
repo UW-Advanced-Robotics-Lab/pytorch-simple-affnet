@@ -83,13 +83,30 @@ class ARLAffPoseDataset(data.Dataset):
         self.depth_ids = np.sort(np.array(self.depth_ids))
 
         # # TODO: reduce dataset.
-        # SELECT_EVERY_ITH_FRAME = 5
+        # np.random.seed(0)
+        # NUM_IMAGES = 500
+        # NUM_TRAIN = NUM_IMAGES * 0.8
+        # NUM_VAL = NUM_IMAGES - NUM_TRAIN
+        # SELECT_EVERY_ITH_FRAME = 1
         # total_idx = np.arange(0, len(self.rgb_ids), SELECT_EVERY_ITH_FRAME)
-        # self.rgb_ids = self.rgb_ids[total_idx]
-        # self.obj_masks_ids = self.obj_masks_ids[total_idx]
-        # self.obj_part_masks_ids = self.obj_part_masks_ids[total_idx]
-        # self.aff_masks_ids = self.aff_masks_ids[total_idx]
-        # self.depth_ids = self.depth_ids[total_idx]
+        # train_idx = np.random.choice(total_idx, size=int(NUM_TRAIN), replace=False)
+        # val_total_idx = np.delete(total_idx, train_idx)
+        # val_idx = np.random.choice(val_total_idx, size=int(NUM_VAL), replace=False)
+        #
+        # if self.dataset_dir == config.ARL_DATA_DIRECTORY_TRAIN:
+        #     self.rgb_ids = self.rgb_ids[train_idx]
+        #     self.obj_masks_ids = self.obj_masks_ids[train_idx]
+        #     self.obj_part_masks_ids = self.obj_part_masks_ids[train_idx]
+        #     self.aff_masks_ids = self.aff_masks_ids[train_idx]
+        #     self.depth_ids = self.depth_ids[train_idx]
+        #
+        # elif self.dataset_dir == config.ARL_DATA_DIRECTORY_VAL:
+        #     self.rgb_ids = self.rgb_ids[val_idx]
+        #     self.obj_masks_ids = self.obj_masks_ids[val_idx]
+        #     self.obj_part_masks_ids = self.obj_part_masks_ids[val_idx]
+        #     self.aff_masks_ids = self.aff_masks_ids[val_idx]
+        #     self.depth_ids = self.depth_ids[val_idx]
+        #
         # print(f'Dataset has {len(self.rgb_ids)} examples .. {dataset_dir}')
 
         # Augmenting images.
@@ -292,11 +309,6 @@ class ARLAffPoseDataset(data.Dataset):
         target["depth_8bit"] = torch.as_tensor(depth_8bit, dtype=torch.float32)
         target["depth_16bit"] = torch.as_tensor(depth_16bit, dtype=torch.float32)
         # target["masked_depth_16bit"] = torch.as_tensor(masked_depth_16bit, dtype=torch.float32)
-
-        # print()
-        # print(f'{target["obj_binary_masks"].size()}')
-        # print(f'{target["obj_ids"].size()}')
-        # print(f'{target["obj_boxes"].size()}')
 
         # sent to transform.
         if self.is_train or self.is_eval:

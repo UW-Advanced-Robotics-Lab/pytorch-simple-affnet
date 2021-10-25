@@ -218,7 +218,6 @@ class MaskRCNNPredictor(nn.Sequential):
             d['relu{}'.format(layer_idx)] = nn.ReLU(inplace=True)
             next_feature = layer_features
 
-            # TODO: look at Deconvolutional layers.
             ### output is [14x14] -> [28x28]
             d['mask_conv5'] = nn.ConvTranspose2d(next_feature, dim_reduced, kernel_size=2, stride=2, padding=0)
             d['relu5'] = nn.ReLU(inplace=True)
@@ -232,7 +231,7 @@ class MaskRCNNPredictor(nn.Sequential):
             # d['mask_conv8'] = nn.ConvTranspose2d(next_feature, dim_reduced, kernel_size=2, stride=2, padding=0)
             # d['relu8'] = nn.ReLU(inplace=True)
 
-            # TODO: AffNet
+            # TODO: AffordanceNet Deconvolutional layers.
             ###  output mask: [7x7] -> [30x30]
             # d['conv5'] = nn.Conv2d(next_feature, dim_reduced, kernel_size=3, stride=1, padding=1)
             # d['relu5'] = nn.ReLU(inplace=True)
@@ -283,6 +282,21 @@ def ResNetMaskRCNN(pretrained=config.IS_PRETRAINED,
         msd = model.state_dict()
         msd_values = list(msd.values())
         msd_names = list(msd.keys())
+
+        # # ResNet 50
+        # del_list = [i for i in range(265, 271)] + [i for i in range(273, 279)]
+        # for i, del_idx in enumerate(del_list):
+        #     pretrained_msd_names.pop(del_idx - i)
+        #     pretrained_msd_values.pop(del_idx - i)
+        #
+        # skip_list = [
+        #     # RPN
+        #     271, 272, 273, 274,
+        #     # BBOX HEAD
+        #     279, 280, 281, 282,
+        #     # MASK HEAD
+        #     283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294,
+        # ]
 
         # FPN
         skip_list = [

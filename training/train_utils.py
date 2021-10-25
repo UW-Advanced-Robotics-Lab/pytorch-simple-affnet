@@ -123,6 +123,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, writer, is_sub
             # backwards pass.
             optimizer.zero_grad()
             losses.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), config.CLIP_GRADIENT)
             optimizer.step()
 
             # tqdm.

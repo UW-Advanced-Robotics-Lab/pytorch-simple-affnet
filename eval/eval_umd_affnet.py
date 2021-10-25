@@ -62,7 +62,7 @@ def main():
 
     # run the predictions.
     for image_idx, (images, targets) in enumerate(test_loader):
-        print(f'\nImage:{image_idx}/{len(test_loader)}')
+        print(f'\nImage:{image_idx+1}/{len(test_loader)}')
 
         image, target = copy.deepcopy(images), copy.deepcopy(targets)
         images = list(image.to(config.DEVICE) for image in images)
@@ -103,9 +103,11 @@ def main():
                   )
 
         # Pred bbox.
+        print(f'1')
         pred_bbox_img = umd_dataset_utils.draw_bbox_on_img(image=image, scores=scores, obj_ids=obj_ids, boxes=obj_boxes)
 
-        # Pred affordnace mask.
+        # Pred affordance mask.
+        print(f'2')
         pred_aff_mask = umd_dataset_utils.get_segmentation_masks(image=image,
                                                                  obj_ids=aff_ids,
                                                                  binary_masks=aff_binary_masks,
@@ -114,6 +116,7 @@ def main():
         color_aff_mask = cv2.addWeighted(pred_bbox_img, 0.5, color_aff_mask, 0.5, 0)
 
         # gt affordance masks.
+        print(f'3')
         binary_mask = umd_dataset_utils.get_segmentation_masks(image=image,
                                                                obj_ids=target['aff_ids'],
                                                                binary_masks=target['aff_binary_masks'],

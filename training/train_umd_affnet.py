@@ -63,17 +63,17 @@ def main():
         # update learning rate.
         lr_scheduler.step()
 
-        # eval Fwb
-        model, Fwb = eval_utils.affnet_eval_umd(model, test_loader)
-        writer.add_scalar('eval/Fwb', Fwb, int(epoch))
-        # save best model.
-        if Fwb > best_Fwb:
-            best_Fwb = Fwb
-            writer.add_scalar('eval/Best_Fwb', best_Fwb, int(epoch))
-            checkpoint_path = config.BEST_MODEL_SAVE_PATH
-            train_utils.save_checkpoint(model, optimizer, epoch, checkpoint_path)
-            print("Saving best model .. best Fwb={:.5f} ..".format(best_Fwb))
-
+        # # eval Fwb
+        # model, Fwb = eval_utils.affnet_eval_umd(model, test_loader)
+        # writer.add_scalar('eval/Fwb', Fwb, int(epoch))
+        # # save best model.
+        # if Fwb > best_Fwb:
+        #     best_Fwb = Fwb
+        #     writer.add_scalar('eval/Best_Fwb', best_Fwb, int(epoch))
+        #     checkpoint_path = config.BEST_MODEL_SAVE_PATH
+        #     train_utils.save_checkpoint(model, optimizer, epoch, checkpoint_path)
+        #     print("Saving best model .. best Fwb={:.5f} ..".format(best_Fwb))
+        #
         # checkpoint_path
         checkpoint_path = config.MODEL_SAVE_PATH + 'affnet_epoch_' + np.str(epoch) + '.pth'
         train_utils.save_checkpoint(model, optimizer, epoch, checkpoint_path)

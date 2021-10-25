@@ -16,7 +16,7 @@ from model import model_utils
 from training import train_utils
 from eval import eval_utils
 
-from dataset.arl_affpose import arl_affpose_dataset_loaders
+from dataset.ycb_video import ycb_video_dataset_loaders
 
 
 def main():
@@ -38,24 +38,13 @@ def main():
     model = maskrcnn.ResNetMaskRCNN(pretrained=config.IS_PRETRAINED, num_classes=config.NUM_CLASSES)
     model.to(config.DEVICE)
 
-    # # TODO: Freeze the backbone.
-    # model = model_utils.freeze_backbone(model, verbose=True)
-
-    # # TODO: Load saved weights.
-    # print(f"\nrestoring pre-trained MaskRCNN weights: {config.RESTORE_SYN_ARL_MASKRCNN_WEIGHTS} .. ")
-    # checkpoint = torch.load(config.RESTORE_SYN_ARL_MASKRCNN_WEIGHTS, map_location=config.DEVICE)
-    # model.load_state_dict(checkpoint["model"])
-    # model.to(config.DEVICE)
-
     # Load the dataset.
-    train_loader, val_loader, test_loader = arl_affpose_dataset_loaders.load_arl_affpose_train_datasets()
+    train_loader, val_loader, test_loader = ycb_video_dataset_loaders.load_ycb_video_train_datasets()
 
     # Construct an optimizer.
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.SGD(params, lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY, momentum=config.MOMENTUM)
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=config.MILESTONES, gamma=config.GAMMA)
-    # # TODO: Load saved weights.
-    # optimizer.load_state_dict(checkpoint["optimizer"])
 
     # Main training loop.
     num_epochs = config.NUM_EPOCHS
@@ -75,20 +64,20 @@ def main():
         # update learning rate.
         lr_scheduler.step()
 
-        model, mAP, Fwb = eval_utils.maskrcnn_eval_arl_affpose(model, test_loader)
-        # eval FwB
-        writer.add_scalar('eval/Fwb', Fwb, int(epoch))
-        if Fwb > best_Fwb:
-            best_Fwb = Fwb
-            writer.add_scalar('eval/Best_Fwb', best_Fwb, int(epoch))
-            checkpoint_path = config.BEST_MODEL_SAVE_PATH
-            train_utils.save_checkpoint(model, optimizer, epoch, checkpoint_path)
-            print("Saving best model .. best Fwb={:.5f} ..".format(best_Fwb))
-        # eval mAP
-        writer.add_scalar('eval/mAP', mAP, int(epoch))
-        if mAP > best_mAP:
-            best_mAP = mAP
-            writer.add_scalar('eval/Best_mAP', best_mAP, int(epoch))
+        # model, mAP, Fwb = eval_utils.maskrcnn_eval_ycb_video(model, test_loader)
+        # # eval FwB
+        # writer.add_scalar('eval/Fwb', Fwb, int(epoch))
+        # if Fwb > best_Fwb:
+        #     best_Fwb = Fwb
+        #     writer.add_scalar('eval/Best_Fwb', best_Fwb, int(epoch))
+        #     checkpoint_path = config.BEST_MODEL_SAVE_PATH
+        #     train_utils.save_checkpoint(model, optimizer, epoch, checkpoint_path)
+        #     print("Saving best model .. best Fwb={:.5f} ..".format(best_Fwb))
+        # # eval mAP
+        # writer.add_scalar('eval/mAP', mAP, int(epoch))
+        # if mAP > best_mAP:
+        #     best_mAP = mAP
+        #     writer.add_scalar('eval/Best_mAP', best_mAP, int(epoch))
 
         # checkpoint_path
         checkpoint_path = config.MODEL_SAVE_PATH + 'maskrcnn_epoch_' + np.str(epoch) + '.pth'

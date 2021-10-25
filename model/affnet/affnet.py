@@ -1,12 +1,9 @@
 from collections import OrderedDict
 
-import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn
 from torch.utils.model_zoo import load_url
-
-# from torchvision.ops import poolers
 
 import config
 
@@ -15,6 +12,7 @@ from model import roi_align
 from model import rpn
 from model import model_utils
 from model.affnet import roi_heads_umd as roi_heads
+# from model.affnet import roi_heads_arl_affpose as roi_heads
 from model.affnet import transform_utils
 
 
@@ -135,6 +133,10 @@ class AffNet(nn.Module):
              rpn_reg_weights,
              rpn_pre_nms_top_n, rpn_post_nms_top_n, rpn_nms_thresh)
 
+        # box_roi_pool = roi_align.RoIAlign(
+        #     output_size=config.ROIALIGN_BOX_OUTPUT_SIZE,
+        #     sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
+
         box_roi_pool = roi_align.MultiScaleRoIAlign(
             featmap_names=['0', '1', '2', '3'],
             output_size=config.ROIALIGN_BOX_OUTPUT_SIZE,
@@ -152,7 +154,12 @@ class AffNet(nn.Module):
              box_reg_weights,
              box_score_thresh, box_nms_thresh, box_num_detections)
 
-        self.head.mask_roi_pool = roi_align.MultiScaleRoIAlign(
+        # self.head.mask_roi_pool = roi_align.RoIAlign(
+        #     output_size=config.ROIALIGN_MASK_OUTPUT_SIZE,
+        #     sampling_ratio=config.ROIALIGN_SAMPLING_RATIO,
+        # )
+
+        self.head.mask_roi_pool = roi_align.MultiScaleRoIAlign (
                                     featmap_names=['0', '1', '2', '3'],
                                     output_size=config.ROIALIGN_MASK_OUTPUT_SIZE,
                                     sampling_ratio=config.ROIALIGN_SAMPLING_RATIO)
@@ -219,7 +226,6 @@ class AffNetPredictor(nn.Sequential):
             d['relu{}'.format(layer_idx)] = nn.ReLU(inplace=True)
             next_feature = layer_features
 
-        # TODO: look at Deconvolutional layers.
         ### output is [14x14] -> [28x28]
         d['mask_conv5'] = nn.ConvTranspose2d(next_feature, dim_reduced, kernel_size=2, stride=2, padding=0)
         d['relu5'] = nn.ReLU(inplace=True)
@@ -233,7 +239,7 @@ class AffNetPredictor(nn.Sequential):
         # d['mask_conv8'] = nn.ConvTranspose2d(next_feature, dim_reduced, kernel_size=2, stride=2, padding=0)
         # d['relu8'] = nn.ReLU(inplace=True)
 
-        # TODO: AffNet
+        # TODO: AffordanceNet Deconvolutional layers.
         ###  output mask: [7x7] -> [30x30]
         # d['conv5'] = nn.Conv2d(next_feature, dim_reduced, kernel_size=3, stride=1, padding=1)
         # d['relu5'] = nn.ReLU(inplace=True)
@@ -284,6 +290,21 @@ def ResNetAffNet(pretrained=config.IS_PRETRAINED,
         msd = model.state_dict()
         msd_values = list(msd.values())
         msd_names = list(msd.keys())
+
+        # # ResNet 50
+        # del_list = [i for i in range(265, 271)] + [i for i in range(273, 279)]
+        # for i, del_idx in enumerate(del_list):
+        #     pretrained_msd_names.pop(del_idx - i)
+        #     pretrained_msd_values.pop(del_idx - i)
+        #
+        # skip_list = [
+        #     # RPN
+        #     271, 272, 273, 274,
+        #     # BBOX HEAD
+        #     279, 280, 281, 282,
+        #     # MASK HEAD
+        #     283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294,
+        # ]
 
         # FPN
         skip_list = [

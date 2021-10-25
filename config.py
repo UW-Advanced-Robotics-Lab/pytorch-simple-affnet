@@ -12,11 +12,11 @@ Framework Selection:
 '''
 
 # Prelim for naming experiment.
-FRAMEWORK = 'MaskRCNN'
-EXP_DATASET = 'ARL_AffPose'
+FRAMEWORK = 'AffNet'
+EXP_DATASET = 'ARLAffPose'
 EXP_DOMAIN = 'Real'
 EXP_IMAGES = 'RGB'
-EXP_NUM = 'v0_torchvision_transpose_conv2d_28x28'
+EXP_NUM = 'v3_syn_frozen_backbone'
 
 '''
 Backbone Selection:
@@ -30,11 +30,17 @@ IS_PRETRAINED = True
 RESNET_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth'
 MASKRCNN_PRETRAINED_WEIGHTS = 'https://download.pytorch.org/models/maskrcnn_resnet50_fpn_coco-bf2d0c1e.pth'  # resnet50
 
-RESTORE_UMD_AFFNET_WEIGHTS = ROOT_DIR_PATH + 'trained_models/UMD_Real_RGB/AffNet_UMD_Real_RGB_640x640_v3_torchvision_transpose_conv2d_28x28/BEST_MODEL.pth'
+RESTORE_UMD_AFFNET_WEIGHTS = '/data/Akeaveny/weights/AffNet/UMD/UMD_Real_RGB/AffNet_UMD_Real_RGB_640x640_v4_imgaug/BEST_MODEL.pth'
 
-RESTORE_ARL_TORCHVISION_MASKRCNN_WEIGHTS = ROOT_DIR_PATH + 'trained_models/ARLAffPose_Real_RGB/MaskRCNN_ARLAffPose_Real_RGB_640x480_v1_torchvision/maskrcnn_epoch_4.pth'
-RESTORE_ARL_MASKRCNN_WEIGHTS = ROOT_DIR_PATH + 'trained_models/ARLAffPose_Real_RGB/MaskRCNN_ARLAffPose_Real_RGB_640x640_v1_resnet50/BEST_MODEL.pth'
-RESTORE_ARL_AFFNET_WEIGHTS = ROOT_DIR_PATH + 'trained_models/ARLAffPose_Real_RGB/AffNet_UMD_Real_RGB_640x640_v1_transpose_conv2d_122x122/BEST_MODEL.pth'
+RESTORE_ARL_TORCHVISION_MASKRCNN_WEIGHTS = ROOT_DIR_PATH + 'trained_models/ARL_AffPose_Real_RGB/MaskRCNN_ARLAffPose_Real_RGB_640x640_v0_torchvision/maskrcnn_epoch_4.pth'
+
+RESTORE_ARL_MASKRCNN_WEIGHTS = '/data/Akeaveny/weights/AffNet/ARLAffPose/MaskRCNN/MaskRCNN_ARLAffPose_Real_RGB_640x640_v1_transpose_conv2d_28x28/BEST_MODEL.pth'
+RESTORE_SYN_ARL_MASKRCNN_WEIGHTS = '/data/Akeaveny/weights/AffNet/ARLAffPose/MaskRCNN/MaskRCNN_ARLAffPose_Syn_RGB_640x640_v3_syn_frozen_backbone/BEST_MODEL.pth'
+RESTORE_SYN_AND_REAL_ARL_MASKRCNN_WEIGHTS = '/data/Akeaveny/weights/AffNet/ARLAffPose/MaskRCNN/MaskRCNN_ARLAffPose_Real_and_Syn_RGB_640x640_v3_syn_frozen_backbone/BEST_MODEL.pth'
+
+RESTORE_ARL_AFFNET_WEIGHTS = '/data/Akeaveny/weights/AffNet/ARLAffPose/AffNet/AffNet_ARLAffPose_Real_RGB_640x640_v1_transpose_conv2d_28x28/BEST_MODEL.pth'
+RESTORE_SYN_ARL_AFFNET_WEIGHTS = '/data/Akeaveny/weights/AffNet/ARLAffPose/AffNet/AffNet_ARLAffPose_Syn_RGB_640x640_v3_syn_frozen_backbone/affnet_epoch_1.pth'
+RESTORE_SYN_AND_REAL_ARL_AFFNET_WEIGHTS = '/data/Akeaveny/weights/AffNet/ARLAffPose/AffNet/AffNet_ARLAffPose_Real_and_Syn_RGB_640x640_v3_syn_frozen_backbone/BEST_MODEL.pth'
 
 ''' 
 MaskRCNN configs. 
@@ -166,8 +172,9 @@ YCB Video Configs.
 YCB_DATASET_ROOT_PATH = '/data/Akeaveny/Datasets/YCB_Affordance_Dataset'
 YCB_IMAGE_DOMAIN = 'Real'
 
-YCB_TRAIN_FILE = 'dataset_config/train_data_list.txt'
-YCB_TEST_FILE = 'dataset_config/test_data_list.txt'
+DENSEFUSION_ROOT_PATH = '/home/akeaveny/git/DenseFusion/'
+YCB_TRAIN_FILE = DENSEFUSION_ROOT_PATH + 'datasets/ycb/dataset_config/train_data_list.txt'
+YCB_TEST_FILE = DENSEFUSION_ROOT_PATH + 'datasets/ycb/dataset_config/test_data_list.txt'
 
 YCB_NUM_CLASSES = 21 + 1
 YCB_NUM_OBJECT_CLASSES = 21 + 1  # 1 is for the background
@@ -177,6 +184,10 @@ YCB_IMAGE_MEAN = [115.16123185/255, 94.20813919/255, 84.34889709/255]
 YCB_IMAGE_STD = [56.62171952/255, 56.86680141/255, 36.95978531/255]
 YCB_RESIZE = (int(640), int(640))
 YCB_CROP_SIZE = (int(640), int(640))
+
+YCB_TEST_SAVE_FOLDER = YCB_DATASET_ROOT_PATH + '/test/'
+YCB_OBJ_EVAL_SAVE_FOLDER = YCB_DATASET_ROOT_PATH + '/pred_obj/'
+YCB_AFF_EVAL_SAVE_FOLDER = YCB_DATASET_ROOT_PATH + '/pred_aff/'
 
 '''
 Hyperparams.
@@ -189,32 +200,32 @@ print("using device: {} ..".format(DEVICE))
 
 RANDOM_SEED = 1234
 
-EPOCH_TO_TRAIN_HEADS = 1
-NUM_EPOCHS = 50
+NUM_EPOCHS = 20
 EPOCH_TO_TRAIN_FULL_DATASET = 0
 BATCH_SIZE = 1
 NUM_WORKERS = 4
 
-NUM_IMAGES_PER_EPOCH = 5000
+NUM_IMAGES_PER_EPOCH = 500
 NUM_TRAIN = int(NUM_IMAGES_PER_EPOCH*0.8)
 NUM_VAL = int(NUM_IMAGES_PER_EPOCH-NUM_TRAIN)
 NUM_TEST = 250
 NUM_EVAL = 250
 
+CLIP_GRADIENT = 10
 LEARNING_RATE = 0.001
 WEIGHT_DECAY = 0.0005
 MOMENTUM = 0.9
 MILESTONES = [3, 5]
 GAMMA = 0.1
 
-NUM_CLASSES = ARL_NUM_CLASSES
-NUM_OBJECT_CLASSES = ARL_NUM_OBJECT_CLASSES
-NUM_AFF_CLASSES = ARL_NUM_AFF_CLASSES
+NUM_CLASSES = UMD_NUM_CLASSES
+NUM_OBJECT_CLASSES = UMD_NUM_OBJECT_CLASSES
+NUM_AFF_CLASSES = UMD_NUM_AFF_CLASSES
 
-MIN_SIZE = MIN_SIZE
-MAX_SIZE = MAX_SIZE
-IMAGE_MEAN = ARL_IMAGE_MEAN
-IMAGE_STD = ARL_IMAGE_STD
+MIN_SIZE = UMD_MIN_SIZE
+MAX_SIZE = UMD_MAX_SIZE
+IMAGE_MEAN = UMD_IMAGE_MEAN
+IMAGE_STD = UMD_IMAGE_STD
 
 ''' 
 Configs for logging & eval.

@@ -1,5 +1,6 @@
 import unittest
 
+import numpy as np
 import torch
 
 import sys
@@ -9,8 +10,9 @@ import config
 from model.affnet import affnet
 from model import model_utils
 from training import train_utils
-from dataset.arl_affpose import arl_affpose_dataset_loaders
 from dataset.umd import umd_dataset_loaders
+from dataset.arl_affpose import arl_affpose_dataset_loaders
+from dataset.ycb_video import ycb_video_dataset_loaders
 
 
 class AffNetTest(unittest.TestCase):
@@ -22,9 +24,21 @@ class AffNetTest(unittest.TestCase):
         self.model.to(config.DEVICE)
 
         # Load the dataset.
-        test_loader = umd_dataset_loaders.load_umd_eval_datasets()
+        train_loader, val_loader, test_loader = umd_dataset_loaders.load_umd_train_datasets()
         # create dataloader.
         self.data_loader = test_loader
+
+    def test_num_params(self):
+
+        num_params = 0
+        for name, param in self.model.named_parameters():
+            if 'backbone' in name:
+                num_params += np.prod(param.size())
+            elif 'mask_predictor' in name:
+                print(f'name: {name}, {param.size()}')
+            # else:
+            #     print(f'name: {name}')
+        print(f'num_params: {num_params}')
 
     def test_freeze_backbone(self):
         # self.model = model_utils.freeze_backbone(self.model)
@@ -50,6 +64,7 @@ class AffNetTest(unittest.TestCase):
         target["obj_boxes"] = bbox
         target["obj_ids"] = labels
         target["aff_ids"] = labels
+        target["aff_mask"] = mask
         target["aff_binary_masks"] = mask
 
         images = image.to(config.DEVICE)
@@ -80,13 +95,15 @@ class AffNetTest(unittest.TestCase):
         # outputs = outputs.pop()
 
     def test_affnet_train(self):
+        self.model.train()
         # get one item from dataloader.
         batch = iter(self.data_loader).__next__()
         images, targets = batch
+
+        # for i, (images, targets) in enumerate(self.data_loader):
+
         images = list(image.to(config.DEVICE) for image in images)
         targets = [{k: v.to(config.DEVICE) for k, v in t.items()} for t in targets]
-
-        self.model.train()
         loss_dict = self.model(images, targets)
 
         losses = sum(loss for loss in loss_dict.values())
@@ -122,7 +139,7 @@ if __name__ == '__main__':
 
     # run desired test.
     suite = unittest.TestSuite()
-    suite.addTest(AffNetTest("test_affnet_train"))
+    suite.addTest(AffNetTest("test_affnet_eval"))
     runner = unittest.TextTestRunner()
     runner.run(suite)
 

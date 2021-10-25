@@ -36,6 +36,7 @@ class YCBVideoPoseDataset(data.Dataset):
                  ):
 
         self.dataset_dir = dataset_dir
+        print(f'self.dataset_dir: {self.dataset_dir}')
         self.image_path_txt_file = image_path_txt_file
         self.image_domain = image_domain
         assert self.image_domain == 'Real' or self.image_domain == 'Syn', 'Images must be Real or Syn'
@@ -65,7 +66,7 @@ class YCBVideoPoseDataset(data.Dataset):
         self.all_image_paths = []
         self.real_image_paths = []
         self.syn_image_paths = []
-        input_file = open(self.dataset_dir + '/' + self.image_path_txt_file)
+        input_file = open(self.image_path_txt_file)
         while 1:
             input_line = input_file.readline()
             if not input_line:
@@ -139,7 +140,9 @@ class YCBVideoPoseDataset(data.Dataset):
 
     def __getitem__(self, index):
 
+        index = 4822 + index
         # loading images.
+        print(f'\nImage_paths: {self.image_paths[index]}')
         img_file = '{0}/{1}-color.png'.format(self.dataset_dir, self.image_paths[index])
         depth_file = '{0}/{1}-depth.png'.format(self.dataset_dir, self.image_paths[index])
         obj_mask_file = '{0}/{1}-label.png'.format(self.dataset_dir, self.image_paths[index])
@@ -248,6 +251,9 @@ class YCBVideoPoseDataset(data.Dataset):
         aff_boxes = np.squeeze(np.array(aff_boxes))
         aff_binary_masks = np.squeeze(np.array(aff_binary_masks))
         obj_part_ids = np.squeeze(np.array(obj_part_ids_list))
+
+        # print object and affordance class names.
+        ycb_video_dataset_utils.print_class_obj_names(obj_ids)
 
         target = {}
         target["image_id"] = torch.tensor([index])

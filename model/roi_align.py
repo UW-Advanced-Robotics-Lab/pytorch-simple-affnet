@@ -184,6 +184,7 @@ class MultiScaleRoIAlign:
 
         return result
 
+
 def initLevelMapper(k_min, k_max, canonical_scale=224, canonical_level=4, eps=1e-6):
     return LevelMapper(k_min, k_max, canonical_scale, canonical_level, eps)
 
