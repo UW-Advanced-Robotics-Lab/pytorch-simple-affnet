@@ -12,7 +12,7 @@ I used pytorch-simple-affnet with the following repos:
 3. [arl-affpose-dataset-utils](https://github.com/UW-Advanced-Robotics-Lab/arl-affpose-dataset-utils) a custom dataset that I generated.
 4. [densefusion](https://github.com/UW-Advanced-Robotics-Lab) for predicting an object 6-DoF pose.
 5. [arl-affpose-ros-node](https://github.com/UW-Advanced-Robotics-Lab/arl-affpose-ros-node): for deploying our network for 6-DoF pose estimation with our ZED camera.
-6. [barrett_tf_publisher](https://github.com/UW-Advanced-Robotics-Lab/barrett-wam-arm) for robotic grasping experiments. Specifically barrett_tf_publisher and barrett_trac_ik. 
+6. [barrett-wam-arm](https://github.com/UW-Advanced-Robotics-Lab/barrett-wam-arm) for robotic grasping experiments. Specifically barrett_tf_publisher and barrett_trac_ik. 
 
 In the sample below we see the differences between traditional Object Instance Segmentation (left) and Object-based Affordance Detection (right).
 ![Alt text](samples/AffPose.png?raw=true "Title")
