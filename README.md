@@ -1,4 +1,4 @@
-# PyTorch-Simple-AffNet
+# PyTorch-Simple-AffordanceNet
 
 The code is developed to simply and implement [AffordanceNet](https://github.com/nqanh/affordance-net) in PyTorch (AffordanceNet was developed in Caffe).
 Here is the [original paper for AffordanceNet](https://arxiv.org/pdf/1709.07326.pdf).
